@@ -1,9 +1,32 @@
 import { type ReactNode, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { ManropeFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+export function AuthFormScaffold({ children }: { children: ReactNode }) {
+  const theme = useTheme();
+
+  return (
+    <ThemedView style={styles.screen}>
+      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets>
+          <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+            {children}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
 
 export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const theme = useTheme();
@@ -45,7 +68,6 @@ export function AuthField({
   secureTextEntry,
   keyboardType = 'default',
   autoCapitalize = 'none',
-  autoComplete,
   error,
   rightAdornment,
 }: AuthFieldProps) {
@@ -60,12 +82,8 @@ export function AuthField({
         {label}
       </ThemedText>
       <View
-        style={[
-          styles.inputRow,
-          { borderColor, backgroundColor: theme.surfaceContainerLowest },
-          isFocused && !error && { shadowColor: theme.primary },
-          isFocused && !error && styles.inputFocusGlow,
-        ]}>
+        collapsable={false}
+        style={[styles.inputRow, { borderColor, backgroundColor: theme.surfaceContainerLowest }]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -74,12 +92,12 @@ export function AuthField({
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
-          autoComplete={autoComplete}
-          // Android's Autofill/Smart Lock framework pops a suggestion or
-          // save-password overlay on focus for these autoComplete hints,
-          // which steals focus back from the field and reads as the
-          // keyboard flickering open/closed or keystrokes being dropped.
-          importantForAutofill="no"
+          autoCorrect={false}
+          spellCheck={false}
+          autoComplete="off"
+          textContentType="none"
+          importantForAutofill="noExcludeDescendants"
+          underlineColorAndroid="transparent"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           style={[styles.input, { color: theme.text }]}
@@ -145,6 +163,28 @@ export function GoogleButton({ label, onPress }: { label: string; onPress?: () =
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  flex: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: Spacing.containerMargin,
+    paddingTop: Spacing.five,
+    paddingBottom: Spacing.six,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.four,
+    gap: Spacing.four,
+  },
   brandMark: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -159,11 +199,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.DEFAULT,
     paddingHorizontal: Spacing.three,
-  },
-  inputFocusGlow: {
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
   },
   input: {
     flex: 1,

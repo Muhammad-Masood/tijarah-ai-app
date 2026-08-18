@@ -1,11 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { AuthField, BrandMark, GoogleButton, OrDivider, PasswordVisibilityToggle } from '@/components/auth-kit';
+import { AuthField, AuthFormScaffold, BrandMark, GoogleButton, OrDivider, PasswordVisibilityToggle } from '@/components/auth-kit';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { ApiError, useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
@@ -64,129 +62,127 @@ export default function SignupScreen() {
   }
 
   return (
-    <ThemedView style={styles.screen}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={styles.flex}>
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled">
-            <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
-              <BrandMark size="sm" />
-              <View style={styles.headerBlock}>
-                <ThemedText type="headlineMd" themeColor="primary" style={styles.centerText}>
-                  Tijarah AI
-                </ThemedText>
-                <ThemedText type="bodyLg" themeColor="textSecondary" style={styles.centerText}>
-                  Create your account to start selling.
-                </ThemedText>
-              </View>
+    <AuthFormScaffold>
+      <BrandMark size="sm" />
+      <View style={styles.headerBlock}>
+        <ThemedText type="headlineMd" themeColor="primary" style={styles.centerText}>
+          Tijarah AI
+        </ThemedText>
+        <ThemedText type="bodyLg" themeColor="textSecondary" style={styles.centerText}>
+          Create your account to start selling.
+        </ThemedText>
+      </View>
 
-              <View style={styles.form}>
-                <AuthField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Jane Doe" autoCapitalize="words" autoComplete="name" />
+      <View style={styles.form}>
+        <AuthField
+          label="Full name"
+          value={fullName}
+          onChangeText={setFullName}
+          placeholder="Jane Doe"
+          autoCapitalize="words"
+          autoComplete="name"
+        />
 
-                <AuthField
-                  label="Business name"
-                  value={businessName}
-                  onChangeText={setBusinessName}
-                  placeholder="Acme Trading Co."
-                  autoCapitalize="words"
-                />
+        <AuthField
+          label="Business name"
+          value={businessName}
+          onChangeText={setBusinessName}
+          placeholder="Acme Trading Co."
+          autoCapitalize="words"
+        />
 
-                <AuthField
-                  label="Work email"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@company.com"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                />
+        <AuthField
+          label="Work email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@company.com"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
 
-                <View style={styles.passwordGroup}>
-                  <AuthField
-                    label="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="••••••••"
-                    secureTextEntry={!showPassword}
-                    autoComplete="new-password"
-                    error={formError ?? undefined}
-                    rightAdornment={
-                      <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
-                    }
-                  />
-                  {!formError && strength && (
-                    <ThemedText type="bodySm" themeColor={strength.color}>
-                      Password strength: {strength.label}
-                    </ThemedText>
-                  )}
-                </View>
+        <View style={styles.passwordGroup}>
+          <AuthField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry={!showPassword}
+            autoComplete="new-password"
+            error={formError ?? undefined}
+            rightAdornment={
+              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
+            }
+          />
+          <View style={styles.strengthSlot}>
+            {!formError && strength ? (
+              <ThemedText type="bodySm" themeColor={strength.color}>
+                Password strength: {strength.label}
+              </ThemedText>
+            ) : null}
+          </View>
+        </View>
 
-                <Pressable style={styles.checkboxRow} onPress={() => setAgreed((v) => !v)}>
-                  <View
-                    style={[
-                      styles.checkbox,
-                      { borderColor: theme.border },
-                      agreed && { backgroundColor: theme.primary, borderColor: theme.primary },
-                    ]}>
-                    {agreed && <ThemedText style={{ color: theme.onPrimary, fontSize: 12 }}>✓</ThemedText>}
-                  </View>
-                  <ThemedText type="bodySm" themeColor="textSecondary" style={styles.checkboxLabel}>
-                    I agree to the{' '}
-                    <ThemedText type="bodySm" themeColor="primary">
-                      Terms of Service
-                    </ThemedText>{' '}
-                    and{' '}
-                    <ThemedText type="bodySm" themeColor="primary">
-                      Privacy Policy
-                    </ThemedText>
-                  </ThemedText>
-                </Pressable>
+        <Pressable style={styles.checkboxRow} onPress={() => setAgreed((v) => !v)}>
+          <View
+            style={[
+              styles.checkbox,
+              { borderColor: theme.border },
+              agreed && { backgroundColor: theme.primary, borderColor: theme.primary },
+            ]}>
+            {agreed && <ThemedText style={{ color: theme.onPrimary, fontSize: 12 }}>✓</ThemedText>}
+          </View>
+          <ThemedText type="bodySm" themeColor="textSecondary" style={styles.checkboxLabel}>
+            I agree to the{' '}
+            <ThemedText type="bodySm" themeColor="primary">
+              Terms of Service
+            </ThemedText>{' '}
+            and{' '}
+            <ThemedText type="bodySm" themeColor="primary">
+              Privacy Policy
+            </ThemedText>
+          </ThemedText>
+        </Pressable>
 
-                <Pressable
-                  disabled={!canSubmit}
-                  onPress={handleSubmit}
-                  style={[
-                    styles.ctaButton,
-                    { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement },
-                  ]}>
-                  {isSubmitting ? (
-                    <ActivityIndicator color={theme.onPrimary} />
-                  ) : (
-                    <ThemedText
-                      type="bodyLg"
-                      style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
-                      Create account
-                    </ThemedText>
-                  )}
-                </Pressable>
-              </View>
+        <Pressable
+          disabled={!canSubmit}
+          onPress={handleSubmit}
+          style={[
+            styles.ctaButton,
+            { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement },
+          ]}>
+          {isSubmitting ? (
+            <ActivityIndicator color={theme.onPrimary} />
+          ) : (
+            <ThemedText
+              type="bodyLg"
+              style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
+              Create account
+            </ThemedText>
+          )}
+        </Pressable>
+      </View>
 
-              <OrDivider label="or" />
+      <OrDivider label="or" />
 
-              <GoogleButton label="Sign up with Google" />
+      <GoogleButton label="Sign up with Google" />
 
-              <View style={styles.switcherRow}>
-                <ThemedText type="bodySm" themeColor="textSecondary">
-                  Already have an account?{' '}
-                </ThemedText>
-                <Pressable onPress={() => router.replace('/login')}>
-                  <ThemedText type="bodySm" themeColor="primary" style={styles.emphasisText}>
-                    Log in
-                  </ThemedText>
-                </Pressable>
-              </View>
+      <View style={styles.switcherRow}>
+        <ThemedText type="bodySm" themeColor="textSecondary">
+          Already have an account?{' '}
+        </ThemedText>
+        <Pressable onPress={() => router.replace('/login')}>
+          <ThemedText type="bodySm" themeColor="primary" style={styles.emphasisText}>
+            Log in
+          </ThemedText>
+        </Pressable>
+      </View>
 
-              <View style={styles.trustStrip}>
-                <TrustItem label="Bank-level encryption" />
-                <TrustItem label="No store changes without approval" />
-                <TrustItem label="Cancel anytime" />
-              </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+      <View style={styles.trustStrip}>
+        <TrustItem label="Bank-level encryption" />
+        <TrustItem label="No store changes without approval" />
+        <TrustItem label="Cancel anytime" />
+      </View>
+    </AuthFormScaffold>
   );
 }
 
@@ -205,26 +201,6 @@ function TrustItem({ label }: { label: string }) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.containerMargin,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    padding: Spacing.four,
-    gap: Spacing.four,
-  },
   headerBlock: {
     gap: Spacing.one,
   },
@@ -236,6 +212,9 @@ const styles = StyleSheet.create({
   },
   passwordGroup: {
     gap: Spacing.one,
+  },
+  strengthSlot: {
+    minHeight: 16,
   },
   checkboxRow: {
     flexDirection: 'row',
