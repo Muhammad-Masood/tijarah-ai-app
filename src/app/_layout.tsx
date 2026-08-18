@@ -32,6 +32,9 @@ export default function RootLayout() {
           <Stack.Screen name="welcome" />
           <Stack.Screen name="login" />
           <Stack.Screen name="signup" />
+          <Stack.Screen name="connect-stores" />
+          <Stack.Screen name="store-connecting" />
+          <Stack.Screen name="store-connected" />
         </Stack>
       </AuthProvider>
     </ThemeProvider>
