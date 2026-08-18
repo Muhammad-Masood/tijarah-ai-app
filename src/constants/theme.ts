@@ -1,15 +1,13 @@
 /**
- * OmniSell Intelligence design system.
+ * Tijarah AI design system.
  *
- * Colors, typography, and radii below are lifted from the design doc (a
- * Material 3 / Material Theme Builder token export). The doc only specifies
- * one (light) palette; Colors.dark is derived from the doc's own inverse
- * and fixed tokens using standard M3 light-to-dark tonal-swap rules (fixed
- * tokens stay constant across themes by definition; inverse tokens and the
- * fixed-dim / fixed-variant pairs are the values M3 itself designates for
- * the opposite theme). The dark surface-container ladder has no M3 source
- * and is interpolated by hand — treat those five values as an
- * approximation, not spec.
+ * A light, business-grade palette for a multi-marketplace commerce hub:
+ * calm ink-on-paper neutrals, a single deliberate teal for action/brand,
+ * and slate + amber accents held in reserve for secondary/highlight use.
+ * Tonal layering (surface containers) and hairline borders carry depth
+ * instead of heavy shadows — see DESIGN.md for the full rationale.
+ * Colors.dark is a hand-tuned tonal inversion of the same palette so the
+ * app keeps working in dark mode without a second design pass.
  */
 
 import '@/global.css';
@@ -17,77 +15,71 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 const lightBase = {
-  surface: '#f8f9fa',
-  surfaceDim: '#d9dadb',
-  surfaceBright: '#f8f9fa',
+  surface: '#f6f7f8',
+  surfaceDim: '#dadde1',
+  surfaceBright: '#f6f7f8',
   surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f3f4f5',
-  surfaceContainer: '#edeeef',
-  surfaceContainerHigh: '#e7e8e9',
-  surfaceContainerHighest: '#e1e3e4',
-  onSurface: '#191c1d',
-  onSurfaceVariant: '#3d4947',
-  inverseSurface: '#2e3132',
-  inverseOnSurface: '#f0f1f2',
-  outline: '#6d7a77',
-  outlineVariant: '#bcc9c6',
-  surfaceTint: '#006a61',
-  primary: '#00685f',
+  surfaceContainerLow: '#f1f2f4',
+  surfaceContainer: '#ebedef',
+  surfaceContainerHigh: '#e4e7ea',
+  surfaceContainerHighest: '#dde0e4',
+  onSurface: '#14181c',
+  onSurfaceVariant: '#5b6570',
+  inverseSurface: '#20262b',
+  inverseOnSurface: '#f2f3f4',
+  outline: '#8a94a0',
+  outlineVariant: '#dde1e6',
+  surfaceTint: '#0e6b5e',
+  primary: '#0e6b5e',
   onPrimary: '#ffffff',
-  primaryContainer: '#008378',
-  onPrimaryContainer: '#f4fffc',
-  inversePrimary: '#6bd8cb',
-  secondary: '#575e70',
+  primaryContainer: '#e1f2ee',
+  onPrimaryContainer: '#0a4a40',
+  inversePrimary: '#6fd9c4',
+  secondary: '#3e5c76',
   onSecondary: '#ffffff',
-  secondaryContainer: '#d9dff5',
-  onSecondaryContainer: '#5c6274',
-  tertiary: '#4648d4',
+  secondaryContainer: '#e2eaf1',
+  onSecondaryContainer: '#27394a',
+  tertiary: '#b45309',
   onTertiary: '#ffffff',
-  tertiaryContainer: '#6063ee',
-  onTertiaryContainer: '#fffbff',
-  error: '#ba1a1a',
+  tertiaryContainer: '#fdecd1',
+  onTertiaryContainer: '#7c3a0a',
+  error: '#dc2626',
   onError: '#ffffff',
-  errorContainer: '#ffdad6',
-  onErrorContainer: '#93000a',
-  primaryFixed: '#89f5e7',
-  primaryFixedDim: '#6bd8cb',
-  onPrimaryFixed: '#00201d',
-  onPrimaryFixedVariant: '#005049',
-  secondaryFixed: '#dce2f7',
-  secondaryFixedDim: '#c0c6db',
-  onSecondaryFixed: '#141b2b',
-  onSecondaryFixedVariant: '#404758',
-  tertiaryFixed: '#e1e0ff',
-  tertiaryFixedDim: '#c0c1ff',
-  onTertiaryFixed: '#07006c',
-  onTertiaryFixedVariant: '#2f2ebe',
-  background: '#f8f9fa',
-  onBackground: '#191c1d',
-  surfaceVariant: '#e1e3e4',
+  errorContainer: '#fee2e2',
+  onErrorContainer: '#7f1d1d',
+  primaryFixed: '#beeae0',
+  primaryFixedDim: '#6fd9c4',
+  onPrimaryFixed: '#04211c',
+  onPrimaryFixedVariant: '#0a4a40',
+  secondaryFixed: '#dce6ef',
+  secondaryFixedDim: '#afc2d3',
+  onSecondaryFixed: '#16232e',
+  onSecondaryFixedVariant: '#27394a',
+  tertiaryFixed: '#fbe0b8',
+  tertiaryFixedDim: '#e8b577',
+  onTertiaryFixed: '#3a2200',
+  onTertiaryFixedVariant: '#7c3a0a',
+  background: '#f6f7f8',
+  onBackground: '#14181c',
+  surfaceVariant: '#dde0e4',
 } as const;
 
 const darkBase = {
-  // Anchored directly on the doc's inverse-surface/inverse-on-surface pair.
-  surface: '#2e3132',
-  surfaceDim: '#111413',
-  surfaceBright: '#3a3d3e',
-  // No M3 source for the dark container ladder — hand-interpolated between
-  // surfaceDim and surfaceBright.
-  surfaceContainerLowest: '#0c0f0e',
-  surfaceContainerLow: '#191c1d',
-  surfaceContainer: '#1d2021',
-  surfaceContainerHigh: '#282b2c',
-  surfaceContainerHighest: '#333637',
-  onSurface: '#f0f1f2',
-  onSurfaceVariant: '#bcc9c6',
+  surface: '#1a1f23',
+  surfaceDim: '#101315',
+  surfaceBright: '#262c31',
+  surfaceContainerLowest: '#0c0f11',
+  surfaceContainerLow: '#171c20',
+  surfaceContainer: '#1c2226',
+  surfaceContainerHigh: '#252b30',
+  surfaceContainerHighest: '#2f363c',
+  onSurface: '#edeff1',
+  onSurfaceVariant: '#aeb7c0',
   inverseSurface: lightBase.surface,
   inverseOnSurface: lightBase.onSurface,
-  outline: '#889390',
-  outlineVariant: '#3d4947',
-  surfaceTint: '#6bd8cb',
-  // Primary/secondary/tertiary dark tones reuse the doc's own fixed/inverse
-  // tokens: *Fixed = tone90, *FixedDim = tone80, onFixed = tone10 (~tone20),
-  // onFixedVariant = tone30 — exactly the tones M3 assigns to a dark theme.
+  outline: '#7c8590',
+  outlineVariant: '#3a4147',
+  surfaceTint: lightBase.inversePrimary,
   primary: lightBase.inversePrimary,
   onPrimary: lightBase.onPrimaryFixed,
   primaryContainer: lightBase.onPrimaryFixedVariant,
@@ -101,12 +93,8 @@ const darkBase = {
   onTertiary: lightBase.onTertiaryFixed,
   tertiaryContainer: lightBase.onTertiaryFixedVariant,
   onTertiaryContainer: lightBase.tertiaryFixed,
-  // Standard M3 baseline dark error ramp — the doc's light error/onError-
-  // Container values match the baseline M3 error ramp exactly, confirming
-  // this palette is a Material Theme Builder export, so the baseline dark
-  // counterparts apply directly rather than being invented.
-  error: '#ffb4ab',
-  onError: '#690005',
+  error: '#f87171',
+  onError: '#450a0a',
   errorContainer: lightBase.onErrorContainer,
   onErrorContainer: lightBase.errorContainer,
   primaryFixed: lightBase.primaryFixed,
@@ -121,9 +109,9 @@ const darkBase = {
   tertiaryFixedDim: lightBase.tertiaryFixedDim,
   onTertiaryFixed: lightBase.onTertiaryFixed,
   onTertiaryFixedVariant: lightBase.onTertiaryFixedVariant,
-  background: '#2e3132',
-  onBackground: '#f0f1f2',
-  surfaceVariant: '#333637',
+  background: '#1a1f23',
+  onBackground: '#edeff1',
+  surfaceVariant: '#2f363c',
 } as const;
 
 export const Colors = {
@@ -138,7 +126,7 @@ export const Colors = {
     textSecondary: lightBase.onSurfaceVariant,
     border: lightBase.outlineVariant,
     danger: lightBase.error,
-    success: lightBase.primary,
+    success: '#15803d',
   },
   dark: {
     ...darkBase,
@@ -148,7 +136,7 @@ export const Colors = {
     textSecondary: darkBase.onSurfaceVariant,
     border: darkBase.outlineVariant,
     danger: darkBase.error,
-    success: darkBase.primary,
+    success: '#4ade80',
   },
 } as const;
 
