@@ -96,7 +96,7 @@ export type CurrentUserResponse =
   | { type: "customer"; user: CustomerRead };
 
 export function signupMerchant(data: MerchantCreate): Promise<MerchantRead> {
-  return request<MerchantRead>("/merchant/create_merchant", {
+  return request<MerchantRead>("/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -109,7 +109,7 @@ export function loginMerchant(email: string, password: string): Promise<Token> {
   form.set("username", email);
   form.set("password", password);
 
-  return request<Token>("/auth/login/merchant", {
+  return request<Token>("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: form.toString(),
