@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 
@@ -5,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Channels, type ChannelId } from '@/constants/channels';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { Marketplace } from '@/lib/api';
 
 export function ChannelBadge({ channelId, size = 'md' }: { channelId: ChannelId; size?: 'sm' | 'md' }) {
   const theme = useTheme();
@@ -53,6 +55,54 @@ export function ChannelConnectCard({
         ]}>
         <ThemedText type="labelMd" themeColor="onPrimary">
           Connect
+        </ThemedText>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Like `ChannelConnectCard`, but for a marketplace fetched from `GET /marketplace/`
+ * rather than the hardcoded `ChannelId` set — driven by a server logo/name instead
+ * of the local badge-letter lookup. */
+export function MarketplaceConnectCard({
+  marketplace,
+  onConnect,
+}: {
+  marketplace: Marketplace;
+  onConnect: () => void;
+}) {
+  const theme = useTheme();
+  const isConnected = marketplace.is_connected ?? false;
+
+  return (
+    <View style={[styles.card, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.badge,
+          { width: 56, height: 56, borderRadius: Radius.DEFAULT, backgroundColor: theme.primaryContainer },
+        ]}>
+        <Image
+          source={{ uri: marketplace.logo_url }}
+          style={styles.marketplaceLogo}
+          contentFit="contain"
+        />
+      </View>
+      <View style={styles.cardBody}>
+        <ThemedText type="headlineSm">{marketplace.name}</ThemedText>
+        <ThemedText type="bodySm" themeColor="textSecondary">
+          {marketplace.url}
+        </ThemedText>
+      </View>
+      <Pressable
+        onPress={onConnect}
+        disabled={isConnected}
+        style={({ pressed }) => [
+          styles.connectButton,
+          { backgroundColor: isConnected ? theme.surfaceContainerHigh : theme.primary },
+          pressed && !isConnected && styles.pressed,
+        ]}>
+        <ThemedText type="labelMd" themeColor={isConnected ? 'textSecondary' : 'onPrimary'}>
+          {isConnected ? 'Connected' : 'Connect'}
         </ThemedText>
       </Pressable>
     </View>
@@ -154,6 +204,10 @@ const styles = StyleSheet.create({
   cardBody: {
     flex: 1,
     gap: Spacing.half,
+  },
+  marketplaceLogo: {
+    width: 32,
+    height: 32,
   },
   connectButton: {
     alignItems: 'center',

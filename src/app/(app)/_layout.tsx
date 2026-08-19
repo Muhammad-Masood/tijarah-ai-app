@@ -10,6 +10,10 @@ export default function AppLayout() {
       <Stack.Screen name="connect-stores" />
       <Stack.Screen name="store-connecting" />
       <Stack.Screen name="store-connected" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="product-detail" />
+      <Stack.Screen name="product-form" />
     </Stack>
   );
 }

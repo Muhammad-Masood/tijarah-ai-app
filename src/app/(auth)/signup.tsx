@@ -1,28 +1,31 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 
-import { AuthField, AuthFormScaffold, BrandMark, GoogleButton, OrDivider, PasswordVisibilityToggle } from '@/components/auth-kit';
+import { AuthField, AuthFormScaffold, BrandMark, GoogleButton, OrDivider, PasswordVisibilityToggle, PressableScale } from '@/components/auth-kit';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { ApiError, useAuth } from '@/hooks/use-auth';
+import { useStagger } from '@/hooks/use-stagger';
 import { useTheme } from '@/hooks/use-theme';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function passwordStrength(password: string): { label: string; color: ThemeColor } | null {
+function passwordStrength(password: string): { label: string; color: ThemeColor; score: 1 | 2 | 3 } | null {
   if (password.length === 0) return null;
-  if (password.length < 8) return { label: 'Weak', color: 'danger' };
+  if (password.length < 8) return { label: 'Weak', color: 'danger', score: 1 };
   const hasMixedCase = /[a-z]/.test(password) && /[A-Z]/.test(password);
   const hasNumberOrSymbol = /[0-9\W]/.test(password);
   if (hasMixedCase && hasNumberOrSymbol && password.length >= 10) {
-    return { label: 'Strong', color: 'success' };
+    return { label: 'Strong', color: 'success', score: 3 };
   }
-  return { label: 'Good', color: 'textSecondary' };
+  return { label: 'Good', color: 'textSecondary', score: 2 };
 }
 
 export default function SignupScreen() {
   const theme = useTheme();
+  const stagger = useStagger();
   const { signUpMerchant } = useAuth();
   const [fullName, setFullName] = useState('');
   const [businessName, setBusinessName] = useState('');
@@ -70,44 +73,53 @@ export default function SignupScreen() {
 
   return (
     <AuthFormScaffold>
-      <BrandMark size="sm" />
-      <View style={styles.headerBlock}>
+      <Animated.View entering={stagger(0)}>
+        <BrandMark size="sm" />
+      </Animated.View>
+
+      <Animated.View entering={stagger(60)} style={styles.headerBlock}>
         <ThemedText type="headlineMd" themeColor="primary" style={styles.centerText}>
           Tijarah AI
         </ThemedText>
         <ThemedText type="bodyLg" themeColor="textSecondary" style={styles.centerText}>
           Create your account to start selling.
         </ThemedText>
-      </View>
+      </Animated.View>
 
       <View style={styles.form}>
-        <AuthField
-          label="Full name"
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder="Jane Doe"
-          autoCapitalize="words"
-          autoComplete="name"
-        />
+        <Animated.View entering={stagger(100)}>
+          <AuthField
+            label="Full name"
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="Jane Doe"
+            autoCapitalize="words"
+            autoComplete="name"
+          />
+        </Animated.View>
 
-        <AuthField
-          label="Business name"
-          value={businessName}
-          onChangeText={setBusinessName}
-          placeholder="Acme Trading Co."
-          autoCapitalize="words"
-        />
+        <Animated.View entering={stagger(130)}>
+          <AuthField
+            label="Business name"
+            value={businessName}
+            onChangeText={setBusinessName}
+            placeholder="Acme Trading Co."
+            autoCapitalize="words"
+          />
+        </Animated.View>
 
-        <AuthField
-          label="Work email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@company.com"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
+        <Animated.View entering={stagger(160)}>
+          <AuthField
+            label="Work email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@company.com"
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+        </Animated.View>
 
-        <View style={styles.passwordGroup}>
+        <Animated.View entering={stagger(190)} style={styles.passwordGroup}>
           <AuthField
             label="Password"
             value={password}
@@ -120,60 +132,63 @@ export default function SignupScreen() {
               <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             }
           />
-          <View style={styles.strengthSlot}>
-            {!formError && strength ? (
-              <ThemedText type="bodySm" themeColor={strength.color}>
-                Password strength: {strength.label}
+          <PasswordStrengthMeter strength={strength} hidden={!!formError} />
+        </Animated.View>
+
+        <Animated.View entering={stagger(220)}>
+          <Pressable style={styles.checkboxRow} onPress={() => setAgreed((v) => !v)}>
+            <View
+              style={[
+                styles.checkbox,
+                { borderColor: theme.border },
+                agreed && { backgroundColor: theme.primary, borderColor: theme.primary },
+              ]}>
+              {agreed && (
+                <Animated.View entering={ZoomIn.springify().damping(12)}>
+                  <ThemedText style={{ color: theme.onPrimary, fontSize: 12 }}>✓</ThemedText>
+                </Animated.View>
+              )}
+            </View>
+            <ThemedText type="bodySm" themeColor="textSecondary" style={styles.checkboxLabel}>
+              I agree to the{' '}
+              <ThemedText type="bodySm" themeColor="primary">
+                Terms of Service
+              </ThemedText>{' '}
+              and{' '}
+              <ThemedText type="bodySm" themeColor="primary">
+                Privacy Policy
               </ThemedText>
-            ) : null}
-          </View>
-        </View>
-
-        <Pressable style={styles.checkboxRow} onPress={() => setAgreed((v) => !v)}>
-          <View
-            style={[
-              styles.checkbox,
-              { borderColor: theme.border },
-              agreed && { backgroundColor: theme.primary, borderColor: theme.primary },
-            ]}>
-            {agreed && <ThemedText style={{ color: theme.onPrimary, fontSize: 12 }}>✓</ThemedText>}
-          </View>
-          <ThemedText type="bodySm" themeColor="textSecondary" style={styles.checkboxLabel}>
-            I agree to the{' '}
-            <ThemedText type="bodySm" themeColor="primary">
-              Terms of Service
-            </ThemedText>{' '}
-            and{' '}
-            <ThemedText type="bodySm" themeColor="primary">
-              Privacy Policy
             </ThemedText>
-          </ThemedText>
-        </Pressable>
+          </Pressable>
+        </Animated.View>
 
-        <Pressable
-          disabled={!canSubmit}
-          onPress={handleSubmit}
-          style={[
-            styles.ctaButton,
-            { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement },
-          ]}>
-          {isSubmitting ? (
-            <ActivityIndicator color={theme.onPrimary} />
-          ) : (
-            <ThemedText
-              type="bodyLg"
-              style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
-              Create account
-            </ThemedText>
-          )}
-        </Pressable>
+        <Animated.View entering={stagger(250)}>
+          <PressableScale
+            disabled={!canSubmit}
+            onPress={handleSubmit}
+            style={[styles.ctaButton, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
+            {isSubmitting ? (
+              <ActivityIndicator color={theme.onPrimary} />
+            ) : (
+              <ThemedText
+                type="bodyLg"
+                style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
+                Create account
+              </ThemedText>
+            )}
+          </PressableScale>
+        </Animated.View>
       </View>
 
-      <OrDivider label="or" />
+      <Animated.View entering={stagger(280)}>
+        <OrDivider label="or" />
+      </Animated.View>
 
-      <GoogleButton label="Sign up with Google" />
+      <Animated.View entering={stagger(310)}>
+        <GoogleButton label="Sign up with Google" />
+      </Animated.View>
 
-      <View style={styles.switcherRow}>
+      <Animated.View entering={stagger(340)} style={styles.switcherRow}>
         <ThemedText type="bodySm" themeColor="textSecondary">
           Already have an account?{' '}
         </ThemedText>
@@ -182,28 +197,75 @@ export default function SignupScreen() {
             Log in
           </ThemedText>
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={styles.trustStrip}>
+      <Animated.View entering={stagger(370)} style={styles.trustStrip}>
         <TrustItem label="Bank-level encryption" />
         <TrustItem label="No store changes without approval" />
         <TrustItem label="Cancel anytime" />
-      </View>
+      </Animated.View>
     </AuthFormScaffold>
+  );
+}
+
+/** Animated width/color bar beneath the password field — a visual read of `passwordStrength`, not just the label text. */
+function PasswordStrengthMeter({
+  strength,
+  hidden,
+}: {
+  strength: { label: string; color: ThemeColor; score: 1 | 2 | 3 } | null;
+  hidden: boolean;
+}) {
+  const theme = useTheme();
+  const progress = useSharedValue(0);
+  const score = strength?.score ?? 0;
+
+  useEffect(() => {
+    progress.value = withTiming(score / 3, { duration: 200 });
+  }, [score, progress]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%`,
+    backgroundColor: strength ? theme[strength.color] : theme.border,
+  }));
+
+  return (
+    <View style={styles.strengthSlot}>
+      {!hidden && strength ? (
+        <>
+          <View style={[styles.strengthTrack, { backgroundColor: theme.backgroundElement }]}>
+            <Animated.View style={[styles.strengthFill, barStyle]} />
+          </View>
+          <ThemedText type="bodySm" themeColor={strength.color}>
+            Password strength: {strength.label}
+          </ThemedText>
+        </>
+      ) : null}
+    </View>
   );
 }
 
 function TrustItem({ label }: { label: string }) {
   const theme = useTheme();
+  const scale = useSharedValue(1);
+  const dotScaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   return (
-    <View style={styles.trustItem}>
-      <View style={[styles.trustDot, { borderColor: theme.border }]}>
+    <Pressable
+      style={styles.trustItem}
+      onPressIn={() => {
+        scale.value = withSpring(1.08, { damping: 12 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 12 });
+      }}>
+      <Animated.View style={[styles.trustDot, { borderColor: theme.border }, dotScaleStyle]}>
         <ThemedText style={{ fontSize: 10, color: theme.textSecondary }}>✓</ThemedText>
-      </View>
+      </Animated.View>
       <ThemedText type="bodySm" themeColor="textSecondary" style={styles.trustLabel}>
         {label}
       </ThemedText>
-    </View>
+    </Pressable>
   );
 }
 
@@ -221,7 +283,17 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   strengthSlot: {
-    minHeight: 16,
+    minHeight: 20,
+    gap: Spacing.half,
+  },
+  strengthTrack: {
+    height: 4,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
+  },
+  strengthFill: {
+    height: '100%',
+    borderRadius: Radius.full,
   },
   checkboxRow: {
     flexDirection: 'row',

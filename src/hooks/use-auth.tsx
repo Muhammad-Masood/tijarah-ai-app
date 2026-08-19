@@ -15,6 +15,8 @@ const TOKEN_KEY = 'tijarah_access_token';
 type AuthContextValue = {
   /** Undefined while the stored token is still being checked on launch. */
   session: CurrentUserResponse | null | undefined;
+  /** Bearer token for authenticated requests. Same undefined/null timing as `session`. */
+  accessToken: string | null | undefined;
   signUpMerchant: (data: MerchantCreate) => Promise<void>;
   signInMerchant: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -28,20 +30,24 @@ async function hydrateFromToken(token: string): Promise<CurrentUserResponse> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<CurrentUserResponse | null | undefined>(undefined);
+  const [accessToken, setAccessToken] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token) {
         setSession(null);
+        setAccessToken(null);
         return;
       }
       try {
         setSession(await hydrateFromToken(token));
+        setAccessToken(token);
       } catch {
         // Stored token is invalid/expired.
         await SecureStore.deleteItemAsync(TOKEN_KEY);
         setSession(null);
+        setAccessToken(null);
       }
     })();
   }, []);
@@ -49,23 +55,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
+      accessToken,
       async signUpMerchant(data) {
         await signupMerchant(data);
         const { access_token } = await loginMerchant(data.email, data.password);
         await SecureStore.setItemAsync(TOKEN_KEY, access_token);
         setSession(await hydrateFromToken(access_token));
+        setAccessToken(access_token);
       },
       async signInMerchant(email, password) {
         const { access_token } = await loginMerchant(email, password);
         await SecureStore.setItemAsync(TOKEN_KEY, access_token);
         setSession(await hydrateFromToken(access_token));
+        setAccessToken(access_token);
       },
       async signOut() {
         await SecureStore.deleteItemAsync(TOKEN_KEY);
         setSession(null);
+        setAccessToken(null);
       },
     }),
-    [session],
+    [session, accessToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

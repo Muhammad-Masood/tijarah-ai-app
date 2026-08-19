@@ -1,11 +1,65 @@
-import { type ReactNode, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { Image } from 'expo-image';
+import { type ReactNode, useEffect, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  type KeyboardTypeOptions,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ManropeFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/**
+ * Pressable that springs to a slightly smaller scale on press-in — the
+ * shared "feels alive" tap feedback for every primary/secondary CTA across
+ * the `(auth)` flow (welcome, login, signup), on top of the plain opacity
+ * dimming those buttons already had.
+ */
+export function PressableScale({
+  children,
+  style,
+  onPress,
+  disabled,
+  ...props
+}: PressableProps & { style?: StyleProp<ViewStyle> }) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <AnimatedPressable
+      {...props}
+      disabled={disabled}
+      onPress={onPress}
+      onPressIn={() => {
+        scale.value = withSpring(0.97, { damping: 16, stiffness: 320 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 16, stiffness: 320 });
+      }}
+      style={[style, animatedStyle, disabled && styles.pressableDisabled]}>
+      {children}
+    </AnimatedPressable>
+  );
+}
 
 export function AuthFormScaffold({ children }: { children: ReactNode }) {
   const theme = useTheme();
@@ -28,10 +82,28 @@ export function AuthFormScaffold({ children }: { children: ReactNode }) {
   );
 }
 
+// Growth bars + AI sparkle, standing in for a literal "T" monogram — reads
+// as "commerce analytics" (the bars) plus "AI" (the sparkle), which is what
+// the product actually is. Built as an inline SVG data URI so it stays a
+// crisp vector at any glyph size instead of a rasterized letter.
+function buildBrandGlyphUri(color: string): string {
+  return (
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
+        <rect x="4" y="20" width="6" height="9" rx="2" fill="${color}"/>
+        <rect x="13" y="14" width="6" height="15" rx="2" fill="${color}"/>
+        <rect x="22" y="8" width="6" height="21" rx="2" fill="${color}"/>
+        <path d="M29,1 L30.27,4.73 L34,6 L30.27,7.27 L29,11 L27.73,7.27 L24,6 L27.73,4.73 Z" fill="${color}"/>
+      </svg>`,
+    )
+  );
+}
+
 export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const theme = useTheme();
   const box = size === 'sm' ? 56 : 88;
-  const glyph = size === 'sm' ? 24 : 36;
+  const glyph = size === 'sm' ? 30 : 46;
 
   return (
     <View
@@ -39,10 +111,11 @@ export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
         styles.brandMark,
         { width: box, height: box, borderRadius: Radius.md, backgroundColor: theme.primary },
       ]}>
-      <ThemedText
-        style={{ fontFamily: ManropeFamily[700], fontWeight: '700', fontSize: glyph, color: theme.onPrimary }}>
-        T
-      </ThemedText>
+      <Image
+        source={{ uri: buildBrandGlyphUri(theme.onPrimary) }}
+        style={{ width: glyph, height: glyph }}
+        contentFit="contain"
+      />
     </View>
   );
 }
@@ -58,6 +131,9 @@ type AuthFieldProps = {
   autoComplete?: 'name' | 'email' | 'new-password' | 'current-password';
   error?: string;
   rightAdornment?: ReactNode;
+  /** Multi-line text area (e.g. a product description) instead of a single input row. */
+  multiline?: boolean;
+  numberOfLines?: number;
 };
 
 export function AuthField({
@@ -70,20 +146,34 @@ export function AuthField({
   autoCapitalize = 'none',
   error,
   rightAdornment,
+  multiline = false,
+  numberOfLines,
 }: AuthFieldProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+  const focusProgress = useSharedValue(0);
 
-  const borderColor = error ? theme.danger : isFocused ? theme.primary : theme.border;
+  useEffect(() => {
+    focusProgress.value = withTiming(isFocused ? 1 : 0, { duration: 150 });
+  }, [isFocused, focusProgress]);
+
+  const animatedBorderStyle = useAnimatedStyle(() => ({
+    borderColor: error ? theme.danger : interpolateColor(focusProgress.value, [0, 1], [theme.border, theme.primary]),
+  }));
 
   return (
     <View style={styles.fieldGroup}>
       <ThemedText type="bodyMd" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <View
+      <Animated.View
         collapsable={false}
-        style={[styles.inputRow, { borderColor, backgroundColor: theme.surfaceContainerLowest }]}>
+        style={[
+          styles.inputRow,
+          { backgroundColor: theme.surfaceContainerLowest },
+          multiline && styles.inputRowMultiline,
+          animatedBorderStyle,
+        ]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -100,14 +190,19 @@ export function AuthField({
           underlineColorAndroid="transparent"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          style={[styles.input, { color: theme.text }]}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          style={[styles.input, multiline && styles.inputMultiline, { color: theme.text }]}
         />
         {rightAdornment}
-      </View>
+      </Animated.View>
       {error && (
-        <ThemedText type="bodySm" themeColor="danger">
-          {error}
-        </ThemedText>
+        <Animated.View entering={FadeIn.duration(150)}>
+          <ThemedText type="bodySm" themeColor="danger">
+            {error}
+          </ThemedText>
+        </Animated.View>
       )}
     </View>
   );
@@ -142,23 +237,31 @@ export function OrDivider({ label }: { label: string }) {
   );
 }
 
+// Official Google "G" mark (brand-guideline colors) as an inline SVG data
+// URI — `expo-image` renders SVG sources natively, so this needs no new
+// dependency and stays pixel-accurate at any size.
+const GOOGLE_G_LOGO_URI =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+      <path fill="#4285F4" d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7955 2.7164v2.2582h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.6151z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.4673-.806 5.9564-2.1805l-2.9087-2.2582c-.8059.54-1.8368.8618-3.0477.8618-2.344 0-4.3282-1.5831-5.036-3.7104H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"/>
+      <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1023-1.17.2822-1.71V4.9582H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0418L3.964 10.71z"/>
+      <path fill="#EA4335" d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.656 3.5795 9 3.5795z"/>
+    </svg>`,
+  );
+
 export function GoogleButton({ label, onPress }: { label: string; onPress?: () => void }) {
   const theme = useTheme();
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.googleButton,
-        { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest },
-        pressed && styles.pressed,
-      ]}>
-      <View style={styles.googleMark}>
-        <ThemedText style={styles.googleMarkText}>G</ThemedText>
-      </View>
+      style={[styles.googleButton, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+      <Image source={{ uri: GOOGLE_G_LOGO_URI }} style={styles.googleMark} contentFit="contain" />
       <ThemedText type="bodyLg" style={styles.emphasisText}>
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -200,11 +303,19 @@ const styles = StyleSheet.create({
     borderRadius: Radius.DEFAULT,
     paddingHorizontal: Spacing.three,
   },
+  inputRowMultiline: {
+    alignItems: 'flex-start',
+    paddingVertical: Spacing.two,
+  },
   input: {
     flex: 1,
     paddingVertical: Spacing.three,
     fontFamily: ManropeFamily[400],
     fontSize: 16,
+  },
+  inputMultiline: {
+    paddingVertical: Spacing.one,
+    minHeight: 88,
   },
   dividerRow: {
     flexDirection: 'row',
@@ -227,23 +338,12 @@ const styles = StyleSheet.create({
   googleMark: {
     width: 18,
     height: 18,
-    borderRadius: 9,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#DADCE0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleMarkText: {
-    color: '#4285F4',
-    fontSize: 11,
-    fontWeight: '700',
   },
   emphasisText: {
     fontFamily: ManropeFamily[600],
     fontWeight: '600',
   },
-  pressed: {
-    opacity: 0.7,
+  pressableDisabled: {
+    opacity: 0.6,
   },
 });

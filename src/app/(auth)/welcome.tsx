@@ -1,23 +1,16 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
-import { BrandMark } from '@/components/auth-kit';
+import { BrandMark, PressableScale } from '@/components/auth-kit';
 import { ChannelBadge } from '@/components/onboarding-kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ChannelOrder } from '@/constants/channels';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useStagger, type Stagger } from '@/hooks/use-stagger';
 import { useTheme } from '@/hooks/use-theme';
-
-/** Fade/slide entrance, skipped in place for `entering` when the OS reduce-motion setting is on. */
-function useStagger() {
-  const reduceMotion = useReducedMotion();
-  return (delay: number) => (reduceMotion ? undefined : FadeInDown.delay(delay).duration(420).springify().damping(16));
-}
-
-type Stagger = ReturnType<typeof useStagger>;
 
 export default function WelcomeScreen() {
   const theme = useTheme();
@@ -66,12 +59,8 @@ export default function WelcomeScreen() {
           <View style={styles.spacer} />
 
           <Animated.View entering={stagger(560)} style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.ctaButton,
-                { backgroundColor: theme.primary },
-                pressed && styles.pressed,
-              ]}
+            <PressableScale
+              style={[styles.ctaButton, { backgroundColor: theme.primary }]}
               onPress={() => router.push('/signup')}>
               <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>
                 Get started
@@ -79,7 +68,7 @@ export default function WelcomeScreen() {
               <ThemedText type="bodyLg" themeColor="onPrimary">
                 →
               </ThemedText>
-            </Pressable>
+            </PressableScale>
 
             <View style={styles.signInRow}>
               <ThemedText type="bodyMd" themeColor="textSecondary">
@@ -221,9 +210,6 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.85,
   },
   signInRow: {
     flexDirection: 'row',
