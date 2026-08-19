@@ -34,9 +34,8 @@ function extractErrorMessage(body: unknown, fallback: string): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    console.log("path", `${API_BASE_URL}${path}`,init);
     response = await fetch(`${API_BASE_URL}${path}`, init);
-  } catch(error) {
+  } catch {
     throw new ApiError(
       0,
       "Could not reach the server. Check your connection and try again.",
@@ -91,9 +90,8 @@ export type Token = {
   token_type: string;
 };
 
-export type CurrentUserResponse =
-  | { type: "merchant"; user: MerchantRead }
-  | { type: "customer"; user: CustomerRead };
+/** GET /auth/me returns MerchantRead directly (OpenAPI `MerchantRead`). */
+export type CurrentUserResponse = MerchantRead;
 
 export function signupMerchant(data: MerchantCreate): Promise<MerchantRead> {
   return request<MerchantRead>("/auth/signup", {

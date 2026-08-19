@@ -8,5 +8,5 @@ import { Platform } from 'react-native';
  * device or against a non-local backend.
  */
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ??
   (Platform.OS === 'android' ? 'http://192.168.0.118:8000' : 'http://192.168.0.118:8000');

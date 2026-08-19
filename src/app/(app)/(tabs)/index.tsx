@@ -14,8 +14,7 @@ export default function DashboardScreen() {
 
   if (!session) return null;
 
-  const { user } = session;
-  const businessName = session.type === 'merchant' ? session.user.business_name : null;
+  const { full_name, email, business_name: businessName } = session;
 
   function handleSignOut() {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -33,7 +32,7 @@ export default function DashboardScreen() {
               <ThemedText type="bodyMd" themeColor="textSecondary">
                 Welcome back
               </ThemedText>
-              <ThemedText type="headlineMd">{businessName ?? user.full_name}</ThemedText>
+              <ThemedText type="headlineMd">{businessName ?? full_name}</ThemedText>
             </View>
             <Pressable onPress={handleSignOut} hitSlop={8}>
               <ThemedText type="bodySm" themeColor="primary" style={styles.signOutText}>
@@ -50,13 +49,13 @@ export default function DashboardScreen() {
               <ThemedText type="bodyMd" themeColor="textSecondary">
                 Name
               </ThemedText>
-              <ThemedText type="bodyMd">{user.full_name}</ThemedText>
+              <ThemedText type="bodyMd">{full_name}</ThemedText>
             </View>
             <View style={styles.cardRow}>
               <ThemedText type="bodyMd" themeColor="textSecondary">
                 Email
               </ThemedText>
-              <ThemedText type="bodyMd">{user.email}</ThemedText>
+              <ThemedText type="bodyMd">{email}</ThemedText>
             </View>
             {businessName && (
               <View style={styles.cardRow}>
