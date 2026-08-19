@@ -58,7 +58,7 @@ export default function StoreConnectedScreen() {
               { backgroundColor: theme.primary },
               pressed && styles.pressed,
             ]}
-            onPress={() => router.replace('/(tabs)')}>
+            onPress={() => router.replace('/')}>
             <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>
               Continue to Data Import
             </ThemedText>

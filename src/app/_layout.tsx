@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { AuthProvider } from '@/hooks/use-auth';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,16 +27,33 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <AnimatedSplashOverlay />
-        <Stack screenOptions={{ headerShown: false }}>
-          {/* <Stack.Screen name="(tabs)" /> */}
-          <Stack.Screen name="welcome" />
-          <Stack.Screen name="login" />
-          <Stack.Screen name="signup" />
-          <Stack.Screen name="connect-stores" />
-          <Stack.Screen name="store-connecting" />
-          <Stack.Screen name="store-connected" />
-        </Stack>
+        <RootNavigator />
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+// The only place in the app that decides which screens are reachable: the
+// (auth) and (app) groups are mounted as mutually-exclusive branches, so
+// flipping `session` unmounts the inactive branch entirely (clearing its
+// navigation history) instead of merely swapping the top stack frame. This
+// is what stops back-navigation from leaking across the auth boundary in
+// either direction.
+function RootNavigator() {
+  const { session } = useAuth();
+
+  // Still checking SecureStore for a saved token — render nothing rather
+  // than flash the (auth) group before we know whether the user is logged in.
+  if (session === undefined) return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
   );
 }

@@ -53,7 +53,7 @@ export default function ConnectStoresScreen() {
             without your approval.
           </ThemedText>
 
-          <Pressable style={styles.skipRow} onPress={() => router.replace('/(tabs)')} hitSlop={8}>
+          <Pressable style={styles.skipRow} onPress={() => router.replace('/')} hitSlop={8}>
             <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.skipText}>
               Skip for now
             </ThemedText>

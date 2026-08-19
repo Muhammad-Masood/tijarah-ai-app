@@ -26,8 +26,10 @@ export default function LoginScreen() {
     setFormError(null);
     setIsSubmitting(true);
     try {
+      // No navigation here: a successful sign-in flips `session` in
+      // AuthProvider, and the root `Stack.Protected` switch reacts by
+      // mounting the (app) group and discarding the (auth) group's history.
       await signInMerchant(email, password);
-      router.replace('/(tabs)');
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'Something went wrong. Please try again.');
     } finally {
