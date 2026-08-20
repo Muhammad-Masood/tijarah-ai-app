@@ -56,14 +56,7 @@ export default function SignupScreen() {
         email,
         password,
       });
-      // Unlike a plain sign-in, a fresh signup needs to land on the
-      // connect-stores onboarding step rather than the (app) group's
-      // default dashboard. The `session` flip has already swapped the root
-      // `Stack.Protected` branch to (app) by this point (signUpMerchant
-      // awaits several network calls first), so this replaces within the
-      // freshly-mounted (app) stack — it does not recreate the (auth)/(app)
-      // back-leak, since (auth)'s history was already discarded.
-      router.replace('/connect-stores');
+      router.push('/connect-stores');
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'Something went wrong. Please try again.');
     } finally {

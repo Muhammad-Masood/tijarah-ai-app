@@ -5,6 +5,7 @@ import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Channels, type ChannelId } from '@/constants/channels';
 import { Radius, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Marketplace } from '@/lib/api';
 
@@ -23,6 +24,39 @@ export function ChannelBadge({ channelId, size = 'md' }: { channelId: ChannelId;
       <ThemedText style={{ fontSize: glyph, fontWeight: '700', color: theme.primary }}>
         {channel.initial}
       </ThemedText>
+    </View>
+  );
+}
+
+// Amazon's wordmark ships in two color variants; the rest of the channel
+// logos are theme-neutral, so only amazon needs to switch with color scheme.
+const AmazonLogo = {
+  light: require('@/assets/images/amazon-light.webp'),
+  dark: require('@/assets/images/amazon.png'),
+};
+
+function getChannelLogoSource(channelId: ChannelId, isLight: boolean): number {
+  if (channelId === 'amazon') return !isLight ? AmazonLogo.light : AmazonLogo.dark;
+  if (channelId === 'shopify') return require('@/assets/images/shopify.png');
+  return require('@/assets/images/daraz.png');
+}
+
+export function ChannelLogo({ channelId, size = 'md' }: { channelId: ChannelId; size?: 'sm' | 'md' }) {
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  const box = size === 'sm' ? 40 : 56;
+
+  return (
+    <View
+      style={[
+        styles.logoChip,
+        { width: box, height: box, borderRadius: Radius.DEFAULT, backgroundColor: theme.surfaceContainerLowest },
+      ]}>
+      <Image
+        source={getChannelLogoSource(channelId, scheme !== 'dark')}
+        style={styles.logoImage}
+        contentFit="contain"
+      />
     </View>
   );
 }
@@ -67,9 +101,12 @@ export function ChannelConnectCard({
 export function MarketplaceConnectCard({
   marketplace,
   onConnect,
+  isConnecting = false,
 }: {
   marketplace: Marketplace;
   onConnect: () => void;
+  /** True while a connect request for this specific marketplace is in flight. */
+  isConnecting?: boolean;
 }) {
   const theme = useTheme();
   const isConnected = marketplace.is_connected ?? false;
@@ -95,14 +132,14 @@ export function MarketplaceConnectCard({
       </View>
       <Pressable
         onPress={onConnect}
-        disabled={isConnected}
+        disabled={isConnected || isConnecting}
         style={({ pressed }) => [
           styles.connectButton,
           { backgroundColor: isConnected ? theme.surfaceContainerHigh : theme.primary },
-          pressed && !isConnected && styles.pressed,
+          pressed && !isConnected && !isConnecting && styles.pressed,
         ]}>
         <ThemedText type="labelMd" themeColor={isConnected ? 'textSecondary' : 'onPrimary'}>
-          {isConnected ? 'Connected' : 'Connect'}
+          {isConnected ? 'Connected' : isConnecting ? 'Connecting…' : 'Connect'}
         </ThemedText>
       </Pressable>
     </View>
@@ -192,6 +229,15 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoChip: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   card: {
     flexDirection: 'row',

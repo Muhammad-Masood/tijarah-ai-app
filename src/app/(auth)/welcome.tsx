@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { BrandMark, PressableScale } from '@/components/auth-kit';
-import { ChannelBadge } from '@/components/onboarding-kit';
+import { ChannelLogo } from '@/components/onboarding-kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ChannelOrder } from '@/constants/channels';
@@ -33,11 +33,11 @@ export default function WelcomeScreen() {
           <View style={styles.hero}>
             <ConvergenceMark stagger={stagger} />
 
-            <Animated.View entering={stagger(360)}>
+            {/* <Animated.View entering={stagger(360)}>
               <ThemedText type="labelMd" themeColor="textSecondary" style={styles.eyebrow}>
                 SHOPIFY · DARAZ · AMAZON — SYNCED
               </ThemedText>
-            </Animated.View>
+            </Animated.View> */}
 
             <Animated.View entering={stagger(420)}>
               <ThemedText type="displayLgMobile" style={styles.headline}>
@@ -100,7 +100,7 @@ function ConvergenceMark({ stagger }: { stagger: Stagger }) {
       <View style={styles.chipRow}>
         {ChannelOrder.map((channelId, index) => (
           <Animated.View key={channelId} entering={stagger(index * 70)}>
-            <ChannelBadge channelId={channelId} size="sm" />
+            <ChannelLogo channelId={channelId} size="sm" />
           </Animated.View>
         ))}
       </View>

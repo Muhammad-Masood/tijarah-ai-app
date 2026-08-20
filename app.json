@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "HelloWorld",
+    "name": "Tijarah AI",
     "slug": "expo-template-default",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/t-main.jpeg",
     "scheme": "helloworld",
     "userInterfaceStyle": "automatic",
     "ios": {

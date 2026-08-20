@@ -128,6 +128,34 @@ export function getSupportedMarketplaces(accessToken: string): Promise<Marketpla
   });
 }
 
+// `GET /daraz/get_auth_code` is Bearer-protected and responds with a 302 to
+// Daraz's OAuth authorize page (built from server-side `DARAZ_APP_KEY`/
+// `APP_CALLBACK_URL`). `fetch` follows that redirect itself, so the
+// authorize URL is just the final `response.url` — no need to parse a
+// `Location` header (unreliable across RN's fetch redirect modes).
+export async function getDarazAuthorizeUrl(accessToken: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/daraz/get_auth_code`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      "Could not reach the server. Check your connection and try again.",
+    );
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `Could not start the Daraz connection (${response.status}).`,
+    );
+  }
+
+  return response.url;
+}
+
 // Confirmed against `GET /openapi.json` on the running backend — the real
 // `Product` schema has no `stock`/`cost`/channel-availability fields, and
 // the field is `title`, not `name`. `create_product`/`update_product`/

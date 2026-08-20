@@ -82,41 +82,15 @@ export function AuthFormScaffold({ children }: { children: ReactNode }) {
   );
 }
 
-// Growth bars + AI sparkle, standing in for a literal "T" monogram — reads
-// as "commerce analytics" (the bars) plus "AI" (the sparkle), which is what
-// the product actually is. Built as an inline SVG data URI so it stays a
-// crisp vector at any glyph size instead of a rasterized letter.
-function buildBrandGlyphUri(color: string): string {
-  return (
-    'data:image/svg+xml;utf8,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
-        <rect x="4" y="20" width="6" height="9" rx="2" fill="${color}"/>
-        <rect x="13" y="14" width="6" height="15" rx="2" fill="${color}"/>
-        <rect x="22" y="8" width="6" height="21" rx="2" fill="${color}"/>
-        <path d="M29,1 L30.27,4.73 L34,6 L30.27,7.27 L29,11 L27.73,7.27 L24,6 L27.73,4.73 Z" fill="${color}"/>
-      </svg>`,
-    )
-  );
-}
-
 export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const theme = useTheme();
   const box = size === 'sm' ? 56 : 88;
-  const glyph = size === 'sm' ? 30 : 46;
 
   return (
-    <View
-      style={[
-        styles.brandMark,
-        { width: box, height: box, borderRadius: Radius.md, backgroundColor: theme.primary },
-      ]}>
-      <Image
-        source={{ uri: buildBrandGlyphUri(theme.onPrimary) }}
-        style={{ width: glyph, height: glyph }}
-        contentFit="contain"
-      />
-    </View>
+    <Image
+      source={require('@/assets/images/tijarah_logo.png')}
+      style={{ width: box, height: box }}
+      contentFit="contain"
+    />
   );
 }
 
@@ -287,11 +261,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.four,
     gap: Spacing.four,
-  },
-  brandMark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
   },
   fieldGroup: {
     gap: Spacing.one,

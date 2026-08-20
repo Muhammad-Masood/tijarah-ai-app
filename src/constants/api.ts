@@ -10,3 +10,4 @@ import { Platform } from 'react-native';
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ??
   (Platform.OS === 'android' ? 'http://192.168.0.118:8000' : 'http://192.168.0.118:8000');
+console.log('API_BASE_URL', API_BASE_URL);

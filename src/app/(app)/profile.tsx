@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListRow, ListSection } from '@/components/list-kit';
-import { ChannelBadge } from '@/components/onboarding-kit';
+import { ChannelLogo } from '@/components/onboarding-kit';
 import { Avatar, EditableAccountRow, PlanBadge, StaticAccountRow, SubscriptionCard } from '@/components/profile-kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -129,7 +129,7 @@ export default function ProfileScreen() {
                 </ThemedText>
                 <View style={styles.channelBadges}>
                   {ChannelOrder.map((channelId) => (
-                    <ChannelBadge key={channelId} channelId={channelId} size="sm" />
+                    <ChannelLogo key={channelId} channelId={channelId} size="sm" />
                   ))}
                 </View>
                 <ThemedText type="bodyLg" themeColor="textSecondary">
@@ -147,8 +147,6 @@ export default function ProfileScreen() {
           </View>
 
           <ListSection>
-            <ListRow label="Connected Stores" onPress={() => router.push('/connect-stores')} />
-            <ListRow label="Team Permissions" />
             <ListRow label="Notifications" />
             <ListRow label="Cost & Margin Settings" />
             <ListRow label="Help & Support" />

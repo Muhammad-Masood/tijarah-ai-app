@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,12 +8,50 @@ import { MarketplaceConnectCard } from '@/components/onboarding-kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/hooks/use-auth';
 import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { useTheme } from '@/hooks/use-theme';
+import { ApiError, getDarazAuthorizeUrl, type Marketplace } from '@/lib/api';
 
 export default function ConnectStoresScreen() {
   const theme = useTheme();
+  const { accessToken } = useAuth();
   const { marketplaces, isLoading, error, refetch } = useSupportedMarketplaces();
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
+
+  // Connected stores first, so a merchant sees what's already synced before
+  // what's still available to connect.
+  const sortedMarketplaces = useMemo(
+    () => [...marketplaces].sort((a, b) => Number(b.is_connected ?? false) - Number(a.is_connected ?? false)),
+    [marketplaces],
+  );
+
+  async function handleConnect(marketplace: Marketplace) {
+    if (marketplace.slug !== 'daraz') {
+      router.push({ pathname: '/store-connecting', params: { platform: marketplace.slug } });
+      return;
+    }
+    if (!accessToken) return;
+
+    setConnectError(null);
+    setConnectingId(marketplace.id);
+    try {
+      const authorizeUrl = await getDarazAuthorizeUrl(accessToken);
+      // Opens Daraz's OAuth page in an in-app browser. Daraz redirects to the
+      // backend-configured web callback (not this app) when the user
+      // finishes authorizing, so we just wait for the browser to close and
+      // then refetch to pick up the new connection state.
+      await WebBrowser.openBrowserAsync(authorizeUrl);
+      refetch();
+    } catch (err) {
+      setConnectError(
+        err instanceof ApiError ? err.message : 'Could not start the Daraz connection. Please try again.',
+      );
+    } finally {
+      setConnectingId(null);
+    }
+  }
 
   return (
     <ThemedView style={styles.screen}>
@@ -25,9 +64,6 @@ export default function ConnectStoresScreen() {
             <Pressable onPress={() => router.back()} hitSlop={8}>
               <ThemedText type="headlineSm">←</ThemedText>
             </Pressable>
-            <ThemedText type="labelMd" themeColor="textSecondary">
-              STEP 4 OF 7
-            </ThemedText>
           </View>
 
           <View style={styles.headerBlock}>
@@ -68,15 +104,20 @@ export default function ConnectStoresScreen() {
             </View>
           )}
 
+          {connectError && (
+            <ThemedText type="bodySm" themeColor="danger" style={styles.centerText}>
+              {connectError}
+            </ThemedText>
+          )}
+
           {!isLoading && !error && marketplaces.length > 0 && (
             <View style={styles.cardList}>
-              {marketplaces.map((marketplace) => (
+              {sortedMarketplaces.map((marketplace) => (
                 <MarketplaceConnectCard
                   key={marketplace.id}
                   marketplace={marketplace}
-                  onConnect={() =>
-                    router.push({ pathname: '/store-connecting', params: { platform: marketplace.slug } })
-                  }
+                  isConnecting={connectingId === marketplace.id}
+                  onConnect={() => void handleConnect(marketplace)}
                 />
               ))}
             </View>
@@ -94,9 +135,6 @@ export default function ConnectStoresScreen() {
           </ThemedText>
 
           <Pressable style={styles.skipRow} onPress={() => router.replace('/')} hitSlop={8}>
-            <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.skipText}>
-              Skip for now
-            </ThemedText>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
