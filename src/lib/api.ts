@@ -76,21 +76,14 @@ export type MerchantRead = {
   phone_number?: string | null;
 };
 
-export type CustomerRead = {
-  id: string;
-  full_name: string;
-  email: string;
-  role: UserRole;
-  address?: string | null;
-  phone_number?: string | null;
-};
-
 export type Token = {
   access_token: string;
   token_type: string;
 };
 
-/** GET /auth/me returns MerchantRead directly (OpenAPI `MerchantRead`). */
+// `GET /auth/me` returns `MerchantRead` directly — the backend only has a
+// merchant auth flow (`/auth/signup`, `/auth/login`, `/auth/me`), no
+// customer login exists.
 export type CurrentUserResponse = MerchantRead;
 
 export function signupMerchant(data: MerchantCreate): Promise<MerchantRead> {
@@ -116,6 +109,84 @@ export function loginMerchant(email: string, password: string): Promise<Token> {
 
 export function getMe(accessToken: string): Promise<CurrentUserResponse> {
   return request<CurrentUserResponse>("/auth/me", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export type Marketplace = {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+  logo_url: string;
+  is_connected?: boolean;
+};
+
+export function getSupportedMarketplaces(accessToken: string): Promise<Marketplace[]> {
+  return request<Marketplace[]>("/marketplace/", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+// Confirmed against `GET /openapi.json` on the running backend — the real
+// `Product` schema has no `stock`/`cost`/channel-availability fields, and
+// the field is `title`, not `name`. `create_product`/`update_product`/
+// `get_product/{id}`/`get_products`/`delete_product/{id}` all declare an
+// untyped (`{}`) response body in the schema (no `response_model` set on
+// the backend), so the response types below are a reasonable inference
+// (the backend echoing back the resource), not schema-guaranteed.
+export type Product = {
+  /** Absent on create; required (embedded in the body, not a path param) for update. */
+  id?: string | null;
+  title: string;
+  price: number;
+  description: string;
+  image: string;
+  category: string;
+};
+
+export function getProducts(accessToken: string): Promise<Product[]> {
+  return request<Product[]>("/product/get_products", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function getProduct(accessToken: string, productId: string): Promise<Product> {
+  return request<Product>(`/product/get_product/${productId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+/** `id` is intentionally omitted from the body — the backend assigns it. */
+export function createProduct(
+  accessToken: string,
+  data: Omit<Product, "id">,
+): Promise<Product> {
+  return request<Product>("/product/create_product", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+/** There is no `/product/update_product/{id}` route — the id goes in the body. */
+export function updateProduct(accessToken: string, data: Product): Promise<Product> {
+  return request<Product>("/product/update_product", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProduct(accessToken: string, productId: string): Promise<void> {
+  return request<void>(`/product/delete_product/${productId}`, {
+    method: "DELETE",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
