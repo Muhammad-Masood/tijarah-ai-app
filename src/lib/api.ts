@@ -128,6 +128,21 @@ export function getSupportedMarketplaces(accessToken: string): Promise<Marketpla
   });
 }
 
+export type MarketplaceConnection = {
+  id: string;
+  marketplace_id: string;
+  merchant_id: string;
+  connected_at: string;
+  encrypted_access_token?: string | null;
+  marketplace?: Marketplace | null;
+};
+
+export function getMarketplaceConnections(accessToken: string): Promise<MarketplaceConnection[]> {
+  return request<MarketplaceConnection[]>("/marketplace/connections", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 // `GET /daraz/get_auth_code` is Bearer-protected and responds with a 302 to
 // Daraz's OAuth authorize page (built from server-side `DARAZ_APP_KEY`/
 // `APP_CALLBACK_URL`). `fetch` follows that redirect itself, so the
@@ -154,6 +169,29 @@ export async function getDarazAuthorizeUrl(accessToken: string): Promise<string>
   }
 
   return response.url;
+}
+
+// `GET /daraz/get_all_products` declares an untyped (`{}`) response body in
+// the backend's schema (no `response_model` set) — it's the raw pass-through
+// of Daraz's Open Platform `GetProducts` response (confirmed field names via
+// open.daraz.com's API reference for `/products/get`: `item_id`,
+// `primary_category`, `attributes`, `skus`, `images`, `status`,
+// `created_time`, `updated_time`, wrapped as `{ data: { products: [...] } }`).
+// The backend's own wrapping isn't confirmed, so callers should still read
+// fields defensively — see `mapDarazProduct` in `use-daraz-products.ts`.
+export type DarazRawProduct = Record<string, unknown>;
+
+/** `darazAccessToken` is a connection's `encrypted_access_token` from `GET /marketplace/connections`. */
+export function getDarazAllProducts(
+  accessToken: string,
+  darazAccessToken: string,
+): Promise<unknown> {
+  return request<unknown>("/daraz/get_all_products", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "x-daraz-access-token": darazAccessToken,
+    },
+  });
 }
 
 // Confirmed against `GET /openapi.json` on the running backend — the real

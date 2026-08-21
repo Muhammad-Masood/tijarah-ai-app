@@ -6,24 +6,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProductRow } from '@/components/product-kit';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useDarazProducts } from '@/hooks/use-daraz-products';
 import { useProducts } from '@/hooks/use-products';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { Product } from '@/lib/api';
+
+function filterByQuery(products: Product[], query: string): Product[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return products;
+  return products.filter(
+    (product) =>
+      product.title.toLowerCase().includes(normalized) ||
+      product.category.toLowerCase().includes(normalized),
+  );
+}
 
 export default function ProductsScreen() {
   const theme = useTheme();
   const { products, isLoading, error, refetch } = useProducts();
+  const {
+    products: darazProducts,
+    isConnected: isDarazConnected,
+    isLoading: isDarazLoading,
+    error: darazError,
+    refetch: refetchDaraz,
+  } = useDarazProducts();
   const [query, setQuery] = useState('');
 
-  const filteredProducts = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return products;
-    return products.filter(
-      (product) =>
-        product.title.toLowerCase().includes(normalized) ||
-        product.category.toLowerCase().includes(normalized),
-    );
-  }, [products, query]);
+  const filteredProducts = useMemo(() => filterByQuery(products, query), [products, query]);
+  const filteredDarazProducts = useMemo(() => filterByQuery(darazProducts, query), [darazProducts, query]);
+
+  function handleRefresh() {
+    refetch();
+    refetchDaraz();
+  }
 
   return (
     <ThemedView style={styles.screen}>
@@ -57,7 +74,9 @@ export default function ProductsScreen() {
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.primary} />}>
+          refreshControl={
+            <RefreshControl refreshing={isLoading || isDarazLoading} onRefresh={handleRefresh} tintColor={theme.primary} />
+          }>
           {isLoading && (
             <View style={styles.statusBlock}>
               <ActivityIndicator color={theme.primary} />
@@ -105,6 +124,50 @@ export default function ProductsScreen() {
                   onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id ?? '' } })}
                 />
               ))}
+            </View>
+          )}
+
+          {isDarazConnected && (
+            <View style={styles.darazSection}>
+              <ThemedText type="bodyLg" style={styles.darazHeading}>
+                From Daraz
+              </ThemedText>
+
+              {isDarazLoading && (
+                <View style={styles.statusBlock}>
+                  <ActivityIndicator color={theme.primary} />
+                  <ThemedText type="bodyMd" themeColor="textSecondary">
+                    Loading Daraz products…
+                  </ThemedText>
+                </View>
+              )}
+
+              {!isDarazLoading && darazError && (
+                <View style={styles.statusBlock}>
+                  <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
+                    {darazError}
+                  </ThemedText>
+                  <Pressable onPress={refetchDaraz} hitSlop={8}>
+                    <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
+                      Try again
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              )}
+
+              {!isDarazLoading && !darazError && darazProducts.length === 0 && (
+                <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
+                  No products found on Daraz yet.
+                </ThemedText>
+              )}
+
+              {!isDarazLoading && !darazError && filteredDarazProducts.length > 0 && (
+                <View style={styles.list}>
+                  {filteredDarazProducts.map((product, index) => (
+                    <ProductRow key={product.id ?? index} product={product} onPress={() => {}} />
+                  ))}
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
@@ -161,6 +224,13 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: Spacing.two,
+  },
+  darazSection: {
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  darazHeading: {
+    fontWeight: '600',
   },
   statusBlock: {
     alignItems: 'center',
