@@ -4,12 +4,6 @@ import { Icon, Label, NativeTabs, VectorIcon } from 'expo-router/unstable-native
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// `Icon`'s `sf` prop (SF Symbols) only renders on iOS — Android silently
-// shows no icon at all if that's the only source given. Every non-Home tab
-// below pairs `sf` with `androidSrc={<VectorIcon .../>}` so Android gets a
-// real icon too, instead of falling back to a blank tab (the bug this file
-// previously had: only Home showed an icon, since it's the one tab using a
-// cross-platform `src` image instead of `sf`).
 export default function AppTabs() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];

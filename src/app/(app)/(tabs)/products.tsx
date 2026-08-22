@@ -1,13 +1,17 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductRow } from '@/components/product-kit';
+import { ProductListSkeleton } from '@/components/skeleton';
+import { StoreSelectorSheet, type StoreOption } from '@/components/store-selector-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useDarazProducts } from '@/hooks/use-daraz-products';
 import { useProducts } from '@/hooks/use-products';
+import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Product } from '@/lib/api';
@@ -24,7 +28,7 @@ function filterByQuery(products: Product[], query: string): Product[] {
 
 export default function ProductsScreen() {
   const theme = useTheme();
-  const { products, isLoading, error, refetch } = useProducts();
+  // const { products, isLoading, error, refetch } = useProducts();
   const {
     products: darazProducts,
     isConnected: isDarazConnected,
@@ -32,14 +36,34 @@ export default function ProductsScreen() {
     error: darazError,
     refetch: refetchDaraz,
   } = useDarazProducts();
+  const {
+    marketplaces,
+    isLoading: isLoadingMarketplaces,
+    error: marketplacesError,
+    refetch: refetchMarketplaces,
+  } = useSupportedMarketplaces();
   const [query, setQuery] = useState('');
+  const [selectedStore, setSelectedStore] = useState<StoreOption>('all');
+  const [isStorePickerVisible, setIsStorePickerVisible] = useState(false);
 
-  const filteredProducts = useMemo(() => filterByQuery(products, query), [products, query]);
+  // Only marketplaces the merchant has actually connected are worth picking
+  // between here — an unconnected one has no products to show.
+  const connectedMarketplaces = useMemo(() => marketplaces.filter((marketplace) => marketplace.is_connected), [marketplaces]);
+  const selectedMarketplace =
+    selectedStore === 'all' ? null : (connectedMarketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
+
+  // Daraz is the only marketplace with a real product feed today — this
+  // guards the section so switching to a different connected store (once
+  // one has its own product hook) doesn't show Daraz's catalog under it.
+  const showDarazProducts = isDarazConnected && (selectedStore === 'all' || selectedMarketplace?.slug === 'daraz');
+
+  // const filteredProducts = useMemo(() => filterByQuery(products, query), [products, query]);
   const filteredDarazProducts = useMemo(() => filterByQuery(darazProducts, query), [darazProducts, query]);
 
   function handleRefresh() {
-    refetch();
+    // refetch();
     refetchDaraz();
+    refetchMarketplaces();
   }
 
   return (
@@ -75,103 +99,94 @@ export default function ProductsScreen() {
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={isLoading || isDarazLoading} onRefresh={handleRefresh} tintColor={theme.primary} />
+            <RefreshControl refreshing={isDarazLoading} onRefresh={handleRefresh} tintColor={theme.primary} />
           }>
-          {isLoading && (
-            <View style={styles.statusBlock}>
-              <ActivityIndicator color={theme.primary} />
-              <ThemedText type="bodyMd" themeColor="textSecondary">
-                Loading products…
-              </ThemedText>
-            </View>
-          )}
 
-          {!isLoading && error && (
-            <View style={styles.statusBlock}>
-              <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
-                {error}
-              </ThemedText>
-              <Pressable onPress={refetch} hitSlop={8}>
-                <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
-                  Try again
+          {connectedMarketplaces.length > 0 && (
+            <View style={styles.darazSection}>
+              <Pressable onPress={() => setIsStorePickerVisible(true)} style={styles.storeSelector} hitSlop={8}>
+                {selectedMarketplace && (
+                  <View style={[styles.storeSelectorLogo, { backgroundColor: theme.primaryContainer }]}>
+                    <Image
+                      source={{ uri: selectedMarketplace.logo_url }}
+                      style={styles.storeSelectorLogoImage}
+                      contentFit="contain"
+                    />
+                  </View>
+                )}
+                <ThemedText type="bodyLg" style={styles.darazHeading}>
+                  {selectedMarketplace ? selectedMarketplace.name : 'All Stores'}
+                </ThemedText>
+                <ThemedText type="bodySm" themeColor="textSecondary">
+                  ▾
                 </ThemedText>
               </Pressable>
-            </View>
-          )}
 
-          {!isLoading && !error && products.length === 0 && (
-            <View style={styles.statusBlock}>
-              <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                No products yet — tap + to add your first product.
-              </ThemedText>
-            </View>
-          )}
+              {showDarazProducts && (
+                <>
+                  {isDarazLoading && <ProductListSkeleton count={3} />}
 
-          {!isLoading && !error && products.length > 0 && filteredProducts.length === 0 && (
-            <View style={styles.statusBlock}>
-              <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                No products match “{query}”.
-              </ThemedText>
-            </View>
-          )}
+                  {!isDarazLoading && darazError && (
+                    <View style={styles.statusBlock}>
+                      <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
+                        {darazError}
+                      </ThemedText>
+                      <Pressable onPress={refetchDaraz} hitSlop={8}>
+                        <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
+                          Try again
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  )}
 
-          {!isLoading && !error && filteredProducts.length > 0 && (
-            <View style={styles.list}>
-              {filteredProducts.map((product) => (
-                <ProductRow
-                  key={product.id}
-                  product={product}
-                  onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id ?? '' } })}
-                />
-              ))}
-            </View>
-          )}
-
-          {isDarazConnected && (
-            <View style={styles.darazSection}>
-              <ThemedText type="bodyLg" style={styles.darazHeading}>
-                From Daraz
-              </ThemedText>
-
-              {isDarazLoading && (
-                <View style={styles.statusBlock}>
-                  <ActivityIndicator color={theme.primary} />
-                  <ThemedText type="bodyMd" themeColor="textSecondary">
-                    Loading Daraz products…
-                  </ThemedText>
-                </View>
-              )}
-
-              {!isDarazLoading && darazError && (
-                <View style={styles.statusBlock}>
-                  <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
-                    {darazError}
-                  </ThemedText>
-                  <Pressable onPress={refetchDaraz} hitSlop={8}>
-                    <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
-                      Try again
+                  {!isDarazLoading && !darazError && darazProducts.length === 0 && (
+                    <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
+                      No products found on Daraz yet.
                     </ThemedText>
-                  </Pressable>
-                </View>
+                  )}
+
+                  {!isDarazLoading && !darazError && filteredDarazProducts.length > 0 && (
+                    <View style={styles.list}>
+                      {filteredDarazProducts.map((product, index) => (
+                        <ProductRow
+                          key={product.id ?? index}
+                          product={product}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/product-detail',
+                              params: { id: product.id ?? String(index), source: 'daraz' },
+                            })
+                          }
+                        />
+                      ))}
+                    </View>
+                  )}
+                </>
               )}
 
-              {!isDarazLoading && !darazError && darazProducts.length === 0 && (
+              {!showDarazProducts && selectedMarketplace && (
                 <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                  No products found on Daraz yet.
+                  No products available for {selectedMarketplace.name} yet.
                 </ThemedText>
-              )}
-
-              {!isDarazLoading && !darazError && filteredDarazProducts.length > 0 && (
-                <View style={styles.list}>
-                  {filteredDarazProducts.map((product, index) => (
-                    <ProductRow key={product.id ?? index} product={product} onPress={() => {}} />
-                  ))}
-                </View>
               )}
             </View>
           )}
         </ScrollView>
       </SafeAreaView>
+
+      <StoreSelectorSheet
+        visible={isStorePickerVisible}
+        selected={selectedStore}
+        marketplaces={connectedMarketplaces}
+        isLoading={isLoadingMarketplaces}
+        error={marketplacesError}
+        onRetry={refetchMarketplaces}
+        onClose={() => setIsStorePickerVisible(false)}
+        onSelect={(value) => {
+          setSelectedStore(value);
+          setIsStorePickerVisible(false);
+        }}
+      />
     </ThemedView>
   );
 }
@@ -231,6 +246,22 @@ const styles = StyleSheet.create({
   },
   darazHeading: {
     fontWeight: '600',
+  },
+  storeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  storeSelectorLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeSelectorLogoImage: {
+    width: 16,
+    height: 16,
   },
   statusBlock: {
     alignItems: 'center',

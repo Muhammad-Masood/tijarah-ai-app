@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,10 +49,6 @@ const DATE_RANGE_OPTIONS = ['Last 7 days', 'Last 30 days', 'Last 90 days'];
 
 export default function DashboardScreen() {
   const theme = useTheme();
-  // Same `GET /marketplace/` data source as Connect Stores, fetched once
-  // here and shared with the store-selector sheet below (see the "add
-  // drawer" store-selector enhancement) instead of the old hardcoded
-  // `ChannelOrder` list.
   const { marketplaces, isLoading: isLoadingMarketplaces, error: marketplacesError, refetch } =
     useSupportedMarketplaces();
   const { products, isLoading: isLoadingProducts, refetch: refetchProducts } = useProducts();
@@ -68,8 +64,14 @@ export default function DashboardScreen() {
   const [dateRangeIndex, setDateRangeIndex] = useState(0);
   const [primaryDismissed, setPrimaryDismissed] = useState(false);
 
+  const connectedMarketplaces = useMemo(
+    () => marketplaces.filter((marketplace) => marketplace.is_connected),
+    [marketplaces],
+  );
   const selectedMarketplace =
-    selectedStore === 'all' ? null : (marketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
+    selectedStore === 'all'
+      ? null
+      : (connectedMarketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
 
   function handleInsightAction(label: string) {
     // "Review products" / "Apply suggested prices" have no detail screen yet
@@ -273,7 +275,7 @@ export default function DashboardScreen() {
       <StoreSelectorSheet
         visible={isStorePickerVisible}
         selected={selectedStore}
-        marketplaces={marketplaces}
+        marketplaces={connectedMarketplaces}
         isLoading={isLoadingMarketplaces}
         error={marketplacesError}
         onRetry={refetch}

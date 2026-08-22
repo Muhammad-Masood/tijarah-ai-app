@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-import { useAuth } from '@/hooks/use-auth';
-import { ApiError, getProducts, type Product } from '@/lib/api';
+import { useAuth } from "@/hooks/use-auth";
+import { ApiError, getProducts, type Product } from "@/lib/api";
 
 type UseProductsResult = {
   products: Product[];
@@ -38,7 +38,11 @@ export function useProducts(): UseProductsResult {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong. Please try again.",
+        );
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);

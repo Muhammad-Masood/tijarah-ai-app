@@ -209,6 +209,21 @@ export type Product = {
   description: string;
   image: string;
   category: string;
+  /**
+   * Full image gallery, when the source has more than one photo (e.g. a
+   * Daraz listing's `images`/SKU images). Falls back to `[image]` when
+   * absent — the local product backend only stores a single `image`.
+   */
+  images?: string[];
+  /** Present for Daraz-sourced products only (from `attributes.brand`). */
+  brand?: string;
+  /** Present for Daraz-sourced products only (from `attributes.model`). */
+  model?: string;
+  /** Present for Daraz-sourced products only (from `attributes.warranty_type`). */
+  warrantyType?: string;
+  /** Present for Daraz-sourced products only — summed SKU quantity. */
+  stockQuantity?: number;
+  url: string;
 };
 
 export function getProducts(accessToken: string): Promise<Product[]> {

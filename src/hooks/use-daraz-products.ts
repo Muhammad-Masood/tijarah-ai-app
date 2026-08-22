@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 import {
   ApiError,
   getDarazAllProducts,
   getMarketplaceConnections,
   type DarazRawProduct,
   type Product,
-} from '@/lib/api';
+} from "@/lib/api";
 
 type UseDarazProductsResult = {
   /** Daraz catalog items, normalized to the same shape as the local `Product` list. */
@@ -38,27 +38,64 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
   const skus = raw.skus as Record<string, unknown>[] | undefined;
   const firstSku = Array.isArray(skus) ? skus[0] : undefined;
 
-  const rawPrice = firstSku?.price;
-  const price = typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice ?? '0')) || 0;
+  const rawPrice = firstSku?.special_price ?? firstSku?.price;
+  const price =
+    typeof rawPrice === "number"
+      ? rawPrice
+      : parseFloat(String(rawPrice ?? "0")) || 0;
 
   const skuImages = firstSku?.Images as string[] | undefined;
   const productImages = raw.images as string[] | undefined;
-  const image =
-    (Array.isArray(skuImages) ? skuImages.find((url) => url) : undefined) ??
-    (Array.isArray(productImages) ? productImages.find((url) => url) : undefined) ??
-    '';
+
+  // Gallery = product-level images first (the reliable source), then any
+  // SKU images not already included, de-duplicated and stripped of blanks.
+  const images = Array.from(
+    new Set(
+      [
+        ...(Array.isArray(productImages) ? productImages : []),
+        ...(Array.isArray(skuImages) ? skuImages : []),
+      ].filter(
+        (url): url is string => typeof url === "string" && url.length > 0,
+      ),
+    ),
+  );
+  const image = images[0] ?? "";
 
   // Prefer the English variant for this app's (English) UI when the listing has one.
   const title = attributes.name_en ?? attributes.name;
   const description = attributes.description_en ?? attributes.description;
+  const brand = attributes.brand;
+  const model = attributes.model;
+  const warrantyType = attributes.warranty_type;
+
+  const stockQuantity = Array.isArray(skus)
+    ? skus.reduce((total, sku) => {
+        const quantity = sku.quantity ?? sku.Available;
+        return total + (typeof quantity === "number" ? quantity : 0);
+      }, 0)
+    : undefined;
+
+  const url = (firstSku?.Url as string) ?? null;
 
   return {
     id: itemId != null ? String(itemId) : undefined,
-    title: typeof title === 'string' && title ? title : `Daraz product ${itemId ?? ''}`.trim(),
-    description: typeof description === 'string' ? description : '',
+    title:
+      typeof title === "string" && title
+        ? title
+        : `Daraz product ${itemId ?? ""}`.trim(),
+    description: typeof description === "string" ? description : "",
     price,
     image,
-    category: 'Daraz',
+    images,
+    category: "Daraz",
+    brand: typeof brand === "string" && brand ? brand : undefined,
+    model: typeof model === "string" && model ? model : undefined,
+    warrantyType:
+      typeof warrantyType === "string" && warrantyType
+        ? warrantyType
+        : undefined,
+    stockQuantity,
+    url,
   };
 }
 
@@ -70,7 +107,7 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
  */
 function extractDarazProducts(response: unknown): DarazRawProduct[] {
   if (Array.isArray(response)) return response as DarazRawProduct[];
-  if (response && typeof response === 'object') {
+  if (response && typeof response === "object") {
     const body = response as Record<string, unknown>;
     const nested = (body.data as Record<string, unknown> | undefined)?.products;
     if (Array.isArray(nested)) return nested as DarazRawProduct[];
@@ -106,7 +143,9 @@ export function useDarazProducts(): UseDarazProductsResult {
     (async () => {
       const connections = await getMarketplaceConnections(accessToken);
       const darazConnection = connections.find(
-        (connection) => connection.marketplace?.slug === 'daraz' && connection.encrypted_access_token,
+        (connection) =>
+          connection.marketplace?.slug === "daraz" &&
+          connection.encrypted_access_token,
       );
 
       if (cancelled) return;
@@ -118,14 +157,21 @@ export function useDarazProducts(): UseDarazProductsResult {
       }
 
       setIsConnected(true);
-      const response = await getDarazAllProducts(accessToken, darazConnection.encrypted_access_token);
+      const response = await getDarazAllProducts(
+        accessToken,
+        darazConnection.encrypted_access_token,
+      );
       if (cancelled) return;
 
       setProducts(extractDarazProducts(response).map(mapDarazProduct));
     })()
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : 'Could not load Daraz products. Please try again.');
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not load Daraz products. Please try again.",
+        );
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
