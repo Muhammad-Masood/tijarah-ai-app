@@ -326,6 +326,58 @@ export function getDarazAllReverseOrdersInfo(
   });
 }
 
+export type ReturnReasonBreakdown = {
+  reason: string;
+  count: number;
+  percentage: number;
+  likely_cause: string;
+};
+
+export type ReturnsMonthlyTrendEntry = {
+  month: string;
+  returns_count: number;
+};
+
+export type ReturnsInsights = {
+  scope: string;
+  product_id: number;
+  product_sku_id: string | null;
+  date_range: { start_date: string; end_date: string };
+  total_units_sold: number;
+  total_units_returned: number;
+  overall_return_rate: number;
+  total_refund_amount: number;
+  dispute_rate: number;
+  refund_request_rate: number;
+  return_reason_breakdown: ReturnReasonBreakdown[];
+  monthly_trend: ReturnsMonthlyTrendEntry[];
+  recommendations: string[];
+};
+
+/**
+ * `product_id` is a Daraz item id (same id space as `Product.id` /
+ * `ReverseOrderLineProduct.product_id`). `product_sku_id`/`start_date`/
+ * `end_date` are optional — the backend defaults `date_range` to a trailing
+ * window (a month, per the sample response) when omitted.
+ */
+export function getDarazReturnsInsights(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { productId: string; productSkuId?: string; startDate?: string; endDate?: string },
+): Promise<ReturnsInsights> {
+  const query = new URLSearchParams({ product_id: params.productId });
+  if (params.productSkuId) query.set("product_sku_id", params.productSkuId);
+  if (params.startDate) query.set("start_date", params.startDate);
+  if (params.endDate) query.set("end_date", params.endDate);
+
+  return request<ReturnsInsights>(`/daraz/returns_insights?${query.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "x-daraz-access-token": darazAccessToken,
+    },
+  });
+}
+
 export type AnalysisRequest = {
   product_url: string;
   product_name: string;

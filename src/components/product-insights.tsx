@@ -83,7 +83,7 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
   const {
     reviewAnalysis,
     reviewError,
-    returns,
+    returnsInsights,
     returnsError,
     isConnected,
     isLoading,
@@ -146,8 +146,11 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
       )
     : [];
 
-  const returnLines = returns.flatMap((order) => order.reverseOrderLineDTOList);
-  const returnsTotal = returnLines.reduce((sum, line) => sum + (line.refund_amount || 0), 0);
+  const returnTrendPoints = returnsInsights?.monthly_trend.map((entry) => entry.returns_count) ?? [];
+  const returnTrendMonths = returnsInsights?.monthly_trend.map((entry) => entry.month) ?? [];
+  const sortedReturnReasons = returnsInsights
+    ? [...returnsInsights.return_reason_breakdown].sort((a, b) => b.count - a.count)
+    : [];
 
   return (
     <View style={styles.stack}>
@@ -243,9 +246,16 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
       )}
 
       <View style={styles.sectionGroup}>
-        <ThemedText type="labelMd" themeColor="textSecondary">
-          RETURNS
-        </ThemedText>
+        <View style={styles.trendHeaderRow}>
+          <ThemedText type="labelMd" themeColor="textSecondary">
+            RETURNS
+          </ThemedText>
+          {returnsInsights && (
+            <ThemedText type="bodySm" themeColor="textSecondary">
+              {returnsInsights.date_range.start_date} – {returnsInsights.date_range.end_date}
+            </ThemedText>
+          )}
+        </View>
         {returnsError ? (
           <View style={[styles.errorCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
             <ThemedText type="bodyMd" themeColor="danger">
@@ -257,26 +267,64 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
               </ThemedText>
             </Pressable>
           </View>
-        ) : returnLines.length === 0 ? (
+        ) : !returnsInsights || returnsInsights.total_units_returned === 0 ? (
           <ThemedText type="bodyMd" themeColor="textSecondary">
             No returns reported for this product.
           </ThemedText>
         ) : (
           <>
-            <ThemedText type="bodySm" themeColor="textSecondary">
-              {returnLines.length} {returnLines.length === 1 ? 'return' : 'returns'} · {formatPrice(returnsTotal)} refunded
-            </ThemedText>
             <ListSection>
-              {returnLines.map((line, index) => (
-                <ListRow
-                  key={line.reverse_order_line_id}
-                  label={line.reason_text || line.reverse_status}
-                  value={formatPrice(line.refund_amount)}
-                  showChevron={false}
-                  isLast={index === returnLines.length - 1}
-                />
-              ))}
+              <ListRow label="Units sold" value={String(returnsInsights.total_units_sold)} showChevron={false} />
+              <ListRow label="Units returned" value={String(returnsInsights.total_units_returned)} showChevron={false} />
+              <ListRow label="Return rate" value={`${returnsInsights.overall_return_rate}%`} showChevron={false} />
+              <ListRow label="Refunded" value={formatPrice(returnsInsights.total_refund_amount)} showChevron={false} />
+              <ListRow label="Dispute rate" value={`${returnsInsights.dispute_rate}%`} showChevron={false} isLast />
             </ListSection>
+
+            {returnTrendPoints.length > 1 && (
+              <View
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Returns by month, from ${returnTrendMonths[0]} at ${returnTrendPoints[0]} to ${returnTrendMonths[returnTrendMonths.length - 1]} at ${returnTrendPoints[returnTrendPoints.length - 1]}`}>
+                <Sparkline points={returnTrendPoints} tone="aiInsight" />
+              </View>
+            )}
+
+            {sortedReturnReasons.length > 0 && (
+              <View style={styles.sectionGroup}>
+                <ThemedText type="labelMd" themeColor="textSecondary">
+                  TOP RETURN REASONS
+                </ThemedText>
+                {sortedReturnReasons.map((reason, index) => (
+                  <View
+                    key={`${reason.reason}-${index}`}
+                    style={[styles.actionCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+                    <View style={styles.actionTopRow}>
+                      <ThemedText type="bodyMd">{reason.reason}</ThemedText>
+                      <ThemedText type="bodySm" themeColor="textSecondary">
+                        {reason.count} · {reason.percentage}%
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="bodySm" themeColor="textSecondary">
+                      {reason.likely_cause}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {returnsInsights.recommendations.length > 0 && (
+              <View style={styles.sectionGroup}>
+                <ThemedText type="labelMd" themeColor="textSecondary">
+                  RECOMMENDATIONS
+                </ThemedText>
+                {returnsInsights.recommendations.map((recommendation, index) => (
+                  <ThemedText key={index} type="bodyMd" themeColor="textSecondary">
+                    {recommendation}
+                  </ThemedText>
+                ))}
+              </View>
+            )}
           </>
         )}
       </View>

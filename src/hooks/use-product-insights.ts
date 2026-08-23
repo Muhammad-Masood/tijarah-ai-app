@@ -5,19 +5,23 @@ import { useDarazAccessToken } from "@/hooks/use-daraz-access-token";
 import {
   analyzeProductReviews,
   ApiError,
-  getDarazAllReverseOrdersInfo,
+  getDarazReturnsInsights,
   type Product,
-  type ReverseOrderData,
+  type ReturnsInsights,
   type ReviewAnalysisResponse,
 } from "@/lib/api";
+
+function toDateParam(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 type UseProductInsightsResult = {
   reviewAnalysis: ReviewAnalysisResponse | null;
   /** Message from a failed `analyze-reviews` call, independent of `returnsError` — one source failing shouldn't hide the other. */
   reviewError: string | null;
-  /** This product's reverse/return orders, filtered client-side from the merchant-wide list. */
-  returns: ReverseOrderData[];
-  /** Message from a failed `get_all_reverse_orders_info` call. */
+  /** This product's return/refund analytics, or `null` while unresolved or on failure. */
+  returnsInsights: ReturnsInsights | null;
+  /** Message from a failed `returns_insights` call. */
   returnsError: string | null;
   /** True once a Daraz connection with a stored access token was found for this merchant. */
   isConnected: boolean;
@@ -30,11 +34,10 @@ type UseProductInsightsResult = {
 
 /**
  * Loads AI review analysis (`POST /reviews/analyze-reviews`) and this
- * product's return/reverse orders (`GET /daraz/get_all_reverse_orders_info`,
- * which returns every reverse order for the merchant — filtered down here by
- * matching `productDTO.product_id` against the product's Daraz item id).
- * Both need a Daraz marketplace connection and a real marketplace `url`, so
- * this only produces data for Daraz-sourced products.
+ * product's return/refund analytics (`GET /daraz/returns_insights`, scoped
+ * to this product's Daraz item id). Both need a Daraz marketplace connection
+ * and a real marketplace `url`, so this only produces data for Daraz-sourced
+ * products.
  *
  * The two calls are independent (one can 500 — e.g. a product URL the
  * backend's scraper can't parse — while the other succeeds), so they're
@@ -52,7 +55,7 @@ export function useProductInsights(product: Product | null): UseProductInsightsR
   } = useDarazAccessToken();
   const [reviewAnalysis, setReviewAnalysis] = useState<ReviewAnalysisResponse | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [returns, setReturns] = useState<ReverseOrderData[]>([]);
+  const [returnsInsights, setReturnsInsights] = useState<ReturnsInsights | null>(null);
   const [returnsError, setReturnsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -78,7 +81,7 @@ export function useProductInsights(product: Product | null): UseProductInsightsR
     if (!darazAccessToken || !productId || !productUrl) {
       setReviewAnalysis(null);
       setReviewError(null);
-      setReturns([]);
+      setReturnsInsights(null);
       setReturnsError(null);
       setIsLoading(false);
       return;
@@ -89,10 +92,18 @@ export function useProductInsights(product: Product | null): UseProductInsightsR
     setReviewError(null);
     setReturnsError(null);
 
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 30);
+
     Promise.allSettled([
       analyzeProductReviews(accessToken, { product_url: productUrl, product_name: productTitle ?? "" }),
-      getDarazAllReverseOrdersInfo(accessToken, darazAccessToken),
-    ]).then(([analysisResult, reverseOrdersResult]) => {
+      getDarazReturnsInsights(accessToken, darazAccessToken, {
+        productId,
+        startDate: toDateParam(startDate),
+        endDate: toDateParam(endDate),
+      }),
+    ]).then(([analysisResult, returnsInsightsResult]) => {
       if (cancelled) return;
 
       if (analysisResult.status === "fulfilled") {
@@ -107,22 +118,14 @@ export function useProductInsights(product: Product | null): UseProductInsightsR
         );
       }
 
-      if (reverseOrdersResult.status === "fulfilled") {
-        setReturns(
-          reverseOrdersResult.value
-            .map((info) => info.data)
-            .filter((data) =>
-              data.reverseOrderLineDTOList.some(
-                (line) => String(line.productDTO.product_id) === productId,
-              ),
-            ),
-        );
+      if (returnsInsightsResult.status === "fulfilled") {
+        setReturnsInsights(returnsInsightsResult.value);
         setReturnsError(null);
       } else {
-        setReturns([]);
+        setReturnsInsights(null);
         setReturnsError(
-          reverseOrdersResult.reason instanceof ApiError
-            ? reverseOrdersResult.reason.message
+          returnsInsightsResult.reason instanceof ApiError
+            ? returnsInsightsResult.reason.message
             : "Could not load return data for this product. Please try again.",
         );
       }
@@ -138,7 +141,7 @@ export function useProductInsights(product: Product | null): UseProductInsightsR
   return {
     reviewAnalysis,
     reviewError,
-    returns,
+    returnsInsights,
     returnsError,
     isConnected,
     isLoading: isTokenLoading || isLoading,

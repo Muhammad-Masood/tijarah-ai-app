@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { formatPrice } from "@/components/product-kit";
 import { useProductInsights } from "@/hooks/use-product-insights";
-import type { Product, ReverseOrderLine, ReviewAnalysisResponse } from "@/lib/api";
+import type { Product, ReturnsInsights, ReviewAnalysisResponse } from "@/lib/api";
 
 export type ChatMessage = {
   id: string;
@@ -16,14 +16,14 @@ function welcomeText(product: Product): string {
 
 function buildSuggestedPrompts(
   reviewAnalysis: ReviewAnalysisResponse | null,
-  returnLines: ReverseOrderLine[],
+  returnsInsights: ReturnsInsights | null,
 ): string[] {
   if (!reviewAnalysis) {
     return ["What's the price and stock on this item?", "Summarize this listing for me."];
   }
 
   const prompts = ["How's customer sentiment for this product?"];
-  if (returnLines.length > 0) prompts.push("Why are returns high on this item?");
+  if (returnsInsights && returnsInsights.total_units_returned > 0) prompts.push("Why are returns high on this item?");
   if (reviewAnalysis.action_plan.length > 0) prompts.push("What should I fix first?");
   return prompts.slice(0, 3);
 }
@@ -33,22 +33,19 @@ function buildReply(
   question: string,
   product: Product,
   reviewAnalysis: ReviewAnalysisResponse | null,
-  returnLines: ReverseOrderLine[],
+  returnsInsights: ReturnsInsights | null,
 ): string {
   const q = question.toLowerCase();
 
   if (/return|refund/.test(q)) {
-    if (returnLines.length === 0) {
+    if (!returnsInsights || returnsInsights.total_units_returned === 0) {
       return `No returns reported for ${product.title} yet — nothing to flag there.`;
     }
-    const reasonCounts = new Map<string, number>();
-    for (const line of returnLines) {
-      const reason = line.reason_text || line.reverse_status || "Unspecified";
-      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
-    }
-    const [topReason, topCount] = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-    const total = returnLines.reduce((sum, line) => sum + (line.refund_amount || 0), 0);
-    return `${returnLines.length} ${returnLines.length === 1 ? "return has" : "returns have"} come in for this item, totalling ${formatPrice(total)} refunded. The most common reason is "${topReason}" (${topCount} of them).`;
+    const [topReason] = [...returnsInsights.return_reason_breakdown].sort((a, b) => b.count - a.count);
+    const count = returnsInsights.total_units_returned;
+    return `${count} ${count === 1 ? "return has" : "returns have"} come in for this item (${returnsInsights.overall_return_rate}% return rate), totalling ${formatPrice(returnsInsights.total_refund_amount)} refunded.${
+      topReason ? ` The most common reason is "${topReason.reason}" (${topReason.count} of them).` : ""
+    }`;
   }
 
   if (/draft|reply|respond to/.test(q) && reviewAnalysis?.action_plan.length) {
@@ -83,8 +80,7 @@ function buildReply(
 
 /** Per-product chat: reuses `useProductInsights` so replies are grounded in the same review/return data shown on the Insights tab, and degrades to listing-only answers when that data isn't available (e.g. a manually-added product). */
 export function useProductChat(product: Product) {
-  const { reviewAnalysis, returns } = useProductInsights(product);
-  const returnLines = useMemo(() => returns.flatMap((order) => order.reverseOrderLineDTOList), [returns]);
+  const { reviewAnalysis, returnsInsights } = useProductInsights(product);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     { id: "welcome", role: "assistant", text: welcomeText(product) },
@@ -93,8 +89,8 @@ export function useProductChat(product: Product) {
   const nextId = useRef(0);
 
   const suggestedPrompts = useMemo(
-    () => buildSuggestedPrompts(reviewAnalysis, returnLines),
-    [reviewAnalysis, returnLines],
+    () => buildSuggestedPrompts(reviewAnalysis, returnsInsights),
+    [reviewAnalysis, returnsInsights],
   );
 
   const sendMessage = useCallback(
@@ -109,12 +105,12 @@ export function useProductChat(product: Product) {
 
       setTimeout(() => {
         nextId.current += 1;
-        const reply = buildReply(trimmed, product, reviewAnalysis, returnLines);
+        const reply = buildReply(trimmed, product, reviewAnalysis, returnsInsights);
         setMessages((prev) => [...prev, { id: `a-${nextId.current}`, role: "assistant", text: reply }]);
         setIsSending(false);
       }, 400);
     },
-    [product, reviewAnalysis, returnLines],
+    [product, reviewAnalysis, returnsInsights],
   );
 
   return { messages, suggestedPrompts, isSending, sendMessage };
