@@ -44,7 +44,11 @@ function SentimentMeter({ score }: { score: number }) {
   const fillWidth = `${Math.min(100, Math.max(0, score))}%` as const;
 
   return (
-    <View style={styles.meterBlock}>
+    <View
+      style={styles.meterBlock}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`Sentiment score ${score} out of 100 — ${zone.label}`}>
       <View style={[styles.meterTrack, { backgroundColor: theme.surfaceContainerHigh }]}>
         <View style={[styles.meterFill, { width: fillWidth, backgroundColor: fillColor }]} />
         <View style={[styles.meterTick, { left: '40%', backgroundColor: theme.surfaceContainerLowest }]} />
@@ -76,7 +80,16 @@ function SentimentMeter({ score }: { score: number }) {
 /** AI review analysis + return analytics for a Daraz-sourced product — `useProductInsights` owns the fetching. */
 export function ProductInsightsPanel({ product }: { product: Product }) {
   const theme = useTheme();
-  const { reviewAnalysis, returns, isConnected, isLoading, error, refetch } = useProductInsights(product);
+  const {
+    reviewAnalysis,
+    reviewError,
+    returns,
+    returnsError,
+    isConnected,
+    isLoading,
+    error,
+    refetch,
+  } = useProductInsights(product);
 
   if (isLoading) {
     return (
@@ -194,7 +207,12 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
                   {formatMonthLabel(ratingMonths[0])}–{formatMonthLabel(ratingMonths[ratingMonths.length - 1])}
                 </ThemedText>
               </View>
-              <Sparkline points={ratingPoints} tone="aiInsight" />
+              <View
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Average rating by month, from ${formatMonthLabel(ratingMonths[0])} at ${ratingPoints[0].toFixed(1)} to ${formatMonthLabel(ratingMonths[ratingMonths.length - 1])} at ${ratingPoints[ratingPoints.length - 1].toFixed(1)} out of 5`}>
+                <Sparkline points={ratingPoints} tone="aiInsight" />
+              </View>
             </View>
           )}
 
@@ -228,7 +246,18 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
         <ThemedText type="labelMd" themeColor="textSecondary">
           RETURNS
         </ThemedText>
-        {returnLines.length === 0 ? (
+        {returnsError ? (
+          <View style={[styles.errorCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+            <ThemedText type="bodyMd" themeColor="danger">
+              {returnsError}
+            </ThemedText>
+            <Pressable onPress={refetch} hitSlop={8}>
+              <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
+                Try again
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : returnLines.length === 0 ? (
           <ThemedText type="bodyMd" themeColor="textSecondary">
             No returns reported for this product.
           </ThemedText>
@@ -272,6 +301,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.md,
     padding: Spacing.four,
+  },
+  errorCard: {
+    gap: Spacing.one,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
   },
   centerText: {
     textAlign: 'center',

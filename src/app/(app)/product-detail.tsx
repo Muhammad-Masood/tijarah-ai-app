@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListRow, ListSection } from '@/components/list-kit';
+import { ProductChatPanel } from '@/components/product-chat';
 import { formatPrice } from '@/components/product-kit';
 import { ProductImageCarousel } from '@/components/product-image-carousel';
 import { ProductInsightsPanel } from '@/components/product-insights';
@@ -18,7 +19,7 @@ import { useProduct } from '@/hooks/use-product';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, deleteProduct, type Product } from '@/lib/api';
 
-type DetailTab = 'details' | 'insights';
+type DetailTab = 'details' | 'insights' | 'chat';
 
 export default function ProductDetailScreen() {
   const theme = useTheme();
@@ -78,41 +79,51 @@ export default function ProductDetailScreen() {
           <View style={styles.topRowSpacer} />
         </View>
 
-        <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
-          {isLoading && <ProductDetailSkeleton />}
+        {(isLoading || error || notFound) && (
+          <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
+            {isLoading && <ProductDetailSkeleton />}
 
-          {!isLoading && error && (
-            <View style={styles.statusBlock}>
-              <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
-                {error}
-              </ThemedText>
-              <Pressable onPress={refetch} hitSlop={8}>
-                <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
-                  Try again
+            {!isLoading && error && (
+              <View style={styles.statusBlock}>
+                <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
+                  {error}
                 </ThemedText>
-              </Pressable>
-            </View>
-          )}
+                <Pressable onPress={refetch} hitSlop={8}>
+                  <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
+                    Try again
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
 
-          {notFound && (
-            <View style={styles.statusBlock}>
-              <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                This product couldn’t be found.
-              </ThemedText>
-            </View>
-          )}
+            {notFound && (
+              <View style={styles.statusBlock}>
+                <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
+                  This product couldn’t be found.
+                </ThemedText>
+              </View>
+            )}
+          </ScrollView>
+        )}
 
-          {!isLoading && !error && product && (
-            <>
+        {!isLoading && !error && product && (
+          <>
+            <View style={styles.tabsRow}>
               <SegmentedTabs
                 options={[
                   { value: 'details', label: 'Details' },
                   { value: 'insights', label: 'Insights' },
+                  { value: 'chat', label: 'Chat' },
                 ]}
                 value={tab}
                 onChange={setTab}
               />
+            </View>
 
+            {tab === 'chat' ? (
+              <ProductChatPanel product={product} style={styles.chatArea} />
+            ) : (
+              <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
               {tab === 'details' ? (
                 <>
                   <ProductImageCarousel images={images} />
@@ -232,9 +243,10 @@ export default function ProductDetailScreen() {
                   </ThemedText>
                 </View>
               )}
-            </>
-          )}
-        </ScrollView>
+              </ScrollView>
+            )}
+          </>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -259,6 +271,20 @@ const styles = StyleSheet.create({
   },
   topRowSpacer: {
     width: 20,
+  },
+  tabsRow: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.containerMargin,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  chatArea: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.containerMargin,
   },
   scrollContent: {
     width: '100%',
