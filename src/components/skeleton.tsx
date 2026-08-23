@@ -44,12 +44,13 @@ export function ProductRowSkeleton() {
 
   return (
     <View style={[styles.row, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
-      <Skeleton width={48} height={48} radius={Radius.DEFAULT} />
+      <Skeleton width={56} height={56} radius={Radius.md} />
       <View style={styles.body}>
+        <Skeleton width="35%" height={10} />
         <Skeleton width="70%" height={16} />
-        <Skeleton width="40%" height={12} />
+        <Skeleton width="45%" height={12} />
       </View>
-      <Skeleton width={56} height={14} />
+      <Skeleton width={64} height={22} radius={Radius.full} />
     </View>
   );
 }
@@ -103,8 +104,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     borderWidth: 1,
-    borderRadius: Radius.md,
-    padding: Spacing.two,
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
   },
   body: {
     flex: 1,

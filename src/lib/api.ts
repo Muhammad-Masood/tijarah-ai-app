@@ -271,3 +271,98 @@ export function deleteProduct(accessToken: string, productId: string): Promise<v
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
+
+// Confirmed against `GET /openapi.json`: `ReverseOrderLineProduct.product_id`
+// is the same id as a Daraz item's `item_id` (i.e. `Product.id` for a
+// Daraz-sourced product from `mapDarazProduct`), so callers can filter this
+// endpoint's merchant-wide list down to one product's returns client-side.
+export type ReverseOrderLineProduct = {
+  product_id: number;
+  sku: string;
+};
+
+export type ReverseOrderLine = {
+  reverse_order_line_id: number;
+  trade_order_line_id: number;
+  platform_sku_id: string;
+  seller_sku_id: string;
+  productDTO: ReverseOrderLineProduct;
+  reason_code: number;
+  reason_text: string;
+  reverse_status: string;
+  ofc_status: string;
+  is_need_refund: boolean;
+  is_dispute: boolean;
+  item_unit_price: number;
+  refund_amount: number;
+  refund_payment_method: string;
+  tracking_number: string;
+};
+
+export type ReverseOrderData = {
+  reverse_order_id: number;
+  trade_order_id: number;
+  request_type: string;
+  shipping_type: string;
+  is_rtm: boolean;
+  reverseOrderLineDTOList: ReverseOrderLine[];
+};
+
+export type ReverseOrderInfo = {
+  data: ReverseOrderData;
+  code: string;
+};
+
+/** `darazAccessToken` is a connection's `encrypted_access_token` from `GET /marketplace/connections`. */
+export function getDarazAllReverseOrdersInfo(
+  accessToken: string,
+  darazAccessToken: string,
+): Promise<ReverseOrderInfo[]> {
+  return request<ReverseOrderInfo[]>("/daraz/get_all_reverse_orders_info", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "x-daraz-access-token": darazAccessToken,
+    },
+  });
+}
+
+export type AnalysisRequest = {
+  product_url: string;
+  product_name: string;
+};
+
+export type ActionItem = {
+  issue: string;
+  severity: string;
+  affected_review_count: number;
+  recommendation: string;
+};
+
+export type ClusterDebugEntry = {
+  size: number;
+  label: string;
+};
+
+export type ReviewAnalysisResponse = {
+  sentiment_score: number;
+  /** Keyed by month (`YYYY-MM`), value is the average rating that month. */
+  rating_trend: Record<string, number>;
+  summary: string;
+  topics: string[];
+  action_plan: ActionItem[];
+  cluster_debug: Record<string, ClusterDebugEntry>;
+};
+
+export function analyzeProductReviews(
+  accessToken: string,
+  data: AnalysisRequest,
+): Promise<ReviewAnalysisResponse> {
+  return request<ReviewAnalysisResponse>("/reviews/analyze-reviews", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}

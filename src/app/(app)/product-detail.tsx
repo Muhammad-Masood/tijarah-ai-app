@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ListRow, ListSection } from '@/components/list-kit';
 import { formatPrice } from '@/components/product-kit';
 import { ProductImageCarousel } from '@/components/product-image-carousel';
+import { ProductInsightsPanel } from '@/components/product-insights';
 import { SegmentedTabs } from '@/components/segmented-tabs';
 import { ProductDetailSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -216,6 +217,8 @@ export default function ProductDetailScreen() {
                     </>
                   )}
                 </>
+              ) : isDaraz ? (
+                <ProductInsightsPanel product={product} />
               ) : (
                 <View style={[styles.insightsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
                   <ThemedText type="headlineSm" style={styles.centerText}>
@@ -225,7 +228,7 @@ export default function ProductDetailScreen() {
                     AI insights are coming soon
                   </ThemedText>
                   <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                    Sales trends, pricing suggestions, and stock alerts for this product will show up here.
+                    Review sentiment and return analytics are available for products synced from Daraz.
                   </ThemedText>
                 </View>
               )}

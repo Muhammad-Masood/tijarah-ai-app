@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
-import {
-  ApiError,
-  getDarazAllProducts,
-  getMarketplaceConnections,
-  type DarazRawProduct,
-  type Product,
-} from "@/lib/api";
+import { useDarazAccessToken } from "@/hooks/use-daraz-access-token";
+import { ApiError, getDarazAllProducts, type DarazRawProduct, type Product } from "@/lib/api";
 
 type UseDarazProductsResult = {
   /** Daraz catalog items, normalized to the same shape as the local `Product` list. */
@@ -117,54 +112,54 @@ function extractDarazProducts(response: unknown): DarazRawProduct[] {
 }
 
 /**
- * Resolves the merchant's Daraz connection from `GET /marketplace/connections`
- * and, if one exists, fetches its full catalog via `GET /daraz/get_all_products`
+ * Resolves the merchant's Daraz connection via `useDarazAccessToken` and, if
+ * one exists, fetches its full catalog via `GET /daraz/get_all_products`
  * using the connection's stored access token.
  */
 export function useDarazProducts(): UseDarazProductsResult {
   const { accessToken } = useAuth();
+  const {
+    darazAccessToken,
+    isConnected,
+    isLoading: isTokenLoading,
+    error: tokenError,
+    refetch: refetchToken,
+  } = useDarazAccessToken();
   const [products, setProducts] = useState<Product[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const refetch = useCallback(() => setReloadKey((key) => key + 1), []);
+  const refetch = useCallback(() => {
+    refetchToken();
+    setReloadKey((key) => key + 1);
+  }, [refetchToken]);
 
   useEffect(() => {
-    // Session is still hydrating from SecureStore — wait for a token
-    // rather than firing an unauthenticated request.
-    if (!accessToken) return;
+    // Still resolving the connection — wait rather than firing early.
+    if (!accessToken || isTokenLoading) return;
+
+    if (tokenError) {
+      setError(tokenError);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!darazAccessToken) {
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
 
     let cancelled = false;
     setIsLoading(true);
     setError(null);
 
-    (async () => {
-      const connections = await getMarketplaceConnections(accessToken);
-      const darazConnection = connections.find(
-        (connection) =>
-          connection.marketplace?.slug === "daraz" &&
-          connection.encrypted_access_token,
-      );
-
-      if (cancelled) return;
-
-      if (!darazConnection?.encrypted_access_token) {
-        setIsConnected(false);
-        setProducts([]);
-        return;
-      }
-
-      setIsConnected(true);
-      const response = await getDarazAllProducts(
-        accessToken,
-        darazConnection.encrypted_access_token,
-      );
-      if (cancelled) return;
-
-      setProducts(extractDarazProducts(response).map(mapDarazProduct));
-    })()
+    getDarazAllProducts(accessToken, darazAccessToken)
+      .then((response) => {
+        if (cancelled) return;
+        setProducts(extractDarazProducts(response).map(mapDarazProduct));
+      })
       .catch((err) => {
         if (cancelled) return;
         setError(
@@ -180,7 +175,7 @@ export function useDarazProducts(): UseDarazProductsResult {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, reloadKey]);
+  }, [accessToken, darazAccessToken, isTokenLoading, tokenError, reloadKey]);
 
-  return { products, isConnected, isLoading, error, refetch };
+  return { products, isConnected, isLoading: isTokenLoading || isLoading, error, refetch };
 }

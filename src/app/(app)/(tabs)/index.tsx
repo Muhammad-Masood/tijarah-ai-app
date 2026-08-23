@@ -39,6 +39,7 @@ import {
 } from '@/constants/dashboard-mock';
 import { unreadNotificationCount } from '@/constants/notifications-mock';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useDarazProducts } from '@/hooks/use-daraz-products';
 import { useProducts } from '@/hooks/use-products';
 import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { useTheme } from '@/hooks/use-theme';
@@ -52,12 +53,25 @@ export default function DashboardScreen() {
   const { marketplaces, isLoading: isLoadingMarketplaces, error: marketplacesError, refetch } =
     useSupportedMarketplaces();
   const { products, isLoading: isLoadingProducts, refetch: refetchProducts } = useProducts();
-  const isRefreshing = isLoadingMarketplaces || isLoadingProducts;
+  const {
+    products: darazProducts,
+    isConnected: isDarazConnected,
+    isLoading: isDarazLoading,
+    refetch: refetchDaraz,
+  } = useDarazProducts();
+  const isRefreshing = isLoadingMarketplaces || isLoadingProducts || isDarazLoading;
 
   function handleRefresh() {
     refetch();
     refetchProducts();
+    refetchDaraz();
   }
+
+  // Daraz is the only marketplace with a real product feed today — prefer
+  // it over the local product list so the Home preview matches what the
+  // Products tab shows for a connected store.
+  const displayProducts = isDarazConnected ? darazProducts : products;
+  const isLoadingDisplayProducts = isDarazConnected ? isDarazLoading : isLoadingProducts;
 
   const [selectedStore, setSelectedStore] = useState<StoreOption>('all');
   const [isStorePickerVisible, setIsStorePickerVisible] = useState(false);
@@ -72,6 +86,10 @@ export default function DashboardScreen() {
     selectedStore === 'all'
       ? null
       : (connectedMarketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
+  const darazMarketplace = useMemo(
+    () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'daraz'),
+    [connectedMarketplaces],
+  );
 
   function handleInsightAction(label: string) {
     // "Review products" / "Apply suggested prices" have no detail screen yet
@@ -214,12 +232,12 @@ export default function DashboardScreen() {
                 </Pressable>
               }
             />
-            {isLoadingProducts && (
+            {isLoadingDisplayProducts && (
               <ThemedText type="bodySm" themeColor="textSecondary">
                 Loading products…
               </ThemedText>
             )}
-            {!isLoadingProducts && products.length === 0 && (
+            {!isLoadingDisplayProducts && !isDarazConnected && products.length === 0 && (
               <>
                 <ThemedText type="bodySm" themeColor="textSecondary">
                   No products yet — here&apos;s a preview of how they&apos;ll look. Add your first to replace these.
@@ -231,13 +249,26 @@ export default function DashboardScreen() {
                 </View>
               </>
             )}
-            {!isLoadingProducts && products.length > 0 && (
+            {!isLoadingDisplayProducts && isDarazConnected && darazProducts.length === 0 && (
+              <ThemedText type="bodySm" themeColor="textSecondary">
+                No products found on Daraz yet.
+              </ThemedText>
+            )}
+            {!isLoadingDisplayProducts && displayProducts.length > 0 && (
               <View style={styles.productList}>
-                {products.slice(0, RECENT_PRODUCTS_PREVIEW_COUNT).map((product) => (
+                {displayProducts.slice(0, RECENT_PRODUCTS_PREVIEW_COUNT).map((product, index) => (
                   <ProductRow
-                    key={product.id}
+                    key={product.id ?? index}
                     product={product}
-                    onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id ?? '' } })}
+                    marketplaceLogo={isDarazConnected ? darazMarketplace?.logo_url : undefined}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/product-detail',
+                        params: isDarazConnected
+                          ? { id: product.id ?? String(index), source: 'daraz' }
+                          : { id: product.id ?? '' },
+                      })
+                    }
                   />
                 ))}
               </View>

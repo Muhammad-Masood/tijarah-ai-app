@@ -198,6 +198,20 @@ export const featureGraphs: FeatureGraphData[] = [
     points: [12, 14, 13, 16, 18, 17, 20, 22],
   },
   {
+    id: 'graph-top-products',
+    title: 'Top Products',
+    caption: 'Wireless Earbuds Pro leads at 34% of revenue',
+    agentId: 'profit',
+    tone: 'aiInsight',
+    chart: 'distribution',
+    segments: [
+      { label: 'Wireless Earbuds Pro', count: 34, tone: 'aiInsight' },
+      { label: 'Classic Cotton Hoodie', count: 22, tone: 'success' },
+      { label: 'Ceramic Coffee Mug Set', count: 14, tone: 'neutral' },
+      { label: 'Others', count: 30, tone: 'neutral' },
+    ],
+  },
+  {
     id: 'graph-inventory',
     title: 'Inventory Health',
     caption: '3 products at risk',

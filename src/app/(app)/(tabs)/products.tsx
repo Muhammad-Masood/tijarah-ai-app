@@ -43,6 +43,7 @@ export default function ProductsScreen() {
     refetch: refetchMarketplaces,
   } = useSupportedMarketplaces();
   const [query, setQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreOption>('all');
   const [isStorePickerVisible, setIsStorePickerVisible] = useState(false);
 
@@ -51,6 +52,12 @@ export default function ProductsScreen() {
   const connectedMarketplaces = useMemo(() => marketplaces.filter((marketplace) => marketplace.is_connected), [marketplaces]);
   const selectedMarketplace =
     selectedStore === 'all' ? null : (connectedMarketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
+  // Provenance badge on each row always points at Daraz today — it's the
+  // only marketplace with a real product feed, regardless of which filter is active.
+  const darazMarketplace = useMemo(
+    () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'daraz'),
+    [connectedMarketplaces],
+  );
 
   // Daraz is the only marketplace with a real product feed today — this
   // guards the section so switching to a different connected store (once
@@ -79,13 +86,25 @@ export default function ProductsScreen() {
         </View>
 
         <View style={styles.searchRow}>
-          <View style={[styles.searchInputRow, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+          <View
+            style={[
+              styles.searchInputRow,
+              {
+                borderColor: isSearchFocused ? theme.primary : theme.border,
+                borderWidth: isSearchFocused ? 1.5 : 1,
+                backgroundColor: theme.surfaceContainerLowest,
+                shadowColor: theme.primary,
+                shadowOpacity: isSearchFocused ? 0.16 : 0,
+              },
+            ]}>
             <ThemedText type="bodyMd" themeColor="textSecondary">
               🔍
             </ThemedText>
             <TextInput
               value={query}
               onChangeText={setQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               placeholder="Search products"
               placeholderTextColor={theme.textSecondary}
               style={[styles.searchInput, { color: theme.text }]}
@@ -104,7 +123,10 @@ export default function ProductsScreen() {
 
           {connectedMarketplaces.length > 0 && (
             <View style={styles.darazSection}>
-              <Pressable onPress={() => setIsStorePickerVisible(true)} style={styles.storeSelector} hitSlop={8}>
+              <Pressable
+                onPress={() => setIsStorePickerVisible(true)}
+                style={[styles.storeSelector, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest, shadowColor: theme.outline }]}
+                hitSlop={8}>
                 {selectedMarketplace && (
                   <View style={[styles.storeSelectorLogo, { backgroundColor: theme.primaryContainer }]}>
                     <Image
@@ -114,7 +136,7 @@ export default function ProductsScreen() {
                     />
                   </View>
                 )}
-                <ThemedText type="bodyLg" style={styles.darazHeading}>
+                <ThemedText type="bodyMd" style={styles.darazHeading}>
                   {selectedMarketplace ? selectedMarketplace.name : 'All Stores'}
                 </ThemedText>
                 <ThemedText type="bodySm" themeColor="textSecondary">
@@ -147,10 +169,14 @@ export default function ProductsScreen() {
 
                   {!isDarazLoading && !darazError && filteredDarazProducts.length > 0 && (
                     <View style={styles.list}>
+                      <ThemedText type="labelMd" themeColor="textSecondary">
+                        {filteredDarazProducts.length} PRODUCT{filteredDarazProducts.length === 1 ? '' : 'S'}
+                      </ThemedText>
                       {filteredDarazProducts.map((product, index) => (
                         <ProductRow
                           key={product.id ?? index}
                           product={product}
+                          marketplaceLogo={darazMarketplace?.logo_url}
                           onPress={() =>
                             router.push({
                               pathname: '/product-detail',
@@ -219,9 +245,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.DEFAULT,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 0,
   },
   searchInput: {
     flex: 1,
@@ -250,12 +278,21 @@ const styles = StyleSheet.create({
   storeSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: Spacing.one,
+    borderWidth: 1,
+    borderRadius: Radius.full,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   storeSelectorLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: Radius.sm,
+    width: 20,
+    height: 20,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
