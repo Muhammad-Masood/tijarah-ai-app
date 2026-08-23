@@ -45,7 +45,6 @@ export function StoreSelectorSheet({
       {/* Standard modal scrim — an intentional exception to "no hardcoded
           hex colors", since a backdrop dimmer isn't a themed surface. */}
       <Pressable style={styles.backdrop} onPress={onClose} />
-
       <View
         style={[
           styles.sheet,

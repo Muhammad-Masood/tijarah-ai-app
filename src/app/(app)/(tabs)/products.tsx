@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.containerMargin,
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.half,
     paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.two,
   },
