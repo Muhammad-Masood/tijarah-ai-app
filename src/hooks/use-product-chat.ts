@@ -1,13 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { formatPrice } from "@/components/product-kit";
+import type { ChatMessage } from "@/components/chat-kit";
 import type { Product, ReturnsInsights, ReviewAnalysisResponse } from "@/lib/api";
 
-export type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-};
+export type { ChatMessage };
 
 function welcomeText(product: Product): string {
   return `I'm ready to help with ${product.title}. Ask about reviews, returns, pricing, or stock — I'll answer from this product's own data.`;

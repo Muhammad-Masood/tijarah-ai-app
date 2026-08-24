@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 /**
  * Backend base URL. `localhost` only reaches the host machine from web and
  * the iOS simulator — the Android emulator needs the special `10.0.2.2`
@@ -8,8 +6,4 @@ import { Platform } from "react-native";
  * device or against a non-local backend.
  */
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  (Platform.OS === "android"
-    ? "http://192.168.100.6:8000"
-    : "http://192.168.100.6:8000")
-    console.log("API_BASE_URL", API_BASE_URL);
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://192.168.100.6:8000";

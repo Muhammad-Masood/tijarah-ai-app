@@ -11,36 +11,6 @@ import {
   type ReviewAnalysisResponse,
 } from "@/lib/api";
 
-/** Turns a `reviews/analyze-reviews` `progress`/`cluster` event into a short status line for the loading state. */
-function reviewStageText(
-  event:
-    | { kind: "progress"; stage: "deduped"; review_count: number }
-    | { kind: "progress"; stage: "clustered"; cluster_count: number }
-    | { kind: "cluster"; topic_label: string },
-): string {
-  if (event.kind === "cluster") return `Found topic "${event.topic_label}"…`;
-  return event.stage === "deduped"
-    ? `Analyzing ${event.review_count} reviews…`
-    : `Grouped into ${event.cluster_count} topics…`;
-}
-
-/** Turns a `returns_insights` `progress` event into a short status line for the loading state. */
-function returnsStageText(event: {
-  stage: "fetching_returns" | "fetched_returns" | "fetching_orders" | "fetched_orders";
-  count?: number;
-}): string {
-  switch (event.stage) {
-    case "fetching_returns":
-      return "Fetching returns…";
-    case "fetched_returns":
-      return `Found ${event.count} returns…`;
-    case "fetching_orders":
-      return "Fetching orders…";
-    case "fetched_orders":
-      return `Found ${event.count} orders…`;
-  }
-}
-
 function toDateParam(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -57,16 +27,12 @@ export type UseProductInsightsResult = {
   isConnected: boolean;
   /** True while resolving the connection and/or fetching insights (including refetches). */
   isLoading: boolean;
-  /** True while the review-analysis SSE stream is still in flight. */
+  /** True while the `analyze-reviews` request is still in flight. */
   isReviewStreaming: boolean;
-  /** True while the returns-insights SSE stream is still in flight. */
+  /** True while the `returns_insights` request is still in flight. */
   isReturnsStreaming: boolean;
   /** Set only when the Daraz connection itself couldn't be resolved — both sources are then unavailable. */
   error: string | null;
-  /** Live status line from the `analyze-reviews` SSE stream while `isLoading`, e.g. "Grouped into 4 topics…". `null` once settled. */
-  reviewStage: string | null;
-  /** Live status line from the `returns_insights` SSE stream while `isLoading`, e.g. "Fetching orders…". `null` once settled. */
-  returnsStage: string | null;
   refetch: () => void;
 };
 
@@ -109,8 +75,6 @@ export function useProductInsights(
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewStreaming, setIsReviewStreaming] = useState(false);
   const [isReturnsStreaming, setIsReturnsStreaming] = useState(false);
-  const [reviewStage, setReviewStage] = useState<string | null>(null);
-  const [returnsStage, setReturnsStage] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   /** Tracks the `productId:reloadKey` pair a fetch has already been started for, so re-enabling doesn't refetch. */
   const fetchedKeyRef = useRef<string | null>(null);
@@ -155,72 +119,24 @@ export function useProductInsights(
     setReviewAnalysis(null);
     setReviewError(null);
     setReturnsError(null);
-    setReviewStage(null);
-    setReturnsStage(null);
 
     const endDate = new Date();
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 30);
 
     Promise.allSettled([
-      analyzeProductReviews(
-        accessToken,
-        { product_url: productUrl, product_name: productTitle ?? "" },
-        {
-          onScore: (event) => {
-            if (cancelled) return;
-            setReviewAnalysis((prev) => ({
-              sentiment_score: event.sentiment_score,
-              rating_trend: event.rating_trend,
-              summary: prev?.summary ?? "",
-              topics: prev?.topics ?? [],
-              action_plan: prev?.action_plan ?? [],
-              cluster_debug: prev?.cluster_debug ?? {},
-            }));
-          },
-          onProgress: (event) => {
-            if (!cancelled) setReviewStage(reviewStageText({ kind: "progress", ...event }));
-          },
-          onCluster: (event) => {
-            if (cancelled) return;
-            setReviewStage(reviewStageText({ kind: "cluster", topic_label: event.topic_label }));
-            setReviewAnalysis((prev) => {
-              const topics = prev?.topics ?? [];
-              if (topics.includes(event.topic_label)) return prev;
-              return {
-                sentiment_score: prev?.sentiment_score ?? 0,
-                rating_trend: prev?.rating_trend ?? {},
-                summary: prev?.summary ?? "",
-                topics: [...topics, event.topic_label],
-                action_plan: prev?.action_plan ?? [],
-                cluster_debug: {
-                  ...(prev?.cluster_debug ?? {}),
-                  [event.label]: { size: event.size, label: event.topic_label },
-                },
-              };
-            });
-          },
-        },
-      ).finally(() => {
-        if (!cancelled) {
-          setIsReviewStreaming(false);
-          setReviewStage(null);
-        }
+      analyzeProductReviews(accessToken, {
+        product_url: productUrl,
+        product_name: productTitle ?? "",
+      }).finally(() => {
+        if (!cancelled) setIsReviewStreaming(false);
       }),
-      getDarazReturnsInsights(
-        accessToken,
-        darazAccessToken,
-        { productId, startDate: toDateParam(startDate), endDate: toDateParam(endDate) },
-        {
-          onProgress: (event) => {
-            if (!cancelled) setReturnsStage(returnsStageText(event));
-          },
-        },
-      ).finally(() => {
-        if (!cancelled) {
-          setIsReturnsStreaming(false);
-          setReturnsStage(null);
-        }
+      getDarazReturnsInsights(accessToken, darazAccessToken, {
+        productId,
+        startDate: toDateParam(startDate),
+        endDate: toDateParam(endDate),
+      }).finally(() => {
+        if (!cancelled) setIsReturnsStreaming(false);
       }),
     ]).then(([analysisResult, returnsInsightsResult]) => {
       if (cancelled) return;
@@ -249,8 +165,6 @@ export function useProductInsights(
         );
       }
 
-      setReviewStage(null);
-      setReturnsStage(null);
       setIsLoading(false);
     });
 
@@ -269,8 +183,6 @@ export function useProductInsights(
     isReviewStreaming,
     isReturnsStreaming,
     error: tokenError,
-    reviewStage,
-    returnsStage,
     refetch,
   };
 }
