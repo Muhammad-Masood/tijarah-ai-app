@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { formatPrice } from "@/components/product-kit";
-import { useProductInsights } from "@/hooks/use-product-insights";
 import type { Product, ReturnsInsights, ReviewAnalysisResponse } from "@/lib/api";
 
 export type ChatMessage = {
@@ -78,9 +77,12 @@ function buildReply(
   return `I can help with reviews, returns, pricing, and stock for ${product.title}. Try one of the suggestions above, or ask something specific.`;
 }
 
-/** Per-product chat: reuses `useProductInsights` so replies are grounded in the same review/return data shown on the Insights tab, and degrades to listing-only answers when that data isn't available (e.g. a manually-added product). */
-export function useProductChat(product: Product) {
-  const { reviewAnalysis, returnsInsights } = useProductInsights(product);
+/** Per-product chat: grounded in the same review/return data shown on the Insights tab (passed in by the caller, which owns the `useProductInsights` fetch), and degrades to listing-only answers when that data isn't available (e.g. a manually-added product). */
+export function useProductChat(
+  product: Product,
+  insights: { reviewAnalysis: ReviewAnalysisResponse | null; returnsInsights: ReturnsInsights | null },
+) {
+  const { reviewAnalysis, returnsInsights } = insights;
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     { id: "welcome", role: "assistant", text: welcomeText(product) },

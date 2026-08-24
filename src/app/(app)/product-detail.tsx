@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useDarazProducts } from '@/hooks/use-daraz-products';
 import { useProduct } from '@/hooks/use-product';
+import { useProductInsights } from '@/hooks/use-product-insights';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, deleteProduct, type Product } from '@/lib/api';
 
@@ -44,6 +45,18 @@ export default function ProductDetailScreen() {
   const [tab, setTab] = useState<DetailTab>('details');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Insights/returns data is needed by both the Insights and Chat tabs. Owning the fetch here
+  // (rather than in each tab's own component) means switching tabs doesn't unmount/remount the
+  // fetching hook and re-hit the insight APIs. `needsInsights` stays true once tripped so that
+  // navigating away and back doesn't refetch either — and it only starts once a relevant tab is
+  // actually opened, instead of firing for products the user never inspects.
+  const needsInsightsNow = tab === 'insights' || tab === 'chat';
+  const [needsInsights, setNeedsInsights] = useState(needsInsightsNow);
+  useEffect(() => {
+    if (needsInsightsNow) setNeedsInsights(true);
+  }, [needsInsightsNow]);
+  const insights = useProductInsights(product, { enabled: needsInsights });
 
   function handleDelete() {
     if (!product?.id || !accessToken) return;
@@ -121,7 +134,7 @@ export default function ProductDetailScreen() {
             </View>
 
             {tab === 'chat' ? (
-              <ProductChatPanel product={product} style={styles.chatArea} />
+              <ProductChatPanel product={product} insights={insights} style={styles.chatArea} />
             ) : (
               <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
               {tab === 'details' ? (
@@ -229,7 +242,7 @@ export default function ProductDetailScreen() {
                   )}
                 </>
               ) : isDaraz ? (
-                <ProductInsightsPanel product={product} />
+                <ProductInsightsPanel insights={insights} />
               ) : (
                 <View style={[styles.insightsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
                   <ThemedText type="headlineSm" style={styles.centerText}>

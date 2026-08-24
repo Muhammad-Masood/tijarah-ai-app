@@ -19,7 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useProductChat, type ChatMessage } from '@/hooks/use-product-chat';
-import type { Product } from '@/lib/api';
+import type { Product, ReturnsInsights, ReviewAnalysisResponse } from '@/lib/api';
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const theme = useTheme();
@@ -50,10 +50,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 /** Per-product AI chat — grounded in this product's own listing + insights data. See `useProductChat`. */
-export function ProductChatPanel({ product, style }: { product: Product; style?: StyleProp<ViewStyle> }) {
+export function ProductChatPanel({
+  product,
+  insights,
+  style,
+}: {
+  product: Product;
+  insights: { reviewAnalysis: ReviewAnalysisResponse | null; returnsInsights: ReturnsInsights | null };
+  style?: StyleProp<ViewStyle>;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { messages, suggestedPrompts, isSending, sendMessage } = useProductChat(product);
+  const { messages, suggestedPrompts, isSending, sendMessage } = useProductChat(product, insights);
   const [draft, setDraft] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);

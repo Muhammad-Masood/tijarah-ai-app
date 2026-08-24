@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { SeverityBadge } from '@/components/dashboard-kit';
 import { formatPrice } from '@/components/product-kit';
@@ -9,8 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import type { Severity, Tone } from '@/constants/dashboard-mock';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useProductInsights } from '@/hooks/use-product-insights';
-import type { Product } from '@/lib/api';
+import type { UseProductInsightsResult } from '@/hooks/use-product-insights';
 
 const KNOWN_SEVERITIES: Severity[] = ['high', 'medium', 'low'];
 const SEVERITY_WEIGHT: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
@@ -34,6 +34,25 @@ function sentimentZone(score: number) {
 function formatMonthLabel(key: string): string {
   const month = Number(key.split('-')[1]);
   return MONTH_LABELS[month - 1] ?? key;
+}
+
+/** Fades content in on mount — respects reduce-motion. */
+function FadeInBlock({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(delay).duration(320)}>
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Inline status while an SSE source is still streaming. */
+function StreamingStatus({ label }: { label: string }) {
+  return (
+    <ThemedText type="bodySm" themeColor="textSecondary" style={styles.streamingText}>
+      {label}
+    </ThemedText>
+  );
 }
 
 /** Flat instrument-style gauge: a tri-zone track with calibration ticks at the zone boundaries, and the active zone called out below. No dial or gradient — matches the system's tonal, shadow-free surface language. */
@@ -77,8 +96,8 @@ function SentimentMeter({ score }: { score: number }) {
   );
 }
 
-/** AI review analysis + return analytics for a Daraz-sourced product — `useProductInsights` owns the fetching. */
-export function ProductInsightsPanel({ product }: { product: Product }) {
+/** AI review analysis + return analytics for a Daraz-sourced product. The caller owns the `useProductInsights` fetch (shared with the Chat tab) and passes the result in, so switching tabs doesn't remount and refetch it. */
+export function ProductInsightsPanel({ insights }: { insights: UseProductInsightsResult }) {
   const theme = useTheme();
   const {
     reviewAnalysis,
@@ -87,15 +106,22 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
     returnsError,
     isConnected,
     isLoading,
+    isReviewStreaming,
+    isReturnsStreaming,
     error,
+    reviewStage,
+    returnsStage,
     refetch,
-  } = useProductInsights(product);
+  } = insights;
 
-  if (isLoading) {
+  const hasReviewContent = reviewAnalysis != null;
+  const showInitialLoader = isLoading && !hasReviewContent && !returnsInsights && !reviewError && !returnsError;
+
+  if (showInitialLoader) {
     return (
       <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
         <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-          Loading insights…
+          {reviewStage ?? returnsStage ?? 'Loading insights…'}
         </ThemedText>
       </View>
     );
@@ -154,97 +180,129 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
 
   return (
     <View style={styles.stack}>
+      {reviewError && !reviewAnalysis && (
+        <View style={[styles.errorCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+          <ThemedText type="bodyMd" themeColor="danger">
+            {reviewError}
+          </ThemedText>
+          <Pressable onPress={refetch} hitSlop={8}>
+            <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
+              Try again
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
+
       {reviewAnalysis && (
         <>
-          <View style={[styles.sentimentCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
-            <ThemedText type="labelMd" themeColor="textSecondary">
-              SENTIMENT
-            </ThemedText>
-            <View style={styles.scoreRow}>
-              <ThemedText type="displayLgMobile">{reviewAnalysis.sentiment_score}</ThemedText>
-              <ThemedText type="bodyMd" themeColor="textSecondary">
-                / 100
+          <FadeInBlock>
+            <View style={[styles.sentimentCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+              <ThemedText type="labelMd" themeColor="textSecondary">
+                SENTIMENT
               </ThemedText>
-            </View>
-            <SentimentMeter score={reviewAnalysis.sentiment_score} />
-
-            {reviewAnalysis.summary && (
-              <View style={[styles.summaryBlock, { borderTopColor: theme.border }]}>
-                <View style={[styles.summaryRule, { backgroundColor: theme.primary }]} />
-                <View style={styles.summaryTextGroup}>
-                  <ThemedText type="labelMd" themeColor="primary">
-                    AI SUMMARY
-                  </ThemedText>
-                  <ThemedText type="bodyMd" themeColor="textSecondary">
-                    {reviewAnalysis.summary}
-                  </ThemedText>
-                </View>
+              <View style={styles.scoreRow}>
+                <ThemedText type="displayLgMobile">{reviewAnalysis.sentiment_score}</ThemedText>
+                <ThemedText type="bodyMd" themeColor="textSecondary">
+                  / 100
+                </ThemedText>
               </View>
-            )}
-          </View>
+              <SentimentMeter score={reviewAnalysis.sentiment_score} />
+
+              {reviewAnalysis.summary ? (
+                <FadeInBlock delay={80}>
+                  <View style={[styles.summaryBlock, { borderTopColor: theme.border }]}>
+                    <View style={[styles.summaryRule, { backgroundColor: theme.primary }]} />
+                    <View style={styles.summaryTextGroup}>
+                      <ThemedText type="labelMd" themeColor="primary">
+                        AI SUMMARY
+                      </ThemedText>
+                      <ThemedText type="bodyMd" themeColor="textSecondary">
+                        {reviewAnalysis.summary}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </FadeInBlock>
+              ) : isReviewStreaming ? (
+                <StreamingStatus label={reviewStage ?? 'Synthesizing summary…'} />
+              ) : null}
+            </View>
+          </FadeInBlock>
 
           {reviewAnalysis.topics.length > 0 && (
-            <View style={styles.sectionGroup}>
-              <ThemedText type="labelMd" themeColor="textSecondary">
-                RECURRING THEMES
-              </ThemedText>
-              <View style={styles.badgeRow}>
-                {reviewAnalysis.topics.map((topic) => (
-                  <View key={topic} style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      {topic}
-                    </ThemedText>
-                  </View>
-                ))}
+            <FadeInBlock delay={60}>
+              <View style={styles.sectionGroup}>
+                <ThemedText type="labelMd" themeColor="textSecondary">
+                  RECURRING THEMES
+                </ThemedText>
+                <View style={styles.badgeRow}>
+                  {reviewAnalysis.topics.map((topic, index) => (
+                    <FadeInBlock key={topic} delay={index * 50}>
+                      <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
+                        <ThemedText type="bodySm" themeColor="textSecondary">
+                          {topic}
+                        </ThemedText>
+                      </View>
+                    </FadeInBlock>
+                  ))}
+                </View>
+                {isReviewStreaming && reviewStage && (
+                  <StreamingStatus label={reviewStage} />
+                )}
               </View>
-            </View>
+            </FadeInBlock>
           )}
 
           {ratingPoints.length > 1 && (
-            <View style={styles.sectionGroup}>
-              <View style={styles.trendHeaderRow}>
-                <ThemedText type="labelMd" themeColor="textSecondary">
-                  RATING TREND
-                </ThemedText>
-                <ThemedText type="bodySm" themeColor="textSecondary">
-                  {formatMonthLabel(ratingMonths[0])}–{formatMonthLabel(ratingMonths[ratingMonths.length - 1])}
-                </ThemedText>
+            <FadeInBlock delay={100}>
+              <View style={styles.sectionGroup}>
+                <View style={styles.trendHeaderRow}>
+                  <ThemedText type="labelMd" themeColor="textSecondary">
+                    RATING TREND
+                  </ThemedText>
+                  <ThemedText type="bodySm" themeColor="textSecondary">
+                    {formatMonthLabel(ratingMonths[0])}–{formatMonthLabel(ratingMonths[ratingMonths.length - 1])}
+                  </ThemedText>
+                </View>
+                <View
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={`Average rating by month, from ${formatMonthLabel(ratingMonths[0])} at ${ratingPoints[0].toFixed(1)} to ${formatMonthLabel(ratingMonths[ratingMonths.length - 1])} at ${ratingPoints[ratingPoints.length - 1].toFixed(1)} out of 5`}>
+                  <Sparkline points={ratingPoints} tone="aiInsight" />
+                </View>
               </View>
-              <View
-                accessible
-                accessibilityRole="text"
-                accessibilityLabel={`Average rating by month, from ${formatMonthLabel(ratingMonths[0])} at ${ratingPoints[0].toFixed(1)} to ${formatMonthLabel(ratingMonths[ratingMonths.length - 1])} at ${ratingPoints[ratingPoints.length - 1].toFixed(1)} out of 5`}>
-                <Sparkline points={ratingPoints} tone="aiInsight" />
-              </View>
-            </View>
+            </FadeInBlock>
           )}
 
           {sortedActions.length > 0 && (
-            <View style={styles.sectionGroup}>
-              <ThemedText type="labelMd" themeColor="textSecondary">
-                RECOMMENDED ACTIONS · {sortedActions.length}
-              </ThemedText>
-              {sortedActions.map((item, index) => (
-                <View
-                  key={`${item.issue}-${index}`}
-                  style={[styles.actionCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
-                  <View style={styles.actionTopRow}>
-                    <SeverityBadge severity={toSeverity(item.severity)} />
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      {item.affected_review_count} reviews
-                    </ThemedText>
-                  </View>
-                  <ThemedText type="bodyMd">{item.issue}</ThemedText>
-                  <ThemedText type="bodySm" themeColor="textSecondary">
-                    {item.recommendation}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
+            <FadeInBlock delay={120}>
+              <View style={styles.sectionGroup}>
+                <ThemedText type="labelMd" themeColor="textSecondary">
+                  RECOMMENDED ACTIONS · {sortedActions.length}
+                </ThemedText>
+                {sortedActions.map((item, index) => (
+                  <FadeInBlock key={`${item.issue}-${index}`} delay={index * 60}>
+                    <View
+                      style={[styles.actionCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+                      <View style={styles.actionTopRow}>
+                        <SeverityBadge severity={toSeverity(item.severity)} />
+                        <ThemedText type="bodySm" themeColor="textSecondary">
+                          {item.affected_review_count} reviews
+                        </ThemedText>
+                      </View>
+                      <ThemedText type="bodyMd">{item.issue}</ThemedText>
+                      <ThemedText type="bodySm" themeColor="textSecondary">
+                        {item.recommendation}
+                      </ThemedText>
+                    </View>
+                  </FadeInBlock>
+                ))}
+              </View>
+            </FadeInBlock>
           )}
         </>
       )}
 
+      <FadeInBlock delay={140}>
       <View style={styles.sectionGroup}>
         <View style={styles.trendHeaderRow}>
           <ThemedText type="labelMd" themeColor="textSecondary">
@@ -256,7 +314,9 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
             </ThemedText>
           )}
         </View>
-        {returnsError ? (
+        {isReturnsStreaming && !returnsInsights ? (
+          <StreamingStatus label={returnsStage ?? 'Loading return data…'} />
+        ) : returnsError ? (
           <View style={[styles.errorCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
             <ThemedText type="bodyMd" themeColor="danger">
               {returnsError}
@@ -282,52 +342,62 @@ export function ProductInsightsPanel({ product }: { product: Product }) {
             </ListSection>
 
             {returnTrendPoints.length > 1 && (
-              <View
-                accessible
-                accessibilityRole="text"
-                accessibilityLabel={`Returns by month, from ${returnTrendMonths[0]} at ${returnTrendPoints[0]} to ${returnTrendMonths[returnTrendMonths.length - 1]} at ${returnTrendPoints[returnTrendPoints.length - 1]}`}>
-                <Sparkline points={returnTrendPoints} tone="aiInsight" />
-              </View>
+              <FadeInBlock delay={60}>
+                <View
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={`Returns by month, from ${returnTrendMonths[0]} at ${returnTrendPoints[0]} to ${returnTrendMonths[returnTrendMonths.length - 1]} at ${returnTrendPoints[returnTrendPoints.length - 1]}`}>
+                  <Sparkline points={returnTrendPoints} tone="aiInsight" />
+                </View>
+              </FadeInBlock>
             )}
 
             {sortedReturnReasons.length > 0 && (
-              <View style={styles.sectionGroup}>
-                <ThemedText type="labelMd" themeColor="textSecondary">
-                  TOP RETURN REASONS
-                </ThemedText>
-                {sortedReturnReasons.map((reason, index) => (
-                  <View
-                    key={`${reason.reason}-${index}`}
-                    style={[styles.actionCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
-                    <View style={styles.actionTopRow}>
-                      <ThemedText type="bodyMd">{reason.reason}</ThemedText>
-                      <ThemedText type="bodySm" themeColor="textSecondary">
-                        {reason.count} · {reason.percentage}%
-                      </ThemedText>
-                    </View>
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      {reason.likely_cause}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
+              <FadeInBlock delay={80}>
+                <View style={styles.sectionGroup}>
+                  <ThemedText type="labelMd" themeColor="textSecondary">
+                    TOP RETURN REASONS
+                  </ThemedText>
+                  {sortedReturnReasons.map((reason, index) => (
+                    <FadeInBlock key={`${reason.reason}-${index}`} delay={index * 50}>
+                      <View
+                        style={[styles.actionCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+                        <View style={styles.actionTopRow}>
+                          <ThemedText type="bodyMd">{reason.reason}</ThemedText>
+                          <ThemedText type="bodySm" themeColor="textSecondary">
+                            {reason.count} · {reason.percentage}%
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="bodySm" themeColor="textSecondary">
+                          {reason.likely_cause}
+                        </ThemedText>
+                      </View>
+                    </FadeInBlock>
+                  ))}
+                </View>
+              </FadeInBlock>
             )}
 
             {returnsInsights.recommendations.length > 0 && (
-              <View style={styles.sectionGroup}>
-                <ThemedText type="labelMd" themeColor="textSecondary">
-                  RECOMMENDATIONS
-                </ThemedText>
-                {returnsInsights.recommendations.map((recommendation, index) => (
-                  <ThemedText key={index} type="bodyMd" themeColor="textSecondary">
-                    {recommendation}
+              <FadeInBlock delay={100}>
+                <View style={styles.sectionGroup}>
+                  <ThemedText type="labelMd" themeColor="textSecondary">
+                    RECOMMENDATIONS
                   </ThemedText>
-                ))}
-              </View>
+                  {returnsInsights.recommendations.map((recommendation, index) => (
+                    <FadeInBlock key={index} delay={index * 40}>
+                      <ThemedText type="bodyMd" themeColor="textSecondary">
+                        {recommendation}
+                      </ThemedText>
+                    </FadeInBlock>
+                  ))}
+                </View>
+              </FadeInBlock>
             )}
           </>
         )}
       </View>
+      </FadeInBlock>
     </View>
   );
 }
@@ -361,6 +431,9 @@ const styles = StyleSheet.create({
   },
   retryText: {
     textDecorationLine: 'underline',
+  },
+  streamingText: {
+    fontStyle: 'italic',
   },
   scoreRow: {
     flexDirection: 'row',
