@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatPrice } from '@/components/product-kit';
+import { ChatMarkdown } from '@/components/chat-markdown';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -43,7 +44,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         <ThemedText type="labelMd" themeColor="textSecondary">
           TIJARAH AI
         </ThemedText>
-        <ThemedText type="bodyMd">{message.text}</ThemedText>
+        <ChatMarkdown text={message.text} />
       </View>
     </View>
   );
@@ -66,9 +67,11 @@ export function ProductChatPanel({
   const [isFocused, setIsFocused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  const lastMessageText = messages[messages.length - 1]?.text ?? '';
+
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages.length, isSending]);
+  }, [messages.length, lastMessageText, isSending]);
 
   const thumbnail = product.images?.[0] ?? product.image;
 
@@ -96,7 +99,7 @@ export function ProductChatPanel({
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
-        {isSending && (
+        {isSending && messages[messages.length - 1]?.role !== 'assistant' && (
           <View style={styles.assistantRow}>
             <View style={[styles.assistantRule, { backgroundColor: theme.primary }]} />
             <View style={styles.assistantTextGroup}>
