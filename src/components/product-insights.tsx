@@ -109,6 +109,8 @@ export function ProductInsightsPanel({ insights }: { insights: UseProductInsight
     isReviewStreaming,
     isReturnsStreaming,
     error,
+    reviewStage,
+    returnsStage,
     refetch,
   } = insights;
 
@@ -119,7 +121,7 @@ export function ProductInsightsPanel({ insights }: { insights: UseProductInsight
     return (
       <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
         <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-          Loading insights…
+          {reviewStage ?? returnsStage ?? 'Loading insights…'}
         </ThemedText>
       </View>
     );
@@ -221,7 +223,7 @@ export function ProductInsightsPanel({ insights }: { insights: UseProductInsight
                   </View>
                 </FadeInBlock>
               ) : isReviewStreaming ? (
-                <StreamingStatus label="Synthesizing summary…" />
+                <StreamingStatus label={reviewStage ?? 'Synthesizing summary…'} />
               ) : null}
             </View>
           </FadeInBlock>
@@ -243,6 +245,9 @@ export function ProductInsightsPanel({ insights }: { insights: UseProductInsight
                     </FadeInBlock>
                   ))}
                 </View>
+                {isReviewStreaming && reviewStage && (
+                  <StreamingStatus label={reviewStage} />
+                )}
               </View>
             </FadeInBlock>
           )}
@@ -310,7 +315,7 @@ export function ProductInsightsPanel({ insights }: { insights: UseProductInsight
           )}
         </View>
         {isReturnsStreaming && !returnsInsights ? (
-          <StreamingStatus label="Loading return data…" />
+          <StreamingStatus label={returnsStage ?? 'Loading return data…'} />
         ) : returnsError ? (
           <View style={[styles.errorCard, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
             <ThemedText type="bodyMd" themeColor="danger">
