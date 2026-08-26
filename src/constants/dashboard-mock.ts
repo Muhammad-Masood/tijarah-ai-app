@@ -27,6 +27,7 @@ export const dummyProducts: Product[] = [
     description: 'Heavyweight cotton hoodie, unisex fit, available in 4 colors.',
     image: '',
     category: 'Apparel',
+    url: '',
   },
   {
     id: 'sample-2',
@@ -35,6 +36,7 @@ export const dummyProducts: Product[] = [
     description: 'Bluetooth 5.3 earbuds with active noise cancellation.',
     image: '',
     category: 'Electronics',
+    url: '',
   },
   {
     id: 'sample-3',
@@ -43,6 +45,7 @@ export const dummyProducts: Product[] = [
     description: 'Set of 2 handmade ceramic mugs, 350ml capacity.',
     image: '',
     category: 'Home & Kitchen',
+    url: '',
   },
 ];
 

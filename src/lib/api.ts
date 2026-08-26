@@ -472,6 +472,385 @@ export type Product = {
   url: string;
 };
 
+export type ProductPlatform = "daraz" | "shopify";
+
+export type ListingDraft = {
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  imageUri: string;
+  attributes?: Record<string, string>;
+};
+
+export type ExpoMarketplaceImageAsset = {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  width?: number | null;
+  height?: number | null;
+};
+
+export type UploadedMarketplaceImageResponse = {
+  path: string;
+  public_url: string;
+  content_type: string;
+  size: number;
+};
+
+export type DarazProductAttribute = {
+  name?: string | null;
+  title?: string | null;
+  [key: string]: string | number | boolean | null | undefined;
+};
+
+export type DarazProductSku = {
+  SellerSku: string;
+  color_family: string;
+  size: string;
+  quantity: number;
+  price: number;
+  package_length: number;
+  package_height: number;
+  package_weight: number;
+  package_width: number;
+  package_content: string;
+  Images: string[];
+};
+
+export type DarazCreateProductPayload = {
+  PrimaryCategory: number | string;
+  Title: string;
+  Images: string[];
+  Attributes: DarazProductAttribute;
+  Skus: DarazProductSku[];
+};
+
+export type DarazCreateProductResponse = {
+  item_id?: string | number | null;
+  sku_id?: string | number | null;
+  status?: string | null;
+  message?: string | null;
+  code?: string | null;
+  request_id?: string | null;
+  data?: Record<string, unknown> | null;
+};
+
+export type DarazUploadImagesResult = {
+  uploaded: UploadedMarketplaceImageResponse[];
+  failed: { index: number; image: ExpoMarketplaceImageAsset; error: string }[];
+};
+
+/** Typed boundary for marketplace features not exposed by the current backend. */
+export class UnsupportedBackendCapabilityError extends ApiError {
+  constructor(capability: string) {
+    super(501, `${capability} is not available in the connected backend yet.`);
+    this.name = "UnsupportedBackendCapabilityError";
+  }
+}
+
+export function generateProductListing(
+  _accessToken: string,
+  _data: Pick<ListingDraft, "imageUri" | "category">,
+): Promise<Pick<ListingDraft, "title" | "description" | "category">> {
+  return Promise.reject(new UnsupportedBackendCapabilityError("AI listing generation"));
+}
+
+export type DarazCategory = {
+  id?: string | number | null;
+  name?: string | null;
+  category_id?: string | number | null;
+  category_name?: string | null;
+  parent_id?: string | number | null;
+  children?: DarazCategory[] | null;
+  status?: string | null;
+  is_active?: boolean | null;
+};
+
+function normalizeDarazCategory(raw: unknown): DarazCategory | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const item = raw as Record<string, unknown>;
+  const id = item.id ?? item.category_id ?? item.categoryId ?? item.categoryid ?? null;
+  const name =
+    item.name ??
+    item.category_name ??
+    item.categoryName ??
+    item.category ??
+    item.title ??
+    item.label ??
+    null;
+
+  if (id == null && name == null) return null;
+
+  const parentId = item.parent_id ?? item.parentId ?? item.parentID ?? null;
+  const safeParentId = typeof parentId === "string" || typeof parentId === "number" ? parentId : null;
+
+  return {
+    id: id == null ? undefined : String(id),
+    name: typeof name === "string" ? name : name == null ? undefined : String(name),
+    category_id: id == null ? undefined : String(id),
+    category_name: typeof name === "string" ? name : name == null ? undefined : String(name),
+    parent_id: safeParentId,
+    children: Array.isArray(item.children) ? item.children.map(normalizeDarazCategory).filter(Boolean) as DarazCategory[] : undefined,
+    status: typeof item.status === "string" ? item.status : null,
+    is_active: typeof item.is_active === "boolean" ? item.is_active : null,
+  };
+}
+
+function isLiveDarazCategory(category: DarazCategory): boolean {
+  return category.is_active !== false && !["inactive", "disabled", "deleted"].includes(category.status?.toLowerCase() ?? "");
+}
+
+function normalizeDarazCategoryList(response: unknown): DarazCategory[] {
+  if (Array.isArray(response)) {
+    return (response.map(normalizeDarazCategory).filter(Boolean) as DarazCategory[]).filter(isLiveDarazCategory);
+  }
+
+  if (response && typeof response === "object") {
+    const body = response as Record<string, unknown>;
+    const nestedData = body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : undefined;
+    const directCandidates: unknown[] = [
+      body.categories,
+      body.data,
+      body.result,
+      body.items,
+      body.category_list,
+      body.categoryList,
+      nestedData?.categories,
+    ];
+
+    for (const candidate of directCandidates) {
+      if (Array.isArray(candidate)) {
+        return (candidate.map(normalizeDarazCategory).filter(Boolean) as DarazCategory[]).filter(isLiveDarazCategory);
+      }
+      if (candidate && typeof candidate === "object") {
+        const nested = candidate as Record<string, unknown>;
+        const nestedList = nested.categories ?? nested.items ?? nested.data ?? nested.result;
+        if (Array.isArray(nestedList)) {
+          return (nestedList.map(normalizeDarazCategory).filter(Boolean) as DarazCategory[]).filter(isLiveDarazCategory);
+        }
+      }
+    }
+  }
+
+  return [];
+}
+
+export function getDarazAllCategories(accessToken: string): Promise<DarazCategory[]> {
+  return request<unknown>("/daraz/get_all_categories", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  }).then((response) => normalizeDarazCategoryList(response));
+}
+
+function extractNestedString(value: unknown, keys: string[]): string | null {
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) return candidate.trim();
+  }
+
+  for (const key of ["data", "result", "response", "payload", "image"]) {
+    const nested = record[key];
+    const nestedValue = nested && typeof nested === "object" ? extractNestedString(nested, keys) : null;
+    if (nestedValue) return nestedValue;
+  }
+
+  return null;
+}
+
+function normalizeHttpsUrl(value: string, label: string): string {
+  const candidate = value.trim();
+  if (!candidate) throw new ApiError(400, `${label} is missing.`);
+  if (!/^https:\/\//i.test(candidate)) {
+    throw new ApiError(400, `${label} must be a public HTTPS URL.`);
+  }
+  return candidate;
+}
+
+function normalizePublicHttpsUrl(value: string, label: string): string {
+  const candidate = normalizeHttpsUrl(value, label);
+  if (!candidate.includes("/product-images/")) {
+    throw new ApiError(400, `${label} must point to the public product-images bucket.`);
+  }
+  return candidate;
+}
+
+export function uploadMarketplaceProductImage(
+  accessToken: string,
+  marketplace: ProductPlatform,
+  image: ExpoMarketplaceImageAsset,
+): Promise<UploadedMarketplaceImageResponse> {
+  if (!image?.uri) {
+    throw new ApiError(400, "Select an image before uploading it.");
+  }
+
+  const mimeType = image.mimeType ?? "image/jpeg";
+  if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(mimeType)) {
+    throw new ApiError(400, "Unsupported image type. Use JPEG, PNG, or WebP.");
+  }
+
+  const size = image.fileSize ?? 0;
+  if (size <= 0) {
+    throw new ApiError(400, "The selected image is empty. Please choose a valid file.");
+  }
+  if (size > 5 * 1024 * 1024) {
+    throw new ApiError(400, "The selected image is too large. Keep it under 5 MB.");
+  }
+
+  const sanitizedName = (image.fileName ?? "product-image")
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "") || "product-image";
+
+  const formData = new FormData();
+  const fileValue = {
+    uri: image.uri,
+    name: sanitizedName || "product-image",
+    type: mimeType,
+  } as any;
+  formData.append("file", fileValue);
+  formData.append("marketplace", marketplace);
+
+  return request<UploadedMarketplaceImageResponse>("/storage/product-images", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  }).then((response) => {
+    const publicUrl = extractNestedString(response, ["public_url", "publicUrl", "url", "image_url", "imageUrl"]) ?? "";
+    if (!publicUrl) {
+      throw new ApiError(400, "The upload succeeded but the backend did not return a public image URL.");
+    }
+
+    return { ...response, path: response.path ?? "", public_url: normalizePublicHttpsUrl(publicUrl, "Uploaded image URL") };
+  });
+}
+
+export async function uploadMarketplaceProductImages(
+  accessToken: string,
+  marketplace: ProductPlatform,
+  images: ExpoMarketplaceImageAsset[],
+): Promise<DarazUploadImagesResult> {
+  const uploaded: UploadedMarketplaceImageResponse[] = [];
+  const failed: DarazUploadImagesResult["failed"] = [];
+
+  for (const [index, image] of images.entries()) {
+    try {
+      const result = await uploadMarketplaceProductImage(accessToken, marketplace, image);
+      uploaded.push(result);
+    } catch (error) {
+      failed.push({
+        index,
+        image,
+        error: error instanceof ApiError ? error.message : "The image upload failed.",
+      });
+    }
+  }
+
+  return { uploaded, failed };
+}
+
+export function cleanupMarketplaceProductImages(accessToken: string, paths: string[]): Promise<{ deleted: string[] }> {
+  return request<{ deleted: string[] }>("/storage/product-images/cleanup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+export function migrateDarazImage(
+  accessToken: string,
+  darazAccessToken: string,
+  imageUrl: string,
+): Promise<{ imageUrl: string }> {
+  const normalizedImageUrl = normalizePublicHttpsUrl(imageUrl, "Daraz migration input");
+
+  return request<unknown>("/daraz/migrate_image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "x-daraz-access-token": darazAccessToken,
+    },
+    body: JSON.stringify({ image_url: normalizedImageUrl }),
+  }).then((response) => {
+    const migratedUrl = extractNestedString(response, ["migrated_url", "migratedUrl", "image_url", "imageUrl", "url", "public_url"]);
+    if (!migratedUrl || migratedUrl === normalizedImageUrl) {
+      throw new ApiError(502, "Daraz did not return a migrated image URL.");
+    }
+
+    return { imageUrl: normalizeHttpsUrl(migratedUrl, "Daraz migrated image URL") };
+  });
+}
+
+function normalizeDarazCreateProductResponse(response: unknown): DarazCreateProductResponse {
+  if (!response || typeof response !== "object") {
+    return { message: "Daraz product creation returned an unexpected empty response." };
+  }
+
+  const record = response as Record<string, unknown>;
+  const nestedData = record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : null;
+  const itemId =
+    record.item_id ??
+    record.itemId ??
+    (nestedData && "item_id" in nestedData ? nestedData.item_id : null) ??
+    null;
+
+  const rawSkuId =
+    record.sku_id ??
+    (nestedData && "sku_id" in nestedData ? nestedData.sku_id : null) ??
+    null;
+
+  return {
+    item_id: itemId == null ? null : String(itemId),
+    sku_id: typeof rawSkuId === "string" || typeof rawSkuId === "number" ? rawSkuId : null,
+    status: typeof record.status === "string" ? record.status : undefined,
+    message: typeof record.message === "string" ? record.message : undefined,
+    code: typeof record.code === "string" ? record.code : undefined,
+    request_id: typeof record.request_id === "string" ? record.request_id : undefined,
+    data: record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined,
+  };
+}
+
+export function createNewDarazProduct(
+  accessToken: string,
+  darazAccessToken: string,
+  data: DarazCreateProductPayload,
+): Promise<DarazCreateProductResponse> {
+  return request<unknown>("/daraz/create_new_product", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "x-daraz-access-token": darazAccessToken,
+    },
+    body: JSON.stringify(data),
+  }).then((response) => {
+    const normalized = normalizeDarazCreateProductResponse(response);
+    if (normalized.code && normalized.code !== "0") {
+      throw new ApiError(422, normalized.message || `Daraz rejected product creation (code ${normalized.code}).`);
+    }
+    if (!normalized.item_id) {
+      throw new ApiError(502, normalized.message || "Daraz did not return a product item ID.");
+    }
+    return normalized;
+  });
+}
+
+export function createShopifyProduct(
+  _accessToken: string,
+  _data: ListingDraft,
+): Promise<unknown> {
+  return Promise.reject(new UnsupportedBackendCapabilityError("Shopify product publishing"));
+}
+
 export function getProducts(accessToken: string): Promise<Product[]> {
   return request<Product[]>("/product/get_products", {
     headers: { Authorization: `Bearer ${accessToken}` },
