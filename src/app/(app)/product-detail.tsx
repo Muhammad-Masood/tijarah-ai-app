@@ -15,7 +15,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useDarazProducts } from '@/hooks/use-daraz-products';
-import { useProduct } from '@/hooks/use-product';
+import { useShopifyProducts } from '@/hooks/use-shopify-products';
 import { useProductInsights } from '@/hooks/use-product-insights';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, deleteProduct, type Product } from '@/lib/api';
@@ -27,15 +27,17 @@ export default function ProductDetailScreen() {
   const { accessToken } = useAuth();
   const { id, source } = useLocalSearchParams<{ id?: string; source?: string }>();
   const isDaraz = source === 'daraz';
-
+  const isShopify = source === 'shopify';
   const daraz = useDarazProducts();
+  const shopify = useShopifyProducts();
 
-  const product: Product | null = isDaraz ? (daraz.products.find((p) => p.id === id) ?? null) : null;
-  const isLoading = isDaraz ? daraz.isLoading : false;
-  const error = isDaraz ? daraz.error : null;
-  const refetch = daraz.refetch;
-  const notFound = isDaraz && !isLoading && !error && !product;
-
+  const product: Product | null = isDaraz
+    ? (daraz.products.find((item) => item.id === id) ?? null)
+    : isShopify ? (shopify.products.find((item) => item.id === id) ?? null) : null;
+  const isLoading = isDaraz ? daraz.isLoading : isShopify ? shopify.isLoading : false;
+  const error = isDaraz ? daraz.error : isShopify ? shopify.error : null;
+  const refetch = isDaraz ? daraz.refetch : shopify.refetch;
+  const notFound = (isDaraz || isShopify) && !isLoading && !error && !product;
   const images = useMemo(() => {
     if (!product) return [];
     if (product.images && product.images.length > 0) return product.images;
@@ -56,7 +58,7 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     if (needsInsightsNow) setNeedsInsights(true);
   }, [needsInsightsNow]);
-  const insights = useProductInsights(product, { enabled: needsInsights });
+  const insights = useProductInsights(product, { enabled: needsInsights && isDaraz });
 
   function handleDelete() {
     if (!product?.id || !accessToken) return;
@@ -203,13 +205,13 @@ export default function ProductDetailScreen() {
                     <ThemedText type="bodyMd">{product.description}</ThemedText>
                   </View>
 
-                  {isDaraz && (
+                  {(isDaraz || isShopify) && (
                     <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
-                      This product is managed on Daraz.
+                      This product is managed on {isDaraz ? 'Daraz' : 'Shopify'}.
                     </ThemedText>
                   )}
 
-                  {!isDaraz && (
+                  {!isDaraz && !isShopify && (
                     <>
                       {deleteError && (
                         <ThemedText type="bodySm" themeColor="danger" style={styles.centerText}>

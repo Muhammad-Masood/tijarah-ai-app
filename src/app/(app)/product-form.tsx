@@ -14,10 +14,12 @@ import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useProduct } from '@/hooks/use-product';
 import { useTheme } from '@/hooks/use-theme';
+import { useShopifyTaxonomy } from '@/hooks/use-shopify-taxonomy';
 import {
   ApiError,
   createNewDarazProduct,
   createProduct,
+  createShopifyProduct,
   cleanupMarketplaceProductImages,
   generateProductListing,
   getDarazAllCategories,
@@ -67,6 +69,11 @@ export default function ProductFormScreen() {
   const { product, isLoading: isLoadingProduct } = useProduct(id);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [vendor, setVendor] = useState('');
+  const [tags, setTags] = useState('');
+  const [selectedShopifyCollectionIds, setSelectedShopifyCollectionIds] = useState<string[]>([]);
+  const [selectedShopifyCategoryId, setSelectedShopifyCategoryId] = useState<string | null>(null);
   const [category, setCategory] = useState('');
   const [image, setImage] = useState('');
   const [description, setDescription] = useState('');
@@ -98,6 +105,7 @@ export default function ProductFormScreen() {
   const [aiGeneratedFields, setAiGeneratedFields] = useState<string[]>([]);
   const [preparedImages, setPreparedImages] = useState<{ signature: string; urls: string[]; paths: string[] } | null>(null);
   const [datePickerStage, setDatePickerStage] = useState<'date' | 'time'>('date');
+  const shopifyTaxonomy = useShopifyTaxonomy(platform === 'shopify');
 
   useEffect(() => {
     if (isEditMode || !accessToken) return;
@@ -378,6 +386,48 @@ export default function ProductFormScreen() {
       setProgressDetail('');
     }
   }
+  async function publishToShopify(connection: MarketplaceConnection) {
+    if (!accessToken || !connection.encrypted_access_token) return;
+    const inventory = Number(quantity);
+    if (!Number.isInteger(inventory) || inventory < 0) { setFormError('Enter a valid non-negative inventory quantity.'); return; }
+    if (!selectedImageAssets.length) { setFieldErrors((current) => ({ ...current, image: 'Select at least one product image.' })); return; }
+    setIsPublishing(true); setFormError(null); setPublishMessage(null); setPublishProgress('uploading_images');
+    let uploadedPaths: string[] = [];
+    try {
+      let uploadedUrls: string[];
+      if (preparedImages?.signature === imageSelectionSignature) {
+        uploadedUrls = preparedImages.urls; uploadedPaths = preparedImages.paths;
+      } else {
+        const upload = await uploadMarketplaceProductImages(accessToken, 'shopify', selectedImageAssets, (completed, total) => setProgressDetail(`Uploading image ${completed} of ${total}`));
+        uploadedPaths = upload.uploaded.map((entry) => entry.path);
+        if (upload.failed.length) throw new ApiError(400, `Image ${upload.failed[0].index + 1}: ${upload.failed[0].error}`);
+        uploadedUrls = upload.uploaded.map((entry) => entry.public_url);
+      }
+      setPublishProgress('creating_product'); setProgressDetail('Creating Shopify product');
+      const response = await createShopifyProduct(accessToken, connection.encrypted_access_token, {
+        title: title.trim(),
+        descriptionHtml: description.trim(),
+        vendor: vendor.trim() || null,
+        tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        collectionsToJoin: selectedShopifyCollectionIds,
+        category: selectedShopifyCategoryId,
+        inventory,
+        price: price.trim(),
+        images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
+      });
+      setPublishProgress('completed'); setProgressDetail('Product published');
+      const record = response && typeof response === 'object' ? response as Record<string, unknown> : null;
+      const productId = record?.id ?? (record?.product && typeof record.product === 'object' ? (record.product as Record<string, unknown>).id : null);
+      setPublishMessage(productId ? `Shopify product published (${String(productId)}).` : 'Shopify product published successfully.');
+      setPreparedImages(null); setSelectedImageAssets([]); setImage(''); setTitle(''); setDescription(''); setPrice(''); setQuantity('1'); setVendor(''); setTags(''); setCategory(''); setSelectedShopifyCategoryId(null); setSelectedShopifyCollectionIds([]);
+      setTimeout(() => router.back(), 1200);
+    } catch (err) {
+      setPublishProgress('failed');
+      setFormError(err instanceof ApiError ? err.message : 'Could not publish the Shopify product.');
+      if (uploadedPaths.length) cleanupMarketplaceProductImages(accessToken, uploadedPaths).catch(() => undefined);
+      if (preparedImages?.signature === imageSelectionSignature) setPreparedImages(null);
+    } finally { setIsPublishing(false); }
+  }
   async function handlePublish() {
     if (isPublishing) return;
     const errors = validate();
@@ -389,7 +439,7 @@ export default function ProductFormScreen() {
       return;
     }
     if (platform === 'shopify') {
-      setFormError('Shopify product publishing is not available in the connected backend yet.');
+      await publishToShopify(activeConnection);
       return;
     }
     if (!selectedDarazCategoryId) {
@@ -519,7 +569,7 @@ export default function ProductFormScreen() {
     }
     if (!description.trim()) errors.description = 'Description is required.';
     if (!image.trim()) errors.image = 'Select at least one product image.';
-    if (!category.trim()) errors.category = 'Category is required.';
+    if (platform === 'daraz' && !category.trim()) errors.category = 'Category is required.';
     return errors;
   }
 
@@ -605,7 +655,7 @@ export default function ProductFormScreen() {
                     return (
                       <Pressable key={connection.id} disabled={isPublishing || connections.length === 1} onPress={() => {
                         setPlatform(option); setSelectedDarazCategoryId(null); setCategory('');
-                        setDarazAttributeValues({}); setFormError(null);
+                        setDarazAttributeValues({}); setSelectedShopifyCategoryId(null); setSelectedShopifyCollectionIds([]); setFormError(null);
                       }} style={[styles.platformButton, { borderColor: theme.border }, platform === option && { backgroundColor: theme.primaryContainer, borderColor: theme.primary }]}>
                         <Image source={{ uri: connection.marketplace!.logo_url }} style={styles.marketplaceLogo} contentFit="contain" />
                         <ThemedText type="bodyMd" themeColor={platform === option ? 'onPrimaryContainer' : 'text'}>{connection.marketplace!.name}</ThemedText>
@@ -613,7 +663,6 @@ export default function ProductFormScreen() {
                     );
                   })}
                 </View>
-                {platform === 'shopify' && <ThemedText type="bodySm" themeColor="textSecondary">Shopify publishing is not available in the backend yet.</ThemedText>}
               </>}
               <AuthField
                 label="Title"
@@ -635,20 +684,29 @@ export default function ProductFormScreen() {
                 required
                 rightAdornment={<ThemedText type="bodyMd" themeColor="textSecondary">PKR</ThemedText>}
               />
-              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+              {platform === 'shopify' && <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <SectionHeading title="Shopify listing" subtitle="Inventory and storefront organization." />
+                <AuthField label="Quantity" value={quantity} onChangeText={(value) => setQuantity(value.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="1" required />
+                <AuthField label="Vendor" value={vendor} onChangeText={setVendor} placeholder="Brand or supplier" />
+                <AuthField label="Tags" value={tags} onChangeText={setTags} placeholder="summer, apparel, featured" helperText="Separate tags with commas." />
+                <View style={styles.fieldGroup}><ThemedText type="bodyMd" themeColor="textSecondary">Collections</ThemedText>
+                  {shopifyTaxonomy.isLoading ? <ActivityIndicator color={theme.primary} /> : shopifyTaxonomy.collections.length ? <View style={styles.categoryRow}>{shopifyTaxonomy.collections.map((collection) => { const selected = selectedShopifyCollectionIds.includes(collection.id); return <Pressable key={collection.id} onPress={() => setSelectedShopifyCollectionIds((current) => selected ? current.filter((id) => id !== collection.id) : [...current, collection.id])} style={[styles.categoryChip, { borderColor: selected ? theme.primary : theme.border, backgroundColor: selected ? theme.primaryContainer : theme.surfaceContainerLowest }]}><ThemedText type="bodySm" themeColor={selected ? 'onPrimaryContainer' : 'text'}>{collection.title}</ThemedText></Pressable>; })}</View> : <ThemedText type="bodySm" themeColor="textSecondary">No collections found. The product can still be published.</ThemedText>}
+                  {shopifyTaxonomy.error && <ThemedText type="bodySm" themeColor="danger">{shopifyTaxonomy.error}</ThemedText>}
+                </View>
+              </View>}              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
                 <SectionHeading title="Category" subtitle="Required · Select the most specific product category." />
-                <Pressable onPress={() => setIsCategoryModalVisible(true)} disabled={platform !== 'daraz'} style={[styles.categoryCard, { borderColor: fieldErrors.category ? theme.danger : theme.border }]} accessibilityRole="button" accessibilityLabel="Select category">
+                <Pressable onPress={() => setIsCategoryModalVisible(true)} disabled={!platform} style={[styles.categoryCard, { borderColor: fieldErrors.category ? theme.danger : theme.border }]} accessibilityRole="button" accessibilityLabel="Select category">
                   <View style={[styles.categoryIcon, { backgroundColor: theme.primaryContainer }]}><Ionicons name="grid-outline" size={22} color={theme.primary} /></View>
                   <View style={styles.categoryCopy}>
-                    <ThemedText type="bodyMd">{selectedDarazCategoryId ? darazCategoryPath.at(-1)?.name ?? category.split(' / ').at(-1) : 'Select Category'}</ThemedText>
+                    <ThemedText type="bodyMd">{platform === 'shopify' ? (selectedShopifyCategoryId ? category : 'Select Shopify category') : (selectedDarazCategoryId ? darazCategoryPath.at(-1)?.name ?? category.split(' / ').at(-1) : 'Select Category')}</ThemedText>
                     <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={2}>{category || 'No category selected'}</ThemedText>
                   </View>
-                  <ThemedText type="bodyMd" themeColor="primary">{selectedDarazCategoryId ? 'Change' : 'Select'}</ThemedText>
+                  <ThemedText type="bodyMd" themeColor="primary">{(platform === 'shopify' ? selectedShopifyCategoryId : selectedDarazCategoryId) ? 'Change' : 'Select'}</ThemedText>
                 </Pressable>
                 {fieldErrors.category && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.category}</ThemedText>}
                 {darazCategoriesError && <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>}
               </View>
-              <Modal visible={isCategoryModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsCategoryModalVisible(false)}>
+              <Modal visible={isCategoryModalVisible && platform === 'daraz'} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsCategoryModalVisible(false)}>
                 <ThemedView style={styles.modalScreen}>
                   <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                     <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}><Pressable onPress={() => setIsCategoryModalVisible(false)} style={styles.modalAction}><ThemedText type="bodyMd" themeColor="primary">Close</ThemedText></Pressable><ThemedText type="headlineSm">Select Category</ThemedText><View style={styles.modalAction} /></View>
@@ -670,6 +728,17 @@ export default function ProductFormScreen() {
                     </ScrollView>
                   </SafeAreaView>
                 </ThemedView>
+              </Modal>
+              <Modal visible={isCategoryModalVisible && platform === 'shopify'} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsCategoryModalVisible(false)}>
+                <ThemedView style={styles.modalScreen}><SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                  <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}><Pressable onPress={() => setIsCategoryModalVisible(false)} style={styles.modalAction}><ThemedText type="bodyMd" themeColor="primary">Close</ThemedText></Pressable><ThemedText type="headlineSm">Shopify category</ThemedText><View style={styles.modalAction} /></View>
+                  <ScrollView contentContainerStyle={styles.modalContent}>
+                    {shopifyTaxonomy.isLoading && <ActivityIndicator color={theme.primary} />}
+                    {shopifyTaxonomy.error && <View style={styles.statusBlock}><ThemedText type="bodyMd" themeColor="danger">{shopifyTaxonomy.error}</ThemedText><Pressable onPress={shopifyTaxonomy.refetch}><ThemedText type="bodyMd" themeColor="primary">Retry</ThemedText></Pressable></View>}
+                    {!shopifyTaxonomy.isLoading && !shopifyTaxonomy.error && shopifyTaxonomy.categories.length === 0 && <ThemedText type="bodyMd" themeColor="textSecondary">No Shopify taxonomy categories are available.</ThemedText>}
+                    {shopifyTaxonomy.categories.map((option) => <Pressable key={option.id} onPress={() => { setSelectedShopifyCategoryId(option.id); setCategory(option.fullName ?? option.name); setFieldErrors((current) => ({ ...current, category: undefined })); setIsCategoryModalVisible(false); }} style={[styles.categoryListItem, { borderColor: theme.border }]}><View style={styles.categoryCopy}><ThemedText type="bodyMd">{option.name}</ThemedText>{option.fullName && <ThemedText type="bodySm" themeColor="textSecondary">{option.fullName}</ThemedText>}</View><Ionicons name="checkmark-circle-outline" size={20} color={theme.primary} /></Pressable>)}
+                  </ScrollView>
+                </SafeAreaView></ThemedView>
               </Modal>
               {isEditMode && <AuthField
                 label="Image URL"
@@ -785,8 +854,8 @@ export default function ProductFormScreen() {
                     Save Changes
                   </ThemedText>
                 )}
-              </PressableScale> : <PressableScale disabled={isPublishing || !platform || platform === 'shopify' || (platform === 'daraz' && (darazCategories.length === 0 || !!darazCategoriesError))} onPress={handlePublish} style={[styles.ctaButton, { backgroundColor: theme.primary }]}>
-                {isPublishing ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.onPrimary} /><ThemedText type="bodyMd" themeColor="onPrimary">{progressDetail}</ThemedText></View> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Shopify Publishing Unavailable' : publishProgress === 'uploading_images' ? 'Uploading ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'migrating_images' ? 'Migrating ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'creating_product' ? 'Creating product' : publishProgress === 'completed' ? 'Product published' : 'Publish to Daraz'}</ThemedText>}
+              </PressableScale> : <PressableScale disabled={isPublishing || !platform || (platform === 'daraz' && (darazCategories.length === 0 || !!darazCategoriesError))} onPress={handlePublish} style={[styles.ctaButton, { backgroundColor: theme.primary }]}>
+                {isPublishing ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.onPrimary} /><ThemedText type="bodyMd" themeColor="onPrimary">{progressDetail}</ThemedText></View> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Publish to Shopify' : publishProgress === 'uploading_images' ? 'Uploading ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'migrating_images' ? 'Migrating ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'creating_product' ? 'Creating product' : publishProgress === 'completed' ? 'Product published' : 'Publish to Daraz'}</ThemedText>}
               </PressableScale>}
             </View>
           )}
@@ -902,6 +971,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: Radius.sm,
   },
+  fieldGroup: { gap: Spacing.one },
   section: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, gap: Spacing.three },
   categoryCard: { minHeight: 72, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   categoryIcon: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
