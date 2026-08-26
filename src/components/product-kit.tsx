@@ -15,7 +15,7 @@ export function formatPrice(price: number): string {
 type StockLevel = 'in' | 'low' | 'out';
 
 /** Daraz reports quantity summed across SKUs — bucket it into a merchant-scannable state rather than a raw count. */
-function getStockLevel(quantity?: number): StockLevel | null {
+export function getStockLevel(quantity?: number): StockLevel | null {
   if (quantity === undefined) return null;
   if (quantity <= 0) return 'out';
   if (quantity <= 5) return 'low';
