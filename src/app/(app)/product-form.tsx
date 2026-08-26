@@ -262,6 +262,7 @@ export default function ProductFormScreen() {
       };
 
       setPublishProgress('creating_product');
+      console.log("create_new_product", accessToken, activeConnection.encrypted_access_token, payload)
       const response = await createNewDarazProduct(accessToken, activeConnection.encrypted_access_token, payload);
       setPublishProgress('completed');
       setPublishMessage(response.item_id ? 'Daraz listing created successfully (item ' + response.item_id + ').' : response.message || 'Daraz listing created successfully.');
@@ -407,27 +408,27 @@ export default function ProductFormScreen() {
                 error={fieldErrors.category}
               />
               {platform === 'daraz' && <><ThemedText type="labelMd" themeColor="textSecondary">DARAZ CATEGORY</ThemedText>
-              {darazCategoriesError && (
-                <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>
-              )}
-              <View style={styles.categoryRow}>
-                {darazCategories.map((option) => {
-                  const optionId = String(option.id ?? option.category_id ?? '');
-                  const optionName = option.name ?? option.category_name ?? 'Unnamed category';
-                  return (
-                    <Pressable
-                      key={optionId || optionName}
-                      onPress={() => {
-                        setCategory(optionName);
-                        setSelectedDarazCategoryId(optionId);
-                      }}
-                      style={[styles.categoryChip, { borderColor: theme.border }, category === optionName && { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                    >
-                      <ThemedText type="bodySm" themeColor={category === optionName ? 'onPrimary' : 'text'}>{optionName}</ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </View></>}
+                {darazCategoriesError && (
+                  <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>
+                )}
+                <View style={styles.categoryRow}>
+                  {darazCategories.map((option) => {
+                    const optionId = String(option.id ?? option.category_id ?? '');
+                    const optionName = option.name ?? option.category_name ?? 'Unnamed category';
+                    return (
+                      <Pressable
+                        key={optionId || optionName}
+                        onPress={() => {
+                          setCategory(optionName);
+                          setSelectedDarazCategoryId(optionId);
+                        }}
+                        style={[styles.categoryChip, { borderColor: theme.border }, category === optionName && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                      >
+                        <ThemedText type="bodySm" themeColor={category === optionName ? 'onPrimary' : 'text'}>{optionName}</ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View></>}
               {isEditMode && <AuthField
                 label="Image URL"
                 value={image}
