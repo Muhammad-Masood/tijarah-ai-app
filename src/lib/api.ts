@@ -382,6 +382,41 @@ export async function getDarazAuthorizeUrl(accessToken: string): Promise<string>
   return response.url;
 }
 
+// `GET /shopify/get_auth_code?shop=<shop-domain>` is Bearer-protected and
+// responds with a 302 to Shopify's OAuth authorize page. `fetch` follows
+// redirects, so the final authorize URL is available at `response.url`.
+export async function getShopifyAuthorizeUrl(
+  accessToken: string,
+  shop: string,
+): Promise<string> {
+  const normalizedShop = shop.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  if (!normalizedShop) {
+    throw new ApiError(400, "Shop domain is required.");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_BASE_URL}/shopify/get_auth_code?shop=${encodeURIComponent(normalizedShop)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+  } catch {
+    throw new ApiError(
+      0,
+      "Could not reach the server. Check your connection and try again.",
+    );
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `Could not start the Shopify connection (${response.status}).`,
+    );
+  }
+
+  return response.url;
+}
+
 // `GET /daraz/get_all_products` declares an untyped (`{}`) response body in
 // the backend's schema (no `response_model` set) — it's the raw pass-through
 // of Daraz's Open Platform `GetProducts` response (confirmed field names via

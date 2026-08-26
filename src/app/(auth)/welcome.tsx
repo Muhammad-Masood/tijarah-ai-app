@@ -22,10 +22,7 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.flex}>
         <View style={styles.content}>
           <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(300)} style={styles.brandRow}>
-            <BrandMark size="sm" />
-            <ThemedText type="headlineSm" themeColor="primary">
-              Tijarah AI
-            </ThemedText>
+            <BrandMark size="lg" />
           </Animated.View>
 
           <View style={styles.spacer} />

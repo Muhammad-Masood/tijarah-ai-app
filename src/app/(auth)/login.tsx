@@ -22,16 +22,14 @@ export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canSubmit = EMAIL_PATTERN.test(email) && password.length > 0 && !isSubmitting;
+  const fieldsValid = EMAIL_PATTERN.test(email) && password.length > 0;
+  const canSubmit = fieldsValid && !isSubmitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
     setFormError(null);
     setIsSubmitting(true);
     try {
-      // No navigation here: a successful sign-in flips `session` in
-      // AuthProvider, and the root `Stack.Protected` switch reacts by
-      // mounting the (app) group and discarding the (auth) group's history.
       await signInMerchant(email, password);
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'Something went wrong. Please try again.');
@@ -42,14 +40,11 @@ export default function LoginScreen() {
 
   return (
     <AuthFormScaffold>
-      <Animated.View entering={stagger(0)}>
-        <BrandMark size="sm" />
-      </Animated.View>
-
       <Animated.View entering={stagger(60)} style={styles.headerBlock}>
         <ThemedText type="headlineMd" themeColor="primary" style={styles.centerText}>
-          Tijarah AI
+          <BrandMark size="lg" />
         </ThemedText>
+
         <ThemedText type="bodyLg" themeColor="textSecondary" style={styles.centerText}>
           Welcome back. Log in to your account.
         </ThemedText>
@@ -92,13 +87,16 @@ export default function LoginScreen() {
           <PressableScale
             disabled={!canSubmit}
             onPress={handleSubmit}
-            style={[styles.ctaButton, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
+            style={[
+              styles.ctaButton,
+              { backgroundColor: fieldsValid || isSubmitting ? theme.primary : theme.backgroundElement },
+            ]}>
             {isSubmitting ? (
               <ActivityIndicator color={theme.onPrimary} />
             ) : (
               <ThemedText
                 type="bodyLg"
-                style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
+                style={[styles.emphasisText, { color: fieldsValid ? theme.onPrimary : theme.textSecondary }]}>
                 Log in
               </ThemedText>
             )}

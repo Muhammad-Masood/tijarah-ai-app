@@ -24,6 +24,7 @@ import Animated, {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ManropeFamily, Radius, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -82,12 +83,14 @@ export function AuthFormScaffold({ children }: { children: ReactNode }) {
   );
 }
 
-export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const box = size === 'sm' ? 56 : 88;
+export function BrandMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const box = size === 'sm' ? 56 : size === 'md' ? 88 : 120;
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
 
   return (
     <Image
-      source={require('@/assets/images/tijarah_logo.png')}
+      source={isDark ? require('@/assets/images/tijarah_logo_dark.png') : require('@/assets/images/tijarah_logo_light.png')}
       style={{ width: box, height: box }}
       contentFit="contain"
     />

@@ -37,13 +37,13 @@ export default function SignupScreen() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const strength = passwordStrength(password);
-  const canSubmit =
+  const fieldsValid =
     fullName.trim().length > 0 &&
     businessName.trim().length > 1 &&
     EMAIL_PATTERN.test(email) &&
     password.length >= 8 &&
-    agreed &&
-    !isSubmitting;
+    agreed;
+  const canSubmit = fieldsValid && !isSubmitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -66,13 +66,9 @@ export default function SignupScreen() {
 
   return (
     <AuthFormScaffold>
-      <Animated.View entering={stagger(0)}>
-        <BrandMark size="sm" />
-      </Animated.View>
-
       <Animated.View entering={stagger(60)} style={styles.headerBlock}>
         <ThemedText type="headlineMd" themeColor="primary" style={styles.centerText}>
-          Tijarah AI
+          <BrandMark size="lg" />
         </ThemedText>
         <ThemedText type="bodyLg" themeColor="textSecondary" style={styles.centerText}>
           Create your account to start selling.
@@ -159,13 +155,16 @@ export default function SignupScreen() {
           <PressableScale
             disabled={!canSubmit}
             onPress={handleSubmit}
-            style={[styles.ctaButton, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
+            style={[
+              styles.ctaButton,
+              { backgroundColor: fieldsValid || isSubmitting ? theme.primary : theme.backgroundElement },
+            ]}>
             {isSubmitting ? (
               <ActivityIndicator color={theme.onPrimary} />
             ) : (
               <ThemedText
                 type="bodyLg"
-                style={[styles.emphasisText, { color: canSubmit ? theme.onPrimary : theme.textSecondary }]}>
+                style={[styles.emphasisText, { color: fieldsValid ? theme.onPrimary : theme.textSecondary }]}>
                 Create account
               </ThemedText>
             )}
