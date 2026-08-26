@@ -111,6 +111,10 @@ type AuthFieldProps = {
   /** Multi-line text area (e.g. a product description) instead of a single input row. */
   multiline?: boolean;
   numberOfLines?: number;
+  helperText?: string;
+  required?: boolean;
+  disabled?: boolean;
+  accessibilityLabel?: string;
 };
 
 export function AuthField({
@@ -125,6 +129,10 @@ export function AuthField({
   rightAdornment,
   multiline = false,
   numberOfLines,
+  helperText,
+  required = false,
+  disabled = false,
+  accessibilityLabel,
 }: AuthFieldProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -141,7 +149,7 @@ export function AuthField({
   return (
     <View style={styles.fieldGroup}>
       <ThemedText type="bodyMd" themeColor="textSecondary">
-        {label}
+        {label}{required ? ' *' : ''}
       </ThemedText>
       <Animated.View
         collapsable={false}
@@ -171,6 +179,9 @@ export function AuthField({
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? 'top' : 'center'}
           style={[styles.input, multiline && styles.inputMultiline, { color: theme.text }]}
+          editable={!disabled}
+          accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityState={{ disabled }}
         />
         {rightAdornment}
       </Animated.View>
@@ -180,6 +191,9 @@ export function AuthField({
             {error}
           </ThemedText>
         </Animated.View>
+      )}
+      {!error && helperText && (
+        <ThemedText type="bodySm" themeColor="textSecondary">{helperText}</ThemedText>
       )}
     </View>
   );

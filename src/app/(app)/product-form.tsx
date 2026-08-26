@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField, PressableScale } from '@/components/auth-kit';
@@ -37,7 +39,24 @@ type FieldErrors = Partial<Record<'title' | 'price' | 'description' | 'image' | 
 type PublishProgress = 'idle' | 'loading_connections' | 'validating' | 'uploading_images' | 'migrating_images' | 'creating_product' | 'completed' | 'failed';
 
 const AUTOMATIC_DARAZ_ATTRIBUTES = new Set(['name', 'name_en', 'title', 'description', 'short_description']);
-const isDarazFlagEnabled = (value: string | number | boolean) =>
+const CATEGORY_METADATA_ATTRIBUTES = new Set(['category', 'primary_category', 'PrimaryCategory', 'category_id']);
+const isRenderableDarazAttribute = (attribute: DarazCategoryAttribute) => !AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name) && !CATEGORY_METADATA_ATTRIBUTES.has(attribute.name);
+const isDateAttribute = (attribute: DarazCategoryAttribute) => {
+  const metadata = `${attribute.input_type} ${attribute.attribute_type ?? ''}`.toLowerCase();
+  return metadata.includes('date') || metadata.includes('time');
+};
+const isDateTimeAttribute = (attribute: DarazCategoryAttribute) => {
+  const metadata = `${attribute.input_type} ${attribute.attribute_type ?? ''}`.toLowerCase();
+  return metadata.includes('datetime') || metadata.includes('date_time') || (metadata.includes('date') && metadata.includes('time'));
+};
+const padDatePart = (value: number) => String(value).padStart(2, '0');
+const formatLocalDate = (value: Date) => `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`;
+const formatLocalDateTime = (value: Date) => `${formatLocalDate(value)} ${padDatePart(value.getHours())}:${padDatePart(value.getMinutes())}:${padDatePart(value.getSeconds())}`;
+const parseAttributeDate = (value: string) => {
+  if (!value) return new Date();
+  const parsed = new Date(value.replace(' ', 'T'));
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+};const isDarazFlagEnabled = (value: string | number | boolean) =>
   value === true || value === 1 || value === '1';
 
 export default function ProductFormScreen() {
@@ -73,6 +92,10 @@ export default function ProductFormScreen() {
   const [isLoadingDarazAttributes, setIsLoadingDarazAttributes] = useState(false);
   const [darazAttributesError, setDarazAttributesError] = useState<string | null>(null);
   const [hasLoadedDarazAttributes, setHasLoadedDarazAttributes] = useState(false);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [progressDetail, setProgressDetail] = useState('');
+  const [activeDateAttribute, setActiveDateAttribute] = useState<string | null>(null);
+  const [datePickerStage, setDatePickerStage] = useState<'date' | 'time'>('date');
 
   useEffect(() => {
     if (isEditMode || !accessToken) return;
@@ -189,39 +212,94 @@ export default function ProductFormScreen() {
   async function handlePickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setFormError('Photo access is required to choose a product image.');
+      setFormError('Photo access is required to choose product images.');
+      return;
+    }
+    const remaining = Math.max(0, 8 - selectedImageAssets.length);
+    if (!remaining) {
+      setFieldErrors((current) => ({ ...current, image: 'Daraz supports a maximum of eight images.' }));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      selectionLimit: 8,
+      selectionLimit: remaining,
       quality: 0.8,
     });
-    if (!result.canceled && result.assets.length) {
-      const assets = result.assets.map((asset) => ({
-        uri: asset.uri, fileName: asset.fileName ?? 'product-image',
-        mimeType: asset.mimeType ?? 'image/jpeg', fileSize: asset.fileSize ?? 0,
-        width: asset.width, height: asset.height,
-      }));
-      const invalid = assets.find((asset) => !['image/jpeg', 'image/png', 'image/webp'].includes(asset.mimeType) || (asset.fileSize ?? 0) > 5 * 1024 * 1024);
-      if (invalid) {
-        setFormError('Images must be JPEG, PNG, or WebP and no larger than 5 MB.');
-        return;
-      }
-      const darazInvalid = platform === 'daraz' && assets.find(
-        (asset) => !['image/jpeg', 'image/png'].includes(asset.mimeType) || (asset.fileSize ?? 0) > 1024 * 1024,
-      );
-      if (darazInvalid) {
-        setFormError('Daraz migration accepts only JPEG or PNG images up to 1 MB.');
-        return;
-      }
-      setSelectedImageAssets(assets);
-      setImage(assets[0].uri);
-      setFormError(null);
+    if (result.canceled || !result.assets.length) return;
+
+    const incoming: ExpoMarketplaceImageAsset[] = result.assets.map((asset) => ({
+      uri: asset.uri,
+      fileName: asset.fileName ?? 'product-image',
+      mimeType: asset.mimeType ?? 'image/jpeg',
+      fileSize: asset.fileSize ?? 0,
+      width: asset.width,
+      height: asset.height,
+      assetId: asset.assetId,
+    }));
+    const rejected: string[] = [];
+    const valid = incoming.filter((asset, index) => {
+      if (!asset.uri) { rejected.push(`Image ${index + 1} is empty.`); return false; }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(asset.mimeType ?? '')) { rejected.push(`${asset.fileName ?? `Image ${index + 1}`} has an unsupported format.`); return false; }
+      if ((asset.fileSize ?? 0) > 5 * 1024 * 1024) { rejected.push(`${asset.fileName ?? `Image ${index + 1}`} is larger than 5 MB.`); return false; }
+      if (platform === 'daraz' && (!['image/jpeg', 'image/png'].includes(asset.mimeType ?? '') || (asset.fileSize ?? 0) > 1024 * 1024)) { rejected.push(`${asset.fileName ?? `Image ${index + 1}`} does not meet Daraz's JPEG/PNG 1 MB limit.`); return false; }
+      return true;
+    });
+    const merged = [...selectedImageAssets];
+    for (const asset of valid) {
+      const identity = asset.assetId ? `asset:${asset.assetId}` : `uri:${asset.uri}`;
+      const duplicate = merged.some((current) => (current.assetId ? `asset:${current.assetId}` : `uri:${current.uri}`) === identity);
+      if (duplicate) rejected.push(`${asset.fileName ?? 'An image'} was already selected.`);
+      else if (merged.length < 8) merged.push(asset);
+      else rejected.push('Only eight images can be selected.');
     }
+    setSelectedImageAssets(merged);
+    setImage(merged[0]?.uri ?? '');
+    setFieldErrors((current) => ({ ...current, image: rejected.length ? rejected[0] : undefined }));
+    setFormError(rejected.length > 1 ? `${rejected[0]} ${rejected.length - 1} more image(s) were rejected.` : null);
   }
 
+  function removeImage(index: number) {
+    setSelectedImageAssets((current) => {
+      const next = current.filter((_, assetIndex) => assetIndex !== index);
+      setImage(next[0]?.uri ?? '');
+      return next;
+    });
+  }
+
+  function setPrimaryImage(index: number) {
+    setSelectedImageAssets((current) => {
+      const next = [...current];
+      const [primary] = next.splice(index, 1);
+      if (primary) next.unshift(primary);
+      setImage(next[0]?.uri ?? '');
+      return next;
+    });
+  }
+  function handleDateAttributeChange(attribute: DarazCategoryAttribute, event: DateTimePickerEvent, selected?: Date) {
+    if (event.type === 'dismissed' || !selected) {
+      setActiveDateAttribute(null);
+      setDatePickerStage('date');
+      return;
+    }
+    const includesTime = isDateTimeAttribute(attribute);
+    const current = parseAttributeDate(darazAttributeValues[attribute.name] ?? '');
+    let next = selected;
+    if (datePickerStage === 'date' && includesTime) {
+      next = new Date(selected);
+      next.setHours(current.getHours(), current.getMinutes(), current.getSeconds(), 0);
+    } else if (datePickerStage === 'time') {
+      next = new Date(current);
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    }
+    setDarazAttributeValues((values) => ({ ...values, [attribute.name]: includesTime ? formatLocalDateTime(next) : formatLocalDate(next) }));
+    if (Platform.OS === 'android' && includesTime && datePickerStage === 'date') {
+      setDatePickerStage('time');
+      return;
+    }
+    setActiveDateAttribute(null);
+    setDatePickerStage('date');
+  }
   async function handleGenerate() {
     if (!accessToken || !image.trim()) {
       setFormError('Choose an image before generating a listing.');
@@ -298,17 +376,19 @@ export default function ProductFormScreen() {
       const priceNumber = Number(price);
       if (!Number.isFinite(priceNumber) || priceNumber <= 0) throw new ApiError(400, 'Enter a valid positive price.');
       setPublishProgress('uploading_images');
-      const uploadResult = await uploadMarketplaceProductImages(accessToken, platform, selectedImageAssets);
+      const uploadResult = await uploadMarketplaceProductImages(accessToken, platform, selectedImageAssets, (completed, total) => setProgressDetail(`Uploading image ${completed} of ${total}`));
       uploadedPaths = uploadResult.uploaded.map((entry) => entry.path);
       if (uploadResult.failed.length) throw new ApiError(400, uploadResult.failed[0].error || 'One or more image uploads failed.');
       const uploadedUrls = uploadResult.uploaded.map((entry) => entry.public_url);
       if (!uploadedUrls.length) throw new ApiError(400, 'No image uploads succeeded.');
 
       setPublishProgress('migrating_images');
-      const migratedUrls = await Promise.all(uploadedUrls.map(async (publicUrl) => {
+      const migratedUrls: string[] = [];
+      for (const [index, publicUrl] of uploadedUrls.entries()) {
+        setProgressDetail(`Migrating image ${index + 1} of ${uploadedUrls.length}`);
         const migrated = await migrateDarazImage(accessToken, activeConnection.encrypted_access_token!, publicUrl);
-        return migrated.imageUrl;
-      }));
+        migratedUrls.push(migrated.imageUrl);
+      }
 
       const sanitizedAttributes: Record<string, string> = {
         name: title.trim(),
@@ -345,8 +425,10 @@ export default function ProductFormScreen() {
       };
 
       setPublishProgress('creating_product');
+      setProgressDetail('Creating product');
       const response = await createNewDarazProduct(accessToken, activeConnection.encrypted_access_token, payload);
       setPublishProgress('completed');
+      setProgressDetail('Product published');
       setPublishMessage(response.item_id ? 'Daraz listing created successfully (item ' + response.item_id + ').' : response.message || 'Daraz listing created successfully.');
       setFieldErrors({});
       setTitle(''); setPrice(''); setCategory(''); setImage(''); setDescription('');
@@ -365,11 +447,11 @@ export default function ProductFormScreen() {
     const errors: FieldErrors = {};
     if (title.trim().length < 3) errors.title = 'Title must be at least 3 characters.';
     const priceNumber = Number(price);
-    if (!price.trim() || Number.isNaN(priceNumber) || priceNumber < 0) {
+    if (!price.trim() || Number.isNaN(priceNumber) || priceNumber <= 0) {
       errors.price = 'Enter a valid price.';
     }
     if (!description.trim()) errors.description = 'Description is required.';
-    if (!image.trim()) errors.image = 'Image URL is required.';
+    if (!image.trim()) errors.image = 'Select at least one product image.';
     if (!category.trim()) errors.category = 'Category is required.';
     return errors;
   }
@@ -404,12 +486,12 @@ export default function ProductFormScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.topRow}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
             <ThemedText type="headlineSm">←</ThemedText>
           </Pressable>
-          <ThemedText type="headlineSm">{isEditMode ? 'Edit Product' : 'Add Product'}</ThemedText>
+          <View style={styles.headerCopy}><ThemedText type="headlineSm">{isEditMode ? 'Edit Product' : 'Add Product'}</ThemedText><ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>Create and publish a new marketplace listing</ThemedText></View>
           <View style={styles.topRowSpacer} />
         </View>
 
@@ -417,7 +499,8 @@ export default function ProductFormScreen() {
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="always"
-          keyboardDismissMode="on-drag">
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets>
           {isEditMode && isLoadingProduct && !product ? (
             <View style={styles.statusBlock}>
               <ActivityIndicator color={theme.primary} />
@@ -448,7 +531,7 @@ export default function ProductFormScreen() {
           ) : (
             <View style={styles.form}>
               {!isEditMode && <>
-                <ThemedText type="labelMd" themeColor="textSecondary">CONNECTED MARKETPLACE</ThemedText>
+                <SectionHeading title="Connected marketplace" subtitle="Choose where this listing will be published." />
                 <View style={styles.platformRow}>
                   {connections.map((connection) => {
                     const option = connection.marketplace!.slug as ProductPlatform;
@@ -472,76 +555,55 @@ export default function ProductFormScreen() {
                 placeholder="Blue Hoodie"
                 autoCapitalize="words"
                 error={fieldErrors.title}
+                required
+                helperText={`${title.length} characters`}
               />
               <AuthField
-                label="Price (PKR)"
+                label="Price"
                 value={price}
-                onChangeText={setPrice}
+                onChangeText={(value) => setPrice(value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))}
                 placeholder="2500"
                 keyboardType="decimal-pad"
                 error={fieldErrors.price}
+                required
+                rightAdornment={<ThemedText type="bodyMd" themeColor="textSecondary">PKR</ThemedText>}
               />
-              <AuthField
-                label="Category"
-                value={category}
-                onChangeText={setCategory}
-                placeholder="Apparel"
-                autoCapitalize="words"
-                error={fieldErrors.category}
-              />
-              {platform === 'daraz' && <><ThemedText type="labelMd" themeColor="textSecondary">DARAZ CATEGORY</ThemedText>
-                {darazCategoriesError && (
-                  <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>
-                )}
-                {darazCategoryPath.length > 0 && (
-                  <View style={styles.categoryRow}>
-                    <Pressable
-                      onPress={() => {
-                        setDarazCategoryPath((current) => current.slice(0, -1));
-                        setSelectedDarazCategoryId(null);
-                        setCategory('');
-                      }}
-                      style={[styles.categoryChip, { borderColor: theme.border }]}>
-                      <ThemedText type="bodySm">Back</ThemedText>
-                    </Pressable>
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      {darazCategoryPath.map((entry) => entry.name ?? entry.category_name).join(' / ')}
-                    </ThemedText>
+              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <SectionHeading title="Category" subtitle="Required · Select the most specific product category." />
+                <Pressable onPress={() => setIsCategoryModalVisible(true)} disabled={platform !== 'daraz'} style={[styles.categoryCard, { borderColor: fieldErrors.category ? theme.danger : theme.border }]} accessibilityRole="button" accessibilityLabel="Select category">
+                  <View style={[styles.categoryIcon, { backgroundColor: theme.primaryContainer }]}><Ionicons name="grid-outline" size={22} color={theme.primary} /></View>
+                  <View style={styles.categoryCopy}>
+                    <ThemedText type="bodyMd">{selectedDarazCategoryId ? darazCategoryPath.at(-1)?.name ?? category.split(' / ').at(-1) : 'Select Category'}</ThemedText>
+                    <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={2}>{category || 'No category selected'}</ThemedText>
                   </View>
-                )}
-                <View style={styles.categoryRow}>
-                  {(darazCategoryPath.at(-1)?.children ?? darazCategories).map((option) => {
-                    const optionId = String(option.id ?? option.category_id ?? '');
-                    const optionName = option.name ?? option.category_name ?? 'Unnamed category';
-                    const activeChildren = (option.children ?? []).filter(
-                      (child) => child.is_active !== false && !['inactive', 'disabled', 'deleted'].includes(child.status?.toLowerCase() ?? ''),
-                    );
-                    const isLeafCategory = option.leaf === true || (option.leaf == null && activeChildren.length === 0);
-                    return (
-                      <Pressable
-                        key={optionId || optionName}
-                        onPress={() => {
-                          if (!isLeafCategory && activeChildren.length > 0) {
-                            setDarazCategoryPath((current) => [...current, { ...option, children: activeChildren }]);
-                            setSelectedDarazCategoryId(null);
-                            setCategory('');
-                            return;
-                          }
-                          if (!isLeafCategory) {
-                            setFormError('This category has no selectable leaf categories.');
-                            return;
-                          }
-                          setCategory([...darazCategoryPath.map((entry) => entry.name ?? entry.category_name ?? ''), optionName].filter(Boolean).join(' / '));
-                          setSelectedDarazCategoryId(optionId);
-                        }}
-                        style={[styles.categoryChip, { borderColor: theme.border }, selectedDarazCategoryId === optionId && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-                        <ThemedText type="bodySm" themeColor={selectedDarazCategoryId === optionId ? 'onPrimary' : 'text'}>
-                          {optionName}{!isLeafCategory ? ' >' : ''}
-                        </ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </View></>}
+                  <ThemedText type="bodyMd" themeColor="primary">{selectedDarazCategoryId ? 'Change' : 'Select'}</ThemedText>
+                </Pressable>
+                {fieldErrors.category && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.category}</ThemedText>}
+                {darazCategoriesError && <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>}
+              </View>
+              <Modal visible={isCategoryModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsCategoryModalVisible(false)}>
+                <ThemedView style={styles.modalScreen}>
+                  <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                    <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}><Pressable onPress={() => setIsCategoryModalVisible(false)} style={styles.modalAction}><ThemedText type="bodyMd" themeColor="primary">Close</ThemedText></Pressable><ThemedText type="headlineSm">Select Category</ThemedText><View style={styles.modalAction} /></View>
+                    <ScrollView contentContainerStyle={styles.modalContent}>
+                      {darazCategoryPath.length > 0 && <Pressable onPress={() => setDarazCategoryPath((current) => current.slice(0, -1))} style={[styles.categoryListItem, { borderColor: theme.border }]}><Ionicons name="chevron-back" size={20} color={theme.primary} /><ThemedText type="bodyMd">Back</ThemedText></Pressable>}
+                      {darazCategoryPath.length > 0 && <ThemedText type="bodySm" themeColor="textSecondary">{darazCategoryPath.map((entry) => entry.name ?? entry.category_name).join(' / ')}</ThemedText>}
+                      {(darazCategoryPath.at(-1)?.children ?? darazCategories).map((option) => {
+                        const optionId = String(option.id ?? option.category_id ?? '');
+                        const optionName = option.name ?? option.category_name ?? 'Unnamed category';
+                        const activeChildren = (option.children ?? []).filter((child) => child.is_active !== false && !['inactive', 'disabled', 'deleted'].includes(child.status?.toLowerCase() ?? ''));
+                        const isLeaf = option.leaf === true || (option.leaf == null && activeChildren.length === 0);
+                        return <Pressable key={optionId || optionName} onPress={() => {
+                          if (!isLeaf && activeChildren.length) { setDarazCategoryPath((current) => [...current, { ...option, children: activeChildren }]); return; }
+                          if (!isLeaf) { setFormError('This category has no selectable leaf categories.'); return; }
+                          const nextPath = [...darazCategoryPath, option];
+                          setDarazCategoryPath(nextPath); setCategory(nextPath.map((entry) => entry.name ?? entry.category_name ?? '').filter(Boolean).join(' / ')); setSelectedDarazCategoryId(optionId); setIsCategoryModalVisible(false); setFieldErrors((current) => ({ ...current, category: undefined }));
+                        }} style={[styles.categoryListItem, { borderColor: theme.border }]}><View style={styles.categoryCopy}><ThemedText type="bodyMd">{optionName}</ThemedText><ThemedText type="bodySm" themeColor="textSecondary">{isLeaf ? 'Select this category' : 'View subcategories'}</ThemedText></View><Ionicons name={isLeaf ? 'checkmark-circle-outline' : 'chevron-forward'} size={20} color={theme.primary} /></Pressable>;
+                      })}
+                    </ScrollView>
+                  </SafeAreaView>
+                </ThemedView>
+              </Modal>
               {isEditMode && <AuthField
                 label="Image URL"
                 value={image}
@@ -550,34 +612,58 @@ export default function ProductFormScreen() {
                 keyboardType="url"
                 error={fieldErrors.image}
               />}
-              <View style={styles.imageActions}>
-                <Pressable onPress={handlePickImage} style={[styles.secondaryButton, { borderColor: theme.border }]}>
-                  <ThemedText type="bodyMd" themeColor="primary">Choose image</ThemedText>
-                </Pressable>
-                <View style={styles.previewRow}>
-                  {selectedImageAssets.map((asset) => <Image key={asset.uri} source={{ uri: asset.uri }} style={styles.preview} contentFit="cover" />)}
+              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <View style={styles.sectionTitleRow}><View style={styles.categoryCopy}><SectionHeading title="Product images" subtitle="JPEG, PNG or WebP · up to 5 MB each. Daraz accepts up to 8." /></View><ThemedText type="bodySm" themeColor="textSecondary">{selectedImageAssets.length} of 8</ThemedText></View>
+                <View style={styles.mediaGrid}>
+                  {selectedImageAssets.map((asset, index) => (
+                    <View key={asset.assetId ?? asset.uri} style={[styles.mediaTile, { borderColor: theme.border }]}>
+                      <Image source={{ uri: asset.uri }} style={styles.mediaImage} contentFit="cover" />
+                      {index === 0 && <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}><ThemedText type="bodySm" themeColor="onPrimary">Primary</ThemedText></View>}
+                      <Pressable onPress={() => removeImage(index)} disabled={isPublishing} style={styles.removeImageButton} accessibilityRole="button" accessibilityLabel={`Remove image ${index + 1}`}><Ionicons name="close" size={18} color="#fff" /></Pressable>
+                      {index > 0 && <Pressable onPress={() => setPrimaryImage(index)} disabled={isPublishing} style={styles.makePrimaryButton} accessibilityRole="button"><ThemedText type="bodySm" themeColor="primary">Set primary</ThemedText></Pressable>}
+                      {isPublishing && ['uploading_images', 'migrating_images'].includes(publishProgress) && <View style={styles.processingOverlay}><ActivityIndicator color="#fff" /><ThemedText type="bodySm" style={styles.processingText}>{publishProgress === 'uploading_images' ? 'Uploading' : 'Migrating'}</ThemedText></View>}
+                    </View>
+                  ))}
+                  {selectedImageAssets.length < 8 && <Pressable onPress={handlePickImage} disabled={isPublishing} style={[styles.addMediaTile, { borderColor: fieldErrors.image ? theme.danger : theme.border, backgroundColor: theme.surfaceContainerLow }]} accessibilityRole="button" accessibilityLabel="Add product images"><Ionicons name="images-outline" size={28} color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">Add Images</ThemedText></Pressable>}
                 </View>
-                <Pressable onPress={handleGenerate} disabled={isGenerating} style={[styles.secondaryButton, { borderColor: theme.border }]}>
-                  {isGenerating ? <ActivityIndicator color={theme.primary} /> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
+                {fieldErrors.image && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.image}</ThemedText>}
+                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+                  {isGenerating ? <ActivityIndicator color={theme.primary} /> : <ThemedText type="bodyMd" themeColor="primary">Generate listing from primary image</ThemedText>}
                 </Pressable>
               </View>
               {platform === 'daraz' && selectedDarazCategoryId && <>
-                <ThemedText type="labelMd" themeColor="textSecondary">DARAZ CATEGORY ATTRIBUTES</ThemedText>
+                <SectionHeading title="Category-specific attributes" subtitle="Required marketplace details are marked with an asterisk." />
                 {isLoadingDarazAttributes && <ActivityIndicator color={theme.primary} />}
                 {darazAttributesError && <ThemedText type="bodySm" themeColor="danger">{darazAttributesError}</ThemedText>}
                 {!isLoadingDarazAttributes && !darazAttributesError && darazCategoryAttributes
-                  .filter((attribute) => !AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name))
+                  .filter(isRenderableDarazAttribute)
                   .map((attribute) => {
                     const value = darazAttributeValues[attribute.name] ?? '';
                     const requiredLabel = attribute.label + (isDarazFlagEnabled(attribute.is_mandatory) ? ' *' : '');
+                    if (isDateAttribute(attribute)) {
+                      const includesTime = isDateTimeAttribute(attribute);
+                      const pickerVisible = activeDateAttribute === attribute.name;
+                      const pickerMode = Platform.OS === 'ios' && includesTime ? 'datetime' : datePickerStage;
+                      return (
+                        <View key={String(attribute.id ?? attribute.name)} style={styles.dateFieldGroup}>
+                          <ThemedText type="bodyMd" themeColor="textSecondary">{requiredLabel}</ThemedText>
+                          <Pressable onPress={() => { setDatePickerStage('date'); setActiveDateAttribute(attribute.name); }} style={[styles.dateField, { backgroundColor: theme.surfaceContainerLowest, borderColor: pickerVisible ? theme.primary : theme.border }]} accessibilityRole="button" accessibilityLabel={`Select ${attribute.label}`}>
+                            <Ionicons name={includesTime ? 'calendar-number-outline' : 'calendar-outline'} size={20} color={theme.primary} />
+                            <ThemedText type="bodyLg" themeColor={value ? 'text' : 'textSecondary'} style={styles.dateValue}>{value || (includesTime ? 'Select date and time' : 'Select date')}</ThemedText>
+                            {value ? <Pressable onPress={(event) => { event.stopPropagation(); setDarazAttributeValues((values) => ({ ...values, [attribute.name]: '' })); setActiveDateAttribute(null); }} hitSlop={8} accessibilityLabel={`Clear ${attribute.label}`}><Ionicons name="close-circle" size={20} color={theme.textSecondary} /></Pressable> : <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />}
+                          </Pressable>
+                          {pickerVisible && <DateTimePicker value={parseAttributeDate(value)} mode={pickerMode} display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(event, selected) => handleDateAttributeChange(attribute, event, selected)} />}
+                        </View>
+                      );
+                    }
                     if (attribute.options.length > 0) {
                       return (
                         <View key={attribute.name}>
                           <ThemedText type="bodySm" themeColor="textSecondary">{requiredLabel}</ThemedText>
                           <View style={styles.categoryRow}>
-                            {attribute.options.map((option) => (
+                            {attribute.options.map((option, optionIndex) => (
                               <Pressable
-                                key={option.name}
+                                key={`${attribute.id ?? attribute.name}:${option.name}:${optionIndex}`}
                                 onPress={() => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: option.name }))}
                                 style={[styles.categoryChip, { borderColor: theme.border }, value === option.name && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
                                 <ThemedText type="bodySm" themeColor={value === option.name ? 'onPrimary' : 'text'}>{option.name}</ThemedText>
@@ -598,7 +684,7 @@ export default function ProductFormScreen() {
                       />
                     );
                   })}
-                {hasLoadedDarazAttributes && darazCategoryAttributes.filter((attribute) => !AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name)).length === 0 && (
+                {hasLoadedDarazAttributes && darazCategoryAttributes.filter(isRenderableDarazAttribute).length === 0 && (
                   <ThemedText type="bodySm" themeColor="textSecondary">No additional attributes are required for this category.</ThemedText>
                 )}
               </>}
@@ -610,6 +696,7 @@ export default function ProductFormScreen() {
                 multiline
                 numberOfLines={4}
                 error={fieldErrors.description}
+                required
               />
 
               {formError && (
@@ -631,7 +718,7 @@ export default function ProductFormScreen() {
                   </ThemedText>
                 )}
               </PressableScale> : <PressableScale disabled={isPublishing || !platform || platform === 'shopify' || (platform === 'daraz' && (darazCategories.length === 0 || !!darazCategoriesError))} onPress={handlePublish} style={[styles.ctaButton, { backgroundColor: theme.primary }]}>
-                {isPublishing ? <ActivityIndicator color={theme.onPrimary} /> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Shopify Publishing Unavailable' : 'Publish to Daraz (' + publishProgress + ')'}</ThemedText>}
+                {isPublishing ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.onPrimary} /><ThemedText type="bodyMd" themeColor="onPrimary">{progressDetail}</ThemedText></View> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Shopify Publishing Unavailable' : publishProgress === 'uploading_images' ? 'Uploading ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'migrating_images' ? 'Migrating ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'creating_product' ? 'Creating product' : publishProgress === 'completed' ? 'Product published' : 'Publish to Daraz'}</ThemedText>}
               </PressableScale>}
             </View>
           )}
@@ -639,6 +726,10 @@ export default function ProductFormScreen() {
       </SafeAreaView>
     </ThemedView>
   );
+}
+
+function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
+  return <View style={styles.sectionHeading}><ThemedText type="headlineSm">{title}</ThemedText>{subtitle ? <ThemedText type="bodySm" themeColor="textSecondary">{subtitle}</ThemedText> : null}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -658,6 +749,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.containerMargin,
     paddingTop: Spacing.three,
   },
+  headerCopy: { flex: 1, minWidth: 0 },
   topRowSpacer: {
     width: 20,
   },
@@ -667,7 +759,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.containerMargin,
     paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
+    paddingBottom: 120,
   },
   statusBlock: {
     alignItems: 'center',
@@ -686,6 +778,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.DEFAULT,
     paddingVertical: Spacing.three,
   },
+  buttonProgress: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
   ctaLabel: {
     fontWeight: '600',
   },
@@ -702,7 +795,9 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   marketplaceLogo: { width: 28, height: 28 },
-  categoryRow: {
+  dateFieldGroup: { gap: Spacing.one },
+  dateField: { minHeight: 52, borderWidth: 1, borderRadius: Radius.DEFAULT, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  dateValue: { flex: 1 },  categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
@@ -713,7 +808,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
-  imageActions: {
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  mediaTile: { width: '31%', aspectRatio: 1, borderWidth: 1, borderRadius: Radius.md, overflow: 'hidden', position: 'relative' },
+  mediaImage: { width: '100%', height: '100%' },
+  addMediaTile: { width: '31%', aspectRatio: 1, borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, padding: Spacing.one },
+  primaryBadge: { position: 'absolute', left: 4, top: 4, borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
+  removeImageButton: { position: 'absolute', right: 4, top: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center' },
+  makePrimaryButton: { position: 'absolute', left: 4, right: 4, bottom: 4, minHeight: 28, borderRadius: Radius.sm, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
+  processingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)', alignItems: 'center', justifyContent: 'center', gap: Spacing.one },
+  processingText: { color: '#fff' },  imageActions: {
     alignItems: 'center',
     gap: Spacing.two,
   },
@@ -730,6 +834,15 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: Radius.sm,
   },
+  section: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, gap: Spacing.three },
+  categoryCard: { minHeight: 72, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  categoryIcon: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
+  categoryCopy: { flex: 1, minWidth: 0, gap: Spacing.one },
+  modalScreen: { flex: 1 },
+  modalHeader: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three },
+  modalAction: { width: 64, minHeight: 44, justifyContent: 'center' },
+  modalContent: { padding: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
+  categoryListItem: { minHeight: 60, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },  sectionHeading: { gap: Spacing.one, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,127,127,0.35)' },
   secondaryCta: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -507,6 +507,7 @@ export type ExpoMarketplaceImageAsset = {
   fileSize?: number | null;
   width?: number | null;
   height?: number | null;
+  assetId?: string | null;
 };
 
 export type UploadedMarketplaceImageResponse = {
@@ -683,7 +684,7 @@ function normalizeDarazCategoryAttributes(response: unknown): DarazCategoryAttri
   if (!response || typeof response !== "object") return [];
   const data = (response as Record<string, unknown>).data;
   if (!Array.isArray(data)) return [];
-  return data.flatMap((raw) => {
+  const normalized = data.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const item = raw as Record<string, unknown>;
     const name = typeof item.name === "string" ? item.name.trim() : "";
@@ -705,6 +706,14 @@ function normalizeDarazCategoryAttributes(response: unknown): DarazCategoryAttri
       attribute_type: typeof item.attribute_type === "string" ? item.attribute_type : null,
       options,
     }];
+  });
+
+  const seen = new Set<string>();
+  return normalized.filter((attribute) => {
+    const identity = attribute.id != null ? `id:${String(attribute.id)}` : `name:${attribute.name}`;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
   });
 }
 
@@ -807,6 +816,7 @@ export async function uploadMarketplaceProductImages(
   accessToken: string,
   marketplace: ProductPlatform,
   images: ExpoMarketplaceImageAsset[],
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<DarazUploadImagesResult> {
   const uploaded: UploadedMarketplaceImageResponse[] = [];
   const failed: DarazUploadImagesResult["failed"] = [];
@@ -821,6 +831,8 @@ export async function uploadMarketplaceProductImages(
         image,
         error: error instanceof ApiError ? error.message : "The image upload failed.",
       });
+    } finally {
+      onProgress?.(index + 1, images.length);
     }
   }
 
