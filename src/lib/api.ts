@@ -29,6 +29,23 @@ function extractErrorMessage(body: unknown, fallback: string): string {
           .join(" ") || fallback
       );
     }
+    if (detail && typeof detail === "object") {
+      const record = detail as Record<string, unknown>;
+      const parts: string[] = [];
+      if (typeof record.message === "string") parts.push(record.message);
+      const nested = record.daraz_details;
+      if (Array.isArray(nested)) {
+        for (const entry of nested) {
+          if (!entry || typeof entry !== "object") continue;
+          const error = entry as Record<string, unknown>;
+          const field = typeof error.field === "string" && error.field ? error.field + ": " : "";
+          const message = typeof error.message === "string" ? error.message : "";
+          const code = typeof error.code === "string" && error.code ? " (" + error.code + ")" : "";
+          if (message) parts.push(field + message + code);
+        }
+      }
+      return parts.join(" ") || fallback;
+    }
   }
   return fallback;
 }
@@ -507,8 +524,9 @@ export type DarazProductAttribute = {
 
 export type DarazProductSku = {
   SellerSku: string;
-  color_family: string;
-  size: string;
+  [key: string]: unknown;
+  color_family?: string;
+  size?: string;
   quantity: number;
   price: number;
   package_length: number;
@@ -564,6 +582,7 @@ export type DarazCategory = {
   category_name?: string | null;
   parent_id?: string | number | null;
   children?: DarazCategory[] | null;
+  leaf?: boolean | null;
   status?: string | null;
   is_active?: boolean | null;
 };
@@ -594,6 +613,7 @@ function normalizeDarazCategory(raw: unknown): DarazCategory | null {
     category_name: typeof name === "string" ? name : name == null ? undefined : String(name),
     parent_id: safeParentId,
     children: Array.isArray(item.children) ? item.children.map(normalizeDarazCategory).filter(Boolean) as DarazCategory[] : undefined,
+    leaf: typeof item.leaf === "boolean" ? item.leaf : null,
     status: typeof item.status === "string" ? item.status : null,
     is_active: typeof item.is_active === "boolean" ? item.is_active : null,
   };
@@ -642,6 +662,56 @@ export function getDarazAllCategories(accessToken: string): Promise<DarazCategor
   return request<unknown>("/daraz/get_all_categories", {
     headers: { Authorization: `Bearer ${accessToken}` },
   }).then((response) => normalizeDarazCategoryList(response));
+}
+
+export type DarazCategoryAttributeOption = {
+  name: string;
+};
+
+export type DarazCategoryAttribute = {
+  id?: string | number | null;
+  name: string;
+  label: string;
+  is_mandatory: string | number | boolean;
+  is_sale_prop: string | number | boolean;
+  input_type: string;
+  attribute_type?: string | null;
+  options: DarazCategoryAttributeOption[];
+};
+
+function normalizeDarazCategoryAttributes(response: unknown): DarazCategoryAttribute[] {
+  if (!response || typeof response !== "object") return [];
+  const data = (response as Record<string, unknown>).data;
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const item = raw as Record<string, unknown>;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    if (!name) return [];
+    const options = Array.isArray(item.options)
+      ? item.options.flatMap((option) =>
+          option && typeof option === "object" && typeof (option as Record<string, unknown>).name === "string"
+            ? [{ name: String((option as Record<string, unknown>).name) }]
+            : [],
+        )
+      : [];
+    return [{
+      id: typeof item.id === "string" || typeof item.id === "number" ? item.id : null,
+      name,
+      label: typeof item.label === "string" && item.label.trim() ? item.label.trim() : name,
+      is_mandatory: typeof item.is_mandatory === "string" || typeof item.is_mandatory === "number" || typeof item.is_mandatory === "boolean" ? item.is_mandatory : 0,
+      is_sale_prop: typeof item.is_sale_prop === "string" || typeof item.is_sale_prop === "number" || typeof item.is_sale_prop === "boolean" ? item.is_sale_prop : 0,
+      input_type: typeof item.input_type === "string" ? item.input_type : "text",
+      attribute_type: typeof item.attribute_type === "string" ? item.attribute_type : null,
+      options,
+    }];
+  });
+}
+
+export function getDarazCategoryAttributes(accessToken: string, darazAccessToken: string, categoryId: string): Promise<DarazCategoryAttribute[]> {
+  return request<unknown>("/daraz/get_category_attributes?primary_category_id=" + encodeURIComponent(categoryId) + "&language_code=en_US", {
+    headers: { Authorization: "Bearer " + accessToken, "x-daraz-access-token": darazAccessToken },
+  }).then(normalizeDarazCategoryAttributes);
 }
 
 function extractNestedString(value: unknown, keys: string[]): string | null {

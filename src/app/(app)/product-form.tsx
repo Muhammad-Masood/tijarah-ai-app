@@ -19,9 +19,11 @@ import {
   cleanupMarketplaceProductImages,
   generateProductListing,
   getDarazAllCategories,
+  getDarazCategoryAttributes,
   getMarketplaceConnections,
   migrateDarazImage,
   type DarazCategory,
+  type DarazCategoryAttribute,
   type DarazCreateProductPayload,
   type ExpoMarketplaceImageAsset,
   type ProductPlatform,
@@ -33,6 +35,10 @@ import {
 
 type FieldErrors = Partial<Record<'title' | 'price' | 'description' | 'image' | 'category', string>>;
 type PublishProgress = 'idle' | 'loading_connections' | 'validating' | 'uploading_images' | 'migrating_images' | 'creating_product' | 'completed' | 'failed';
+
+const AUTOMATIC_DARAZ_ATTRIBUTES = new Set(['name', 'name_en', 'title', 'description', 'short_description']);
+const isDarazFlagEnabled = (value: string | number | boolean) =>
+  value === true || value === 1 || value === '1';
 
 export default function ProductFormScreen() {
   const theme = useTheme();
@@ -46,9 +52,6 @@ export default function ProductFormScreen() {
   const [image, setImage] = useState('');
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState<ProductPlatform | null>(null);
-  const [brand, setBrand] = useState('');
-  const [model, setModel] = useState('');
-  const [warrantyType, setWarrantyType] = useState('');
   const [selectedDarazCategoryId, setSelectedDarazCategoryId] = useState<string | null>(null);
   const [selectedImageAssets, setSelectedImageAssets] = useState<ExpoMarketplaceImageAsset[]>([]);
   const [connections, setConnections] = useState<MarketplaceConnection[]>([]);
@@ -62,8 +65,14 @@ export default function ProductFormScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [darazCategories, setDarazCategories] = useState<DarazCategory[]>([]);
+  const [darazCategoryPath, setDarazCategoryPath] = useState<DarazCategory[]>([]);
   const [darazCategoriesError, setDarazCategoriesError] = useState<string | null>(null);
   const [publishProgress, setPublishProgress] = useState<PublishProgress>(isEditMode ? 'idle' : 'loading_connections');
+  const [darazCategoryAttributes, setDarazCategoryAttributes] = useState<DarazCategoryAttribute[]>([]);
+  const [darazAttributeValues, setDarazAttributeValues] = useState<Record<string, string>>({});
+  const [isLoadingDarazAttributes, setIsLoadingDarazAttributes] = useState(false);
+  const [darazAttributesError, setDarazAttributesError] = useState<string | null>(null);
+  const [hasLoadedDarazAttributes, setHasLoadedDarazAttributes] = useState(false);
 
   useEffect(() => {
     if (isEditMode || !accessToken) return;
@@ -99,6 +108,7 @@ export default function ProductFormScreen() {
   useEffect(() => {
     if (!accessToken || platform !== 'daraz') {
       setDarazCategories([]);
+      setDarazCategoryPath([]);
       setDarazCategoriesError(null);
       setSelectedDarazCategoryId(null);
       return;
@@ -111,13 +121,9 @@ export default function ProductFormScreen() {
       .then((categories) => {
         if (cancelled) return;
         setDarazCategories(categories);
-        const hasSelectedCategory = categories.some(
-          (entry) => String(entry.id ?? entry.category_id ?? '') === selectedDarazCategoryId,
-        );
-        if (selectedDarazCategoryId && !hasSelectedCategory) {
-          setSelectedDarazCategoryId(null);
-          setCategory('');
-        }
+        setDarazCategoryPath([]);
+        setSelectedDarazCategoryId(null);
+        setCategory('');
       })
       .catch((err) => {
         if (!cancelled) {
@@ -129,7 +135,46 @@ export default function ProductFormScreen() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, platform, selectedDarazCategoryId]);
+  }, [accessToken, platform]);
+
+  useEffect(() => {
+    setDarazCategoryAttributes([]);
+    setHasLoadedDarazAttributes(false);
+    setDarazAttributeValues({});
+    setDarazAttributesError(null);
+    if (!accessToken || !selectedDarazCategoryId || platform !== 'daraz') {
+      setIsLoadingDarazAttributes(false);
+      return;
+    }
+
+    const connection = connections.find((record) => record.marketplace?.slug === 'daraz');
+    if (!connection?.encrypted_access_token) {
+      setDarazAttributesError('The Daraz connection is not active.');
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingDarazAttributes(true);
+    getDarazCategoryAttributes(accessToken, connection.encrypted_access_token, selectedDarazCategoryId)
+      .then((attributes) => {
+        if (!cancelled) {
+          setDarazCategoryAttributes(attributes);
+          setHasLoadedDarazAttributes(true);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setDarazAttributesError(err instanceof ApiError ? err.message : 'Could not load required Daraz attributes.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingDarazAttributes(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, connections, platform, selectedDarazCategoryId]);
 
   // Prefill from the fetched product once it loads (edit mode only).
   useEffect(() => {
@@ -139,9 +184,6 @@ export default function ProductFormScreen() {
     setCategory(product.category);
     setImage(product.image);
     setDescription(product.description);
-    setBrand(product.brand ?? '');
-    setModel(product.model ?? '');
-    setWarrantyType(product.warrantyType ?? '');
   }, [product]);
 
   async function handlePickImage() {
@@ -217,6 +259,30 @@ export default function ProductFormScreen() {
       setFormError('Choose a live Daraz category before publishing.');
       return;
     }
+    const resolveDarazAttributeValue = (attribute: DarazCategoryAttribute): string => {
+      if (attribute.name === 'name' || attribute.name === 'name_en' || attribute.name === 'title') return title.trim();
+      if (attribute.name === 'description' || attribute.name === 'short_description') return description.trim();
+      return darazAttributeValues[attribute.name]?.trim() ?? '';
+    };
+    if (isLoadingDarazAttributes) {
+      setFormError('Wait for Daraz category attributes to finish loading.');
+      return;
+    }
+    if (darazAttributesError) {
+      setFormError(darazAttributesError);
+      return;
+    }
+    if (!hasLoadedDarazAttributes) {
+      setFormError('Daraz category attributes have not loaded. Select the leaf category again.');
+      return;
+    }
+    const missingAttributes = darazCategoryAttributes.filter(
+      (attribute) => isDarazFlagEnabled(attribute.is_mandatory) && !resolveDarazAttributeValue(attribute),
+    );
+    if (missingAttributes.length > 0) {
+      setFormError('Complete required Daraz attributes: ' + missingAttributes.map((attribute) => attribute.label).join(', '));
+      return;
+    }
     if (!selectedImageAssets.length) {
       setFormError('Choose at least one product image to upload.');
       return;
@@ -244,31 +310,47 @@ export default function ProductFormScreen() {
         return migrated.imageUrl;
       }));
 
-      const sanitizedAttributes: Record<string, string> = {};
-      for (const [key, value] of Object.entries({
+      const sanitizedAttributes: Record<string, string> = {
+        name: title.trim(),
+        name_en: title.trim(),
+        title: title.trim(),
         short_description: description.trim(),
         description: description.trim(),
-        brand: brand.trim() || 'No Brand',
-        model: model.trim(),
-        warranty_type: warrantyType.trim() || 'No Warranty',
-      })) {
-        if (value) sanitizedAttributes[key] = value;
+      };
+      const skuSaleAttributes: Record<string, string> = {};
+      for (const attribute of darazCategoryAttributes) {
+        const value = resolveDarazAttributeValue(attribute);
+        if (!value || AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name)) continue;
+        if (isDarazFlagEnabled(attribute.is_sale_prop)) skuSaleAttributes[attribute.name] = value;
+        else sanitizedAttributes[attribute.name] = value;
       }
 
       const payload: DarazCreateProductPayload = {
-        PrimaryCategory: Number(selectedDarazCategoryId), Title: title.trim(), Images: migratedUrls,
+        PrimaryCategory: Number(selectedDarazCategoryId),
+        Title: title.trim(),
+        Images: migratedUrls,
         Attributes: sanitizedAttributes,
-        Skus: [{ SellerSku: (title.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').toLowerCase() || 'daraz-product') + '-' + Date.now(), color_family: 'default', size: 'default', quantity: 1, price: priceNumber, package_length: 10, package_height: 10, package_weight: 1, package_width: 10, package_content: description.trim() || title.trim(), Images: migratedUrls }],
+        Skus: [{
+          SellerSku: (title.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').toLowerCase() || 'daraz-product') + '-' + Date.now(),
+          ...skuSaleAttributes,
+          quantity: 1,
+          price: priceNumber,
+          package_length: 10,
+          package_height: 10,
+          package_weight: 1,
+          package_width: 10,
+          package_content: description.trim() || title.trim(),
+          Images: migratedUrls,
+        }],
       };
 
       setPublishProgress('creating_product');
-      console.log("create_new_product", accessToken, activeConnection.encrypted_access_token, payload)
       const response = await createNewDarazProduct(accessToken, activeConnection.encrypted_access_token, payload);
       setPublishProgress('completed');
       setPublishMessage(response.item_id ? 'Daraz listing created successfully (item ' + response.item_id + ').' : response.message || 'Daraz listing created successfully.');
       setFieldErrors({});
       setTitle(''); setPrice(''); setCategory(''); setImage(''); setDescription('');
-      setBrand(''); setModel(''); setWarrantyType(''); setSelectedDarazCategoryId(null); setSelectedImageAssets([]);
+      setDarazAttributeValues({}); setSelectedDarazCategoryId(null); setDarazCategoryPath([]); setSelectedImageAssets([]);
       setTimeout(() => router.back(), 1200);
     } catch (err) {
       setPublishProgress('failed');
@@ -373,7 +455,7 @@ export default function ProductFormScreen() {
                     return (
                       <Pressable key={connection.id} disabled={isPublishing || connections.length === 1} onPress={() => {
                         setPlatform(option); setSelectedDarazCategoryId(null); setCategory('');
-                        setBrand(''); setModel(''); setWarrantyType(''); setFormError(null);
+                        setDarazAttributeValues({}); setFormError(null);
                       }} style={[styles.platformButton, { borderColor: theme.border }, platform === option && { backgroundColor: theme.primaryContainer, borderColor: theme.primary }]}>
                         <Image source={{ uri: connection.marketplace!.logo_url }} style={styles.marketplaceLogo} contentFit="contain" />
                         <ThemedText type="bodyMd" themeColor={platform === option ? 'onPrimaryContainer' : 'text'}>{connection.marketplace!.name}</ThemedText>
@@ -411,20 +493,51 @@ export default function ProductFormScreen() {
                 {darazCategoriesError && (
                   <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>
                 )}
+                {darazCategoryPath.length > 0 && (
+                  <View style={styles.categoryRow}>
+                    <Pressable
+                      onPress={() => {
+                        setDarazCategoryPath((current) => current.slice(0, -1));
+                        setSelectedDarazCategoryId(null);
+                        setCategory('');
+                      }}
+                      style={[styles.categoryChip, { borderColor: theme.border }]}>
+                      <ThemedText type="bodySm">Back</ThemedText>
+                    </Pressable>
+                    <ThemedText type="bodySm" themeColor="textSecondary">
+                      {darazCategoryPath.map((entry) => entry.name ?? entry.category_name).join(' / ')}
+                    </ThemedText>
+                  </View>
+                )}
                 <View style={styles.categoryRow}>
-                  {darazCategories.map((option) => {
+                  {(darazCategoryPath.at(-1)?.children ?? darazCategories).map((option) => {
                     const optionId = String(option.id ?? option.category_id ?? '');
                     const optionName = option.name ?? option.category_name ?? 'Unnamed category';
+                    const activeChildren = (option.children ?? []).filter(
+                      (child) => child.is_active !== false && !['inactive', 'disabled', 'deleted'].includes(child.status?.toLowerCase() ?? ''),
+                    );
+                    const isLeafCategory = option.leaf === true || (option.leaf == null && activeChildren.length === 0);
                     return (
                       <Pressable
                         key={optionId || optionName}
                         onPress={() => {
-                          setCategory(optionName);
+                          if (!isLeafCategory && activeChildren.length > 0) {
+                            setDarazCategoryPath((current) => [...current, { ...option, children: activeChildren }]);
+                            setSelectedDarazCategoryId(null);
+                            setCategory('');
+                            return;
+                          }
+                          if (!isLeafCategory) {
+                            setFormError('This category has no selectable leaf categories.');
+                            return;
+                          }
+                          setCategory([...darazCategoryPath.map((entry) => entry.name ?? entry.category_name ?? ''), optionName].filter(Boolean).join(' / '));
                           setSelectedDarazCategoryId(optionId);
                         }}
-                        style={[styles.categoryChip, { borderColor: theme.border }, category === optionName && { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                      >
-                        <ThemedText type="bodySm" themeColor={category === optionName ? 'onPrimary' : 'text'}>{optionName}</ThemedText>
+                        style={[styles.categoryChip, { borderColor: theme.border }, selectedDarazCategoryId === optionId && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                        <ThemedText type="bodySm" themeColor={selectedDarazCategoryId === optionId ? 'onPrimary' : 'text'}>
+                          {optionName}{!isLeafCategory ? ' >' : ''}
+                        </ThemedText>
                       </Pressable>
                     );
                   })}
@@ -448,11 +561,46 @@ export default function ProductFormScreen() {
                   {isGenerating ? <ActivityIndicator color={theme.primary} /> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
                 </Pressable>
               </View>
-              {platform === 'daraz' && <>
-                <ThemedText type="labelMd" themeColor="textSecondary">DARAZ ATTRIBUTES</ThemedText>
-                <AuthField label="Brand" value={brand} onChangeText={setBrand} placeholder="No Brand" />
-                <AuthField label="Model" value={model} onChangeText={setModel} placeholder="Optional" />
-                <AuthField label="Warranty" value={warrantyType} onChangeText={setWarrantyType} placeholder="No Warranty" />
+              {platform === 'daraz' && selectedDarazCategoryId && <>
+                <ThemedText type="labelMd" themeColor="textSecondary">DARAZ CATEGORY ATTRIBUTES</ThemedText>
+                {isLoadingDarazAttributes && <ActivityIndicator color={theme.primary} />}
+                {darazAttributesError && <ThemedText type="bodySm" themeColor="danger">{darazAttributesError}</ThemedText>}
+                {!isLoadingDarazAttributes && !darazAttributesError && darazCategoryAttributes
+                  .filter((attribute) => !AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name))
+                  .map((attribute) => {
+                    const value = darazAttributeValues[attribute.name] ?? '';
+                    const requiredLabel = attribute.label + (isDarazFlagEnabled(attribute.is_mandatory) ? ' *' : '');
+                    if (attribute.options.length > 0) {
+                      return (
+                        <View key={attribute.name}>
+                          <ThemedText type="bodySm" themeColor="textSecondary">{requiredLabel}</ThemedText>
+                          <View style={styles.categoryRow}>
+                            {attribute.options.map((option) => (
+                              <Pressable
+                                key={option.name}
+                                onPress={() => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: option.name }))}
+                                style={[styles.categoryChip, { borderColor: theme.border }, value === option.name && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                                <ThemedText type="bodySm" themeColor={value === option.name ? 'onPrimary' : 'text'}>{option.name}</ThemedText>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </View>
+                      );
+                    }
+                    return (
+                      <AuthField
+                        key={attribute.name}
+                        label={requiredLabel}
+                        value={value}
+                        onChangeText={(nextValue) => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: nextValue }))}
+                        placeholder={attribute.input_type === 'numeric' ? 'Enter a number' : 'Enter ' + attribute.label.toLowerCase()}
+                        keyboardType={attribute.input_type === 'numeric' ? 'decimal-pad' : 'default'}
+                      />
+                    );
+                  })}
+                {hasLoadedDarazAttributes && darazCategoryAttributes.filter((attribute) => !AUTOMATIC_DARAZ_ATTRIBUTES.has(attribute.name)).length === 0 && (
+                  <ThemedText type="bodySm" themeColor="textSecondary">No additional attributes are required for this category.</ThemedText>
+                )}
               </>}
               <AuthField
                 label="Description"
