@@ -569,13 +569,60 @@ export class UnsupportedBackendCapabilityError extends ApiError {
   }
 }
 
-export function generateProductListing(
-  _accessToken: string,
-  _data: Pick<ListingDraft, "imageUri" | "category">,
-): Promise<Pick<ListingDraft, "title" | "description" | "category">> {
-  return Promise.reject(new UnsupportedBackendCapabilityError("AI listing generation"));
-}
+export type GenerateListingRequest = {
+  primary_category_id: number;
+  image_urls: string[];
+  attributes: DarazCategoryAttribute[];
+  title_hint?: string | null;
+  brand_hint?: string | null;
+};
 
+export type GeneratedListingSku = {
+  SellerSku?: string | null;
+  quantity?: number | null;
+  price?: number | null;
+  package_length?: number | null;
+  package_height?: number | null;
+  package_weight?: number | null;
+  package_width?: number | null;
+  package_content?: string | null;
+  color_family?: string | null;
+  size?: string | null;
+  Images?: string[];
+};
+
+export type GeneratedListingDraft = {
+  Title?: string | null;
+  PrimaryCategory: number;
+  Images: string[];
+  Attributes: Record<string, string | null>;
+  Skus: GeneratedListingSku[];
+};
+
+export type GeneratedFieldMetadata = {
+  name: string;
+  value?: string | null;
+  source: "vision" | "user_required" | "skipped";
+  confidence?: number | null;
+};
+
+export type GenerateListingResponse = {
+  draft: GeneratedListingDraft;
+  filled: GeneratedFieldMetadata[];
+  user_required: string[];
+  vision_skipped: string[];
+};
+
+export function generateProductListing(
+  accessToken: string,
+  data: GenerateListingRequest,
+): Promise<GenerateListingResponse> {
+  return request<GenerateListingResponse>("/product-listing/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(data),
+  });
+}
 export type DarazCategory = {
   id?: string | number | null;
   name?: string | null;

@@ -95,6 +95,8 @@ export default function ProductFormScreen() {
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [progressDetail, setProgressDetail] = useState('');
   const [activeDateAttribute, setActiveDateAttribute] = useState<string | null>(null);
+  const [aiGeneratedFields, setAiGeneratedFields] = useState<string[]>([]);
+  const [preparedImages, setPreparedImages] = useState<{ signature: string; urls: string[]; paths: string[] } | null>(null);
   const [datePickerStage, setDatePickerStage] = useState<'date' | 'time'>('date');
 
   useEffect(() => {
@@ -164,6 +166,7 @@ export default function ProductFormScreen() {
     setDarazCategoryAttributes([]);
     setHasLoadedDarazAttributes(false);
     setDarazAttributeValues({});
+    setAiGeneratedFields([]);
     setDarazAttributesError(null);
     if (!accessToken || !selectedDarazCategoryId || platform !== 'daraz') {
       setIsLoadingDarazAttributes(false);
@@ -209,6 +212,14 @@ export default function ProductFormScreen() {
     setDescription(product.description);
   }, [product]);
 
+  const imageSelectionSignature = selectedImageAssets.map((asset) => asset.assetId ?? asset.uri).join('|');
+
+  function discardPreparedImages() {
+    if (preparedImages?.paths.length && accessToken) cleanupMarketplaceProductImages(accessToken, preparedImages.paths).catch(() => undefined);
+    setPreparedImages(null);
+  }
+
+  const hasValue = (value: unknown) => value !== null && value !== undefined && value !== '';
   async function handlePickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -253,6 +264,7 @@ export default function ProductFormScreen() {
       else if (merged.length < 8) merged.push(asset);
       else rejected.push('Only eight images can be selected.');
     }
+    if (merged.length !== selectedImageAssets.length) discardPreparedImages();
     setSelectedImageAssets(merged);
     setImage(merged[0]?.uri ?? '');
     setFieldErrors((current) => ({ ...current, image: rejected.length ? rejected[0] : undefined }));
@@ -260,6 +272,7 @@ export default function ProductFormScreen() {
   }
 
   function removeImage(index: number) {
+    discardPreparedImages();
     setSelectedImageAssets((current) => {
       const next = current.filter((_, assetIndex) => assetIndex !== index);
       setImage(next[0]?.uri ?? '');
@@ -268,6 +281,7 @@ export default function ProductFormScreen() {
   }
 
   function setPrimaryImage(index: number) {
+    discardPreparedImages();
     setSelectedImageAssets((current) => {
       const next = [...current];
       const [primary] = next.splice(index, 1);
@@ -301,24 +315,69 @@ export default function ProductFormScreen() {
     setDatePickerStage('date');
   }
   async function handleGenerate() {
-    if (!accessToken || !image.trim()) {
-      setFormError('Choose an image before generating a listing.');
-      return;
-    }
+    if (isGenerating) return;
+    if (!accessToken || !platform) { setFormError('Select a connected marketplace before generating.'); return; }
+    if (!selectedImageAssets.length) { setFieldErrors((current) => ({ ...current, image: 'Select at least one product image.' })); return; }
+    if (!selectedDarazCategoryId) { setFieldErrors((current) => ({ ...current, category: 'Select a primary category first.' })); return; }
+    if (isLoadingDarazAttributes || !hasLoadedDarazAttributes || darazAttributesError) { setFormError(darazAttributesError ?? 'Wait for category attributes to finish loading.'); return; }
+    if (!darazCategoryAttributes.length) { setFormError('This category has no attribute definitions available for AI generation.'); return; }
+
     setIsGenerating(true);
     setFormError(null);
+    setPublishMessage(null);
     try {
-      const listing = await generateProductListing(accessToken, { imageUri: image, category });
-      setTitle(listing.title);
-      setDescription(listing.description);
-      setCategory(listing.category);
+      let imageUrls = preparedImages?.signature === imageSelectionSignature ? preparedImages.urls : null;
+      if (!imageUrls) {
+        const upload = await uploadMarketplaceProductImages(accessToken, platform, selectedImageAssets, (completed, total) => setProgressDetail(`Preparing image ${completed} of ${total}`));
+        if (upload.failed.length) {
+          if (upload.uploaded.length) cleanupMarketplaceProductImages(accessToken, upload.uploaded.map((entry) => entry.path)).catch(() => undefined);
+          const failed = upload.failed[0];
+          throw new ApiError(400, `Image ${failed.index + 1}: ${failed.error}`);
+        }
+        imageUrls = upload.uploaded.map((entry) => entry.public_url);
+        setPreparedImages({ signature: imageSelectionSignature, urls: imageUrls, paths: upload.uploaded.map((entry) => entry.path) });
+      }
+      const brandHint = darazAttributeValues.brand?.trim() || undefined;
+      const response = await generateProductListing(accessToken, {
+        primary_category_id: Number(selectedDarazCategoryId),
+        image_urls: imageUrls,
+        attributes: darazCategoryAttributes,
+        title_hint: title.trim() || undefined,
+        brand_hint: brandHint,
+      });
+      const generated = { ...response.draft.Attributes };
+      const firstSku = response.draft.Skus[0];
+      if (firstSku?.color_family != null) generated.color_family = firstSku.color_family;
+      if (firstSku?.package_content != null) generated.package_content = firstSku.package_content;
+      if (firstSku?.size != null) generated.size = firstSku.size;
+
+      setTitle((current) => hasValue(current) ? current : response.draft.Title?.trim() ?? '');
+      setDescription((current) => hasValue(current) ? current : generated.description?.trim() ?? generated.short_description?.trim() ?? '');
+      setDarazAttributeValues((current) => {
+        const next = { ...current };
+        for (const attribute of darazCategoryAttributes) {
+          if (hasValue(current[attribute.name])) continue;
+          const candidate = generated[attribute.name];
+          if (!hasValue(candidate)) continue;
+          if (attribute.options.length) {
+            const option = attribute.options.find((entry) => entry.name === candidate) ?? attribute.options.find((entry) => entry.name.toLowerCase() === String(candidate).toLowerCase());
+            if (option) next[attribute.name] = option.name;
+          } else {
+            next[attribute.name] = String(candidate);
+          }
+        }
+        return next;
+      });
+      setAiGeneratedFields(response.filled.filter((entry) => entry.source === 'vision' && hasValue(entry.value)).map((entry) => entry.name));
+      const needsInput = response.user_required.length > 0 || response.vision_skipped.length > 0;
+      setPublishMessage(needsInput ? 'AI filled the available product details. Some fields still require your input.' : 'Product details generated. Please review the highlighted fields before publishing.');
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not generate a listing.');
+      setFormError(err instanceof ApiError ? err.message : 'Could not generate product details. Please try again.');
     } finally {
       setIsGenerating(false);
+      setProgressDetail('');
     }
   }
-
   async function handlePublish() {
     if (isPublishing) return;
     const errors = validate();
@@ -376,10 +435,17 @@ export default function ProductFormScreen() {
       const priceNumber = Number(price);
       if (!Number.isFinite(priceNumber) || priceNumber <= 0) throw new ApiError(400, 'Enter a valid positive price.');
       setPublishProgress('uploading_images');
-      const uploadResult = await uploadMarketplaceProductImages(accessToken, platform, selectedImageAssets, (completed, total) => setProgressDetail(`Uploading image ${completed} of ${total}`));
-      uploadedPaths = uploadResult.uploaded.map((entry) => entry.path);
-      if (uploadResult.failed.length) throw new ApiError(400, uploadResult.failed[0].error || 'One or more image uploads failed.');
-      const uploadedUrls = uploadResult.uploaded.map((entry) => entry.public_url);
+      let uploadedUrls: string[];
+      if (preparedImages?.signature === imageSelectionSignature) {
+        uploadedUrls = preparedImages.urls;
+        uploadedPaths = preparedImages.paths;
+        setProgressDetail(`Using ${uploadedUrls.length} prepared image(s)`);
+      } else {
+        const uploadResult = await uploadMarketplaceProductImages(accessToken, platform, selectedImageAssets, (completed, total) => setProgressDetail(`Uploading image ${completed} of ${total}`));
+        uploadedPaths = uploadResult.uploaded.map((entry) => entry.path);
+        if (uploadResult.failed.length) throw new ApiError(400, `Image ${uploadResult.failed[0].index + 1}: ${uploadResult.failed[0].error || 'Upload failed.'}`);
+        uploadedUrls = uploadResult.uploaded.map((entry) => entry.public_url);
+      }
       if (!uploadedUrls.length) throw new ApiError(400, 'No image uploads succeeded.');
 
       setPublishProgress('migrating_images');
@@ -432,12 +498,13 @@ export default function ProductFormScreen() {
       setPublishMessage(response.item_id ? 'Daraz listing created successfully (item ' + response.item_id + ').' : response.message || 'Daraz listing created successfully.');
       setFieldErrors({});
       setTitle(''); setPrice(''); setCategory(''); setImage(''); setDescription('');
-      setDarazAttributeValues({}); setSelectedDarazCategoryId(null); setDarazCategoryPath([]); setSelectedImageAssets([]);
+      setDarazAttributeValues({}); setSelectedDarazCategoryId(null); setDarazCategoryPath([]); setSelectedImageAssets([]); setPreparedImages(null); setAiGeneratedFields([]);
       setTimeout(() => router.back(), 1200);
     } catch (err) {
       setPublishProgress('failed');
       setFormError(err instanceof ApiError || err instanceof UnsupportedBackendCapabilityError ? err.message : 'Could not publish the product.');
       if (uploadedPaths.length) cleanupMarketplaceProductImages(accessToken, uploadedPaths).catch(() => undefined);
+      if (preparedImages?.signature === imageSelectionSignature) setPreparedImages(null);
     } finally {
       setIsPublishing(false);
     }
@@ -627,8 +694,8 @@ export default function ProductFormScreen() {
                   {selectedImageAssets.length < 8 && <Pressable onPress={handlePickImage} disabled={isPublishing} style={[styles.addMediaTile, { borderColor: fieldErrors.image ? theme.danger : theme.border, backgroundColor: theme.surfaceContainerLow }]} accessibilityRole="button" accessibilityLabel="Add product images"><Ionicons name="images-outline" size={28} color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">Add Images</ThemedText></Pressable>}
                 </View>
                 {fieldErrors.image && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.image}</ThemedText>}
-                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length} style={[styles.secondaryButton, { borderColor: theme.border }]}>
-                  {isGenerating ? <ActivityIndicator color={theme.primary} /> : <ThemedText type="bodyMd" themeColor="primary">Generate listing from primary image</ThemedText>}
+                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length || !platform || !selectedDarazCategoryId || isLoadingDarazAttributes || !hasLoadedDarazAttributes || !!darazAttributesError} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+                  {isGenerating ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">{progressDetail || 'Generating product details'}</ThemedText></View> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
                 </Pressable>
               </View>
               {platform === 'daraz' && selectedDarazCategoryId && <>
@@ -640,13 +707,14 @@ export default function ProductFormScreen() {
                   .map((attribute) => {
                     const value = darazAttributeValues[attribute.name] ?? '';
                     const requiredLabel = attribute.label + (isDarazFlagEnabled(attribute.is_mandatory) ? ' *' : '');
+                    const fieldLabel = requiredLabel + (aiGeneratedFields.includes(attribute.name) ? ' · AI generated' : '');
                     if (isDateAttribute(attribute)) {
                       const includesTime = isDateTimeAttribute(attribute);
                       const pickerVisible = activeDateAttribute === attribute.name;
                       const pickerMode = Platform.OS === 'ios' && includesTime ? 'datetime' : datePickerStage;
                       return (
                         <View key={String(attribute.id ?? attribute.name)} style={styles.dateFieldGroup}>
-                          <ThemedText type="bodyMd" themeColor="textSecondary">{requiredLabel}</ThemedText>
+                          <ThemedText type="bodyMd" themeColor="textSecondary">{fieldLabel}</ThemedText>
                           <Pressable onPress={() => { setDatePickerStage('date'); setActiveDateAttribute(attribute.name); }} style={[styles.dateField, { backgroundColor: theme.surfaceContainerLowest, borderColor: pickerVisible ? theme.primary : theme.border }]} accessibilityRole="button" accessibilityLabel={`Select ${attribute.label}`}>
                             <Ionicons name={includesTime ? 'calendar-number-outline' : 'calendar-outline'} size={20} color={theme.primary} />
                             <ThemedText type="bodyLg" themeColor={value ? 'text' : 'textSecondary'} style={styles.dateValue}>{value || (includesTime ? 'Select date and time' : 'Select date')}</ThemedText>
@@ -659,7 +727,7 @@ export default function ProductFormScreen() {
                     if (attribute.options.length > 0) {
                       return (
                         <View key={attribute.name}>
-                          <ThemedText type="bodySm" themeColor="textSecondary">{requiredLabel}</ThemedText>
+                          <ThemedText type="bodySm" themeColor="textSecondary">{fieldLabel}</ThemedText>
                           <View style={styles.categoryRow}>
                             {attribute.options.map((option, optionIndex) => (
                               <Pressable
@@ -676,7 +744,7 @@ export default function ProductFormScreen() {
                     return (
                       <AuthField
                         key={attribute.name}
-                        label={requiredLabel}
+                        label={fieldLabel}
                         value={value}
                         onChangeText={(nextValue) => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: nextValue }))}
                         placeholder={attribute.input_type === 'numeric' ? 'Enter a number' : 'Enter ' + attribute.label.toLowerCase()}
