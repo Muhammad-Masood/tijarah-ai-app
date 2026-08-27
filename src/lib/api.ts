@@ -1008,6 +1008,20 @@ export type ShopifyProductCreate = {
   price: string;
   images?: ShopifyMediaInput[] | null;
 };
+export type ConnectedStorePublishResult = {
+  connection_id: string;
+  marketplace_id: string;
+  marketplace: string;
+  store_identifier: string;
+  success: boolean;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+};
+export type PublishConnectedProductResponse = {
+  results: ConnectedStorePublishResult[];
+  succeeded: number;
+  failed: number;
+};
 export type ShopifyOrder = {
   id: string;
   name: string;
@@ -1051,6 +1065,14 @@ export function createShopifyProduct(accessToken: string, shopifyAccessToken: st
     body: JSON.stringify(data),
   });
 }
+export function publishToConnectedStores(accessToken: string, data: { shopify?: ShopifyProductCreate; daraz?: DarazCreateProductPayload }): Promise<PublishConnectedProductResponse> {
+  return request<PublishConnectedProductResponse>("/marketplace/publish-to-connected-stores", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function getProducts(accessToken: string): Promise<Product[]> {
   return request<Product[]>("/product/get_products", {
     headers: { Authorization: `Bearer ${accessToken}` },

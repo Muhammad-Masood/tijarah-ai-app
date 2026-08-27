@@ -17,9 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useShopifyTaxonomy } from '@/hooks/use-shopify-taxonomy';
 import {
   ApiError,
-  createNewDarazProduct,
   createProduct,
-  createShopifyProduct,
+  publishToConnectedStores,
   cleanupMarketplaceProductImages,
   generateProductListing,
   getDarazAllCategories,
@@ -404,7 +403,7 @@ export default function ProductFormScreen() {
         uploadedUrls = upload.uploaded.map((entry) => entry.public_url);
       }
       setPublishProgress('creating_product'); setProgressDetail('Creating Shopify product');
-      const response = await createShopifyProduct(accessToken, connection.encrypted_access_token, {
+      const response = await publishToConnectedStores(accessToken, { shopify: {
         title: title.trim(),
         descriptionHtml: description.trim(),
         vendor: vendor.trim() || null,
@@ -414,11 +413,16 @@ export default function ProductFormScreen() {
         inventory,
         price: price.trim(),
         images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
-      });
+      } });
       setPublishProgress('completed'); setProgressDetail('Product published');
-      const record = response && typeof response === 'object' ? response as Record<string, unknown> : null;
-      const productId = record?.id ?? (record?.product && typeof record.product === 'object' ? (record.product as Record<string, unknown>).id : null);
-      setPublishMessage(productId ? `Shopify product published (${String(productId)}).` : 'Shopify product published successfully.');
+      const failed = response.results.filter((result) => !result.success);
+      if (failed.length) {
+        setPublishProgress('failed');
+        setFormError(failed.map((result) => `${result.store_identifier}: ${result.error ?? 'Publish failed'}`).join('\n'));
+        setPublishMessage(`${response.succeeded} Shopify store${response.succeeded === 1 ? '' : 's'} published; ${failed.length} failed.`);
+        return;
+      }
+      setPublishMessage(`${response.succeeded} Shopify store${response.succeeded === 1 ? '' : 's'} published${failed.length ? `; ${failed.length} failed` : ''}.`);
       setPreparedImages(null); setSelectedImageAssets([]); setImage(''); setTitle(''); setDescription(''); setPrice(''); setQuantity('1'); setVendor(''); setTags(''); setCategory(''); setSelectedShopifyCategoryId(null); setSelectedShopifyCollectionIds([]);
       setTimeout(() => router.back(), 1200);
     } catch (err) {
@@ -542,10 +546,17 @@ export default function ProductFormScreen() {
 
       setPublishProgress('creating_product');
       setProgressDetail('Creating product');
-      const response = await createNewDarazProduct(accessToken, activeConnection.encrypted_access_token, payload);
+      const bulkResponse = await publishToConnectedStores(accessToken, { daraz: payload });
+      const failedStores = bulkResponse.results.filter((result) => !result.success);
+      if (failedStores.length) {
+        throw new ApiError(422, failedStores.map((result) => `${result.store_identifier}: ${result.error ?? 'Publish failed'}`).join('\n'));
+      }
+      const firstResult = bulkResponse.results[0]?.result;
+      const resultData = firstResult?.data;
+      const itemId = resultData && typeof resultData === 'object' && 'item_id' in resultData ? String(resultData.item_id) : null;
       setPublishProgress('completed');
       setProgressDetail('Product published');
-      setPublishMessage(response.item_id ? 'Daraz listing created successfully (item ' + response.item_id + ').' : response.message || 'Daraz listing created successfully.');
+      setPublishMessage(itemId ? 'Daraz listing created successfully (item ' + itemId + ').' : `${bulkResponse.succeeded} Daraz store${bulkResponse.succeeded === 1 ? '' : 's'} published.`);
       setFieldErrors({});
       setTitle(''); setPrice(''); setCategory(''); setImage(''); setDescription('');
       setDarazAttributeValues({}); setSelectedDarazCategoryId(null); setDarazCategoryPath([]); setSelectedImageAssets([]); setPreparedImages(null); setAiGeneratedFields([]);
@@ -647,23 +658,35 @@ export default function ProductFormScreen() {
             </View>
           ) : (
             <View style={styles.form}>
-              {!isEditMode && <>
-                <SectionHeading title="Connected marketplace" subtitle="Choose where this listing will be published." />
-                <View style={styles.platformRow}>
-                  {connections.map((connection) => {
-                    const option = connection.marketplace!.slug as ProductPlatform;
-                    return (
-                      <Pressable key={connection.id} disabled={isPublishing || connections.length === 1} onPress={() => {
-                        setPlatform(option); setSelectedDarazCategoryId(null); setCategory('');
-                        setDarazAttributeValues({}); setSelectedShopifyCategoryId(null); setSelectedShopifyCollectionIds([]); setFormError(null);
-                      }} style={[styles.platformButton, { borderColor: theme.border }, platform === option && { backgroundColor: theme.primaryContainer, borderColor: theme.primary }]}>
-                        <Image source={{ uri: connection.marketplace!.logo_url }} style={styles.marketplaceLogo} contentFit="contain" />
-                        <ThemedText type="bodyMd" themeColor={platform === option ? 'onPrimaryContainer' : 'text'}>{connection.marketplace!.name}</ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </>}
+              <SectionHeading title="Connected marketplace" subtitle="Choose where this listing will be published." />
+              <View style={styles.platformRow}>
+                {connections.map((connection) => {
+                  const option = connection.marketplace!.slug as ProductPlatform;
+                  return (
+                    <Pressable
+                      key={connection.id}
+                      disabled={isPublishing}
+                      onPress={() => {
+                        setPlatform(option);
+                        setSelectedDarazCategoryId(null);
+                        setCategory('');
+                        setDarazAttributeValues({});
+                        setSelectedShopifyCategoryId(null);
+                        setSelectedShopifyCollectionIds([]);
+                        setFormError(null);
+                      }}
+                      style={[
+                        styles.platformButton,
+                        { borderColor: theme.border },
+                        platform === option && { backgroundColor: theme.primaryContainer, borderColor: theme.primary },
+                      ]}
+                    >
+                      <Image source={{ uri: connection.marketplace!.logo_url }} style={styles.marketplaceLogo} contentFit="contain" />
+                      <ThemedText type="bodyMd" themeColor={platform === option ? 'onPrimaryContainer' : 'text'}>{connection.marketplace!.name}</ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
               <AuthField
                 label="Title"
                 value={title}
@@ -775,8 +798,8 @@ export default function ProductFormScreen() {
                   .filter(isRenderableDarazAttribute)
                   .map((attribute) => {
                     const value = darazAttributeValues[attribute.name] ?? '';
-                    const requiredLabel = attribute.label + (isDarazFlagEnabled(attribute.is_mandatory) ? ' *' : '');
-                    const fieldLabel = requiredLabel + (aiGeneratedFields.includes(attribute.name) ? ' · AI generated' : '');
+                    const requiredLabel = `${attribute.label}${isDarazFlagEnabled(attribute.is_mandatory) ? ' *' : ''}`;
+                    const fieldLabel = `${requiredLabel}${aiGeneratedFields.includes(attribute.name) ? ' · AI generated' : ''}`;
                     if (isDateAttribute(attribute)) {
                       const includesTime = isDateTimeAttribute(attribute);
                       const pickerVisible = activeDateAttribute === attribute.name;
@@ -816,7 +839,7 @@ export default function ProductFormScreen() {
                         label={fieldLabel}
                         value={value}
                         onChangeText={(nextValue) => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: nextValue }))}
-                        placeholder={attribute.input_type === 'numeric' ? 'Enter a number' : 'Enter ' + attribute.label.toLowerCase()}
+                        placeholder={attribute.input_type === 'numeric' ? 'Enter a number' : `Enter ${attribute.label.toLowerCase()}`}
                         keyboardType={attribute.input_type === 'numeric' ? 'decimal-pad' : 'default'}
                       />
                     );
@@ -855,7 +878,7 @@ export default function ProductFormScreen() {
                   </ThemedText>
                 )}
               </PressableScale> : <PressableScale disabled={isPublishing || !platform || (platform === 'daraz' && (darazCategories.length === 0 || !!darazCategoriesError))} onPress={handlePublish} style={[styles.ctaButton, { backgroundColor: theme.primary }]}>
-                {isPublishing ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.onPrimary} /><ThemedText type="bodyMd" themeColor="onPrimary">{progressDetail}</ThemedText></View> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Publish to Shopify' : publishProgress === 'uploading_images' ? 'Uploading ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'migrating_images' ? 'Migrating ' + selectedImageAssets.length + ' image(s)' : publishProgress === 'creating_product' ? 'Creating product' : publishProgress === 'completed' ? 'Product published' : 'Publish to Daraz'}</ThemedText>}
+                {isPublishing ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.onPrimary} /><ThemedText type="bodyMd" themeColor="onPrimary">{progressDetail}</ThemedText></View> : <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.ctaLabel}>{platform === 'shopify' ? 'Publish to Shopify' : publishProgress === 'uploading_images' ? `Uploading ${selectedImageAssets.length} image(s)` : publishProgress === 'migrating_images' ? `Migrating ${selectedImageAssets.length} image(s)` : publishProgress === 'creating_product' ? 'Creating product' : publishProgress === 'completed' ? 'Product published' : 'Publish to Daraz'}</ThemedText>}
               </PressableScale>}
             </View>
           )}
