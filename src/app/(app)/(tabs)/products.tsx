@@ -10,7 +10,7 @@ import { StoreSelectorSheet, type StoreOption } from '@/components/store-selecto
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useDarazProducts } from '@/hooks/use-daraz-products';
-import { useProducts } from '@/hooks/use-products';
+import { useShopifyProducts } from '@/hooks/use-shopify-products';
 import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -37,6 +37,13 @@ export default function ProductsScreen() {
     refetch: refetchDaraz,
   } = useDarazProducts();
   const {
+    products: shopifyProducts,
+    isConnected: isShopifyConnected,
+    isLoading: isShopifyLoading,
+    error: shopifyError,
+    refetch: refetchShopify,
+  } = useShopifyProducts();
+  const {
     marketplaces,
     isLoading: isLoadingMarketplaces,
     error: marketplacesError,
@@ -57,19 +64,25 @@ export default function ProductsScreen() {
   const darazMarketplace = useMemo(
     () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'daraz'),
     [connectedMarketplaces],
+  );  const shopifyMarketplace = useMemo(
+    () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'shopify'),
+    [connectedMarketplaces],
   );
 
   // Daraz is the only marketplace with a real product feed today — this
   // guards the section so switching to a different connected store (once
   // one has its own product hook) doesn't show Daraz's catalog under it.
   const showDarazProducts = isDarazConnected && (selectedStore === 'all' || selectedMarketplace?.slug === 'daraz');
+  const showShopifyProducts = isShopifyConnected && (selectedStore === 'all' || selectedMarketplace?.slug === 'shopify');
 
   // const filteredProducts = useMemo(() => filterByQuery(products, query), [products, query]);
   const filteredDarazProducts = useMemo(() => filterByQuery(darazProducts, query), [darazProducts, query]);
+  const filteredShopifyProducts = useMemo(() => filterByQuery(shopifyProducts, query), [shopifyProducts, query]);
 
   function handleRefresh() {
     // refetch();
     refetchDaraz();
+    refetchShopify();
     refetchMarketplaces();
   }
 
@@ -118,7 +131,7 @@ export default function ProductsScreen() {
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={isDarazLoading} onRefresh={handleRefresh} tintColor={theme.primary} />
+            <RefreshControl refreshing={isDarazLoading || isShopifyLoading} onRefresh={handleRefresh} tintColor={theme.primary} />
           }>
 
           {connectedMarketplaces.length > 0 && (
@@ -190,11 +203,15 @@ export default function ProductsScreen() {
                 </>
               )}
 
-              {!showDarazProducts && selectedMarketplace && (
-                <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                  No products available for {selectedMarketplace.name} yet.
-                </ThemedText>
+              {showShopifyProducts && (
+                <>
+                  {isShopifyLoading && <ProductListSkeleton count={3} />}
+                  {!isShopifyLoading && shopifyError && <View style={styles.statusBlock}><ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>{shopifyError}</ThemedText><Pressable onPress={refetchShopify}><ThemedText type="bodyMd" themeColor="primary">Try again</ThemedText></Pressable></View>}
+                  {!isShopifyLoading && !shopifyError && shopifyProducts.length === 0 && <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>No products found on Shopify yet.</ThemedText>}
+                  {!isShopifyLoading && !shopifyError && filteredShopifyProducts.length > 0 && <View style={styles.list}><ThemedText type="labelMd" themeColor="textSecondary">{filteredShopifyProducts.length} SHOPIFY PRODUCT{filteredShopifyProducts.length === 1 ? '' : 'S'}</ThemedText>{filteredShopifyProducts.map((product, index) => <ProductRow key={product.id ?? index} product={product} marketplaceLogo={shopifyMarketplace?.logo_url} onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id ?? String(index), source: 'shopify' } })} />)}</View>}
+                </>
               )}
+              {!showDarazProducts && !showShopifyProducts && selectedMarketplace && <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>No products available for {selectedMarketplace.name} yet.</ThemedText>}
             </View>
           )}
         </ScrollView>

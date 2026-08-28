@@ -488,6 +488,7 @@ export type Product = {
   /** Present for Daraz-sourced products only — summed SKU quantity. */
   stockQuantity?: number;
   url: string;
+  platform?: ProductPlatform;
 };
 
 export type ProductPlatform = "daraz" | "shopify";
@@ -974,11 +975,103 @@ export function createNewDarazProduct(
   });
 }
 
-export function createShopifyProduct(
-  _accessToken: string,
-  _data: ListingDraft,
-): Promise<unknown> {
-  return Promise.reject(new UnsupportedBackendCapabilityError("Shopify product publishing"));
+export type ShopifyMediaInput = {
+  originalSource: string;
+  alt?: string | null;
+  mediaContentType?: string;
+};
+export type ShopifyTaxonomyCategory = { id: string; name: string; fullName?: string | null };
+export type ShopifyCollection = { id: string; title: string; handle?: string | null; description?: string | null; image?: string | null };
+export type ShopifyVariant = { id: string; title: string; price?: string | null; inventoryQuantity?: number | null };
+export type ShopifyProduct = {
+  id: string;
+  title: string;
+  handle?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  description?: string | null;
+  productType?: string | null;
+  totalInventory?: number | null;
+  tags: string[];
+  category?: { id: string; name: string } | null;
+  images: { src: string; altText?: string | null }[];
+  variants: ShopifyVariant[];
+};
+export type ShopifyProductCreate = {
+  title: string;
+  descriptionHtml: string;
+  vendor?: string | null;
+  tags?: string[] | null;
+  collectionsToJoin?: string[] | null;
+  category?: string | null;
+  inventory: number;
+  price: string;
+  images?: ShopifyMediaInput[] | null;
+};
+export type ConnectedStorePublishResult = {
+  connection_id: string;
+  marketplace_id: string;
+  marketplace: string;
+  store_identifier: string;
+  success: boolean;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+};
+export type PublishConnectedProductResponse = {
+  results: ConnectedStorePublishResult[];
+  succeeded: number;
+  failed: number;
+};
+export type ShopifyOrder = {
+  id: string;
+  name: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  processedAt?: string | null;
+  displayFinancialStatus?: string | null;
+  displayFulfillmentStatus?: string | null;
+  totalAmount?: string | null;
+  currencyCode?: string | null;
+  customer?: { id?: string | null; displayName?: string | null; email?: string | null } | null;
+  lineItems: { id: string; title: string; quantity: number; price?: string | null; currency?: string | null }[];
+};
+
+function shopifyHeaders(accessToken: string, shopifyAccessToken: string): Record<string, string> {
+  return { Authorization: `Bearer ${accessToken}`, "x-shopify-access-token": shopifyAccessToken };
+}
+
+export function getShopifyProducts(accessToken: string, shopifyAccessToken: string): Promise<ShopifyProduct[]> {
+  return request<{ products: ShopifyProduct[] }>("/shopify/get_all_products", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.products ?? []);
+}
+export function getShopifyProductById(accessToken: string, shopifyAccessToken: string, productId: string): Promise<ShopifyProduct | null> {
+  return request<{ product?: ShopifyProduct | null }>(`/shopify/get_product_by_id?product_id=${encodeURIComponent(productId)}`, { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.product ?? null);
+}
+export function getShopifyCategories(accessToken: string, shopifyAccessToken: string): Promise<ShopifyTaxonomyCategory[]> {
+  return request<{ categories: ShopifyTaxonomyCategory[] }>("/shopify/get_all_categories", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.categories ?? []);
+}
+export function getShopifySubcategories(accessToken: string, shopifyAccessToken: string, categoryId: string): Promise<ShopifyTaxonomyCategory[]> {
+  return request<{ categories: ShopifyTaxonomyCategory[] }>(`/shopify/get_subcategories/${encodeURIComponent(categoryId)}`, { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.categories ?? []);
+}
+export function getShopifyCollections(accessToken: string, shopifyAccessToken: string): Promise<ShopifyCollection[]> {
+  return request<{ collections: ShopifyCollection[] }>("/shopify/get_all_collections", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.collections ?? []);
+}
+export function getShopifyOrders(accessToken: string, shopifyAccessToken: string): Promise<ShopifyOrder[]> {
+  return request<{ orders: ShopifyOrder[] }>("/shopify/get_all_orders", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.orders ?? []);
+}
+export function createShopifyProduct(accessToken: string, shopifyAccessToken: string, data: ShopifyProductCreate): Promise<unknown> {
+  return request<unknown>("/shopify/create_new_product", {
+    method: "POST",
+    headers: { ...shopifyHeaders(accessToken, shopifyAccessToken), "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+export function publishToConnectedStores(accessToken: string, data: { shopify?: ShopifyProductCreate; daraz?: DarazCreateProductPayload }): Promise<PublishConnectedProductResponse> {
+  return request<PublishConnectedProductResponse>("/marketplace/publish-to-connected-stores", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 }
 
 export function getProducts(accessToken: string): Promise<Product[]> {
