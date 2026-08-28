@@ -57,7 +57,7 @@ const parseAttributeDate = (value: string) => {
   if (!value) return new Date();
   const parsed = new Date(value.replace(' ', 'T'));
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-};const isDarazFlagEnabled = (value: string | number | boolean) =>
+}; const isDarazFlagEnabled = (value: string | number | boolean) =>
   value === true || value === 1 || value === '1';
 
 export default function ProductFormScreen() {
@@ -403,17 +403,19 @@ export default function ProductFormScreen() {
         uploadedUrls = upload.uploaded.map((entry) => entry.public_url);
       }
       setPublishProgress('creating_product'); setProgressDetail('Creating Shopify product');
-      const response = await publishToConnectedStores(accessToken, { shopify: {
-        title: title.trim(),
-        descriptionHtml: description.trim(),
-        vendor: vendor.trim() || null,
-        tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-        collectionsToJoin: selectedShopifyCollectionIds,
-        category: selectedShopifyCategoryId,
-        inventory,
-        price: price.trim(),
-        images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
-      } });
+      const response = await publishToConnectedStores(accessToken, {
+        shopify: {
+          title: title.trim(),
+          descriptionHtml: description.trim(),
+          vendor: vendor.trim() || null,
+          tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          collectionsToJoin: selectedShopifyCollectionIds,
+          category: selectedShopifyCategoryId,
+          inventory,
+          price: price.trim(),
+          images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
+        }
+      });
       setPublishProgress('completed'); setProgressDetail('Product published');
       const failed = response.results.filter((result) => !result.success);
       if (failed.length) {
@@ -957,7 +959,7 @@ const styles = StyleSheet.create({
   marketplaceLogo: { width: 28, height: 28 },
   dateFieldGroup: { gap: Spacing.one },
   dateField: { minHeight: 52, borderWidth: 1, borderRadius: Radius.DEFAULT, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  dateValue: { flex: 1 },  categoryRow: {
+  dateValue: { flex: 1 }, categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
@@ -977,7 +979,7 @@ const styles = StyleSheet.create({
   removeImageButton: { position: 'absolute', right: 4, top: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center' },
   makePrimaryButton: { position: 'absolute', left: 4, right: 4, bottom: 4, minHeight: 28, borderRadius: Radius.sm, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
   processingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)', alignItems: 'center', justifyContent: 'center', gap: Spacing.one },
-  processingText: { color: '#fff' },  imageActions: {
+  processingText: { color: '#fff' }, imageActions: {
     alignItems: 'center',
     gap: Spacing.two,
   },
@@ -1003,7 +1005,7 @@ const styles = StyleSheet.create({
   modalHeader: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three },
   modalAction: { width: 64, minHeight: 44, justifyContent: 'center' },
   modalContent: { padding: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
-  categoryListItem: { minHeight: 60, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },  sectionHeading: { gap: Spacing.one, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,127,127,0.35)' },
+  categoryListItem: { minHeight: 60, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two }, sectionHeading: { gap: Spacing.one, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,127,127,0.35)' },
   secondaryCta: {
     alignItems: 'center',
     justifyContent: 'center',

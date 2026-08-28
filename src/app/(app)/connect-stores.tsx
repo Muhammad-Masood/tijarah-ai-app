@@ -20,7 +20,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError, getDarazAuthorizeUrl, getShopifyAuthorizeUrl, type Marketplace } from '@/lib/api';
+import { ApiError, getDarazAuthorizeUrl, type Marketplace } from '@/lib/api';
 
 export default function ConnectStoresScreen() {
   const theme = useTheme();
@@ -71,9 +71,8 @@ export default function ConnectStoresScreen() {
     }
   }
 
-  async function submitShopifyDomain() {
-    const marketplace = shopifyPromptMarketplace;
-    if (!marketplace || !accessToken || connectingId) return;
+  function submitShopifyDomain() {
+    if (!shopifyPromptMarketplace || connectingId) return;
 
     const normalizedShopDomain = shopDomainInput
       .trim()
@@ -86,19 +85,11 @@ export default function ConnectStoresScreen() {
     }
 
     setConnectError(null);
-    setConnectingId(marketplace.id);
-    try {
-      const authorizeUrl = await getShopifyAuthorizeUrl(accessToken, normalizedShopDomain);
-      setShopifyPromptMarketplace(null);
-      await WebBrowser.openBrowserAsync(authorizeUrl);
-      refetch();
-    } catch (err) {
-      setConnectError(
-        err instanceof ApiError ? err.message : 'Could not start the Shopify connection. Please try again.',
-      );
-    } finally {
-      setConnectingId(null);
-    }
+    setShopifyPromptMarketplace(null);
+    router.push({
+      pathname: '/store-connecting',
+      params: { platform: 'shopify', shop: normalizedShopDomain },
+    });
   }
 
   const isShopifyConnecting = Boolean(
