@@ -896,12 +896,31 @@ export function cleanupMarketplaceProductImages(accessToken: string, paths: stri
   });
 }
 
+export type MigrateDarazImageSource = {
+  storage_path?: string | null;
+  image_url?: string | null;
+};
+
 export function migrateDarazImage(
   accessToken: string,
   darazAccessToken: string,
-  imageUrl: string,
+  source: MigrateDarazImageSource | string,
 ): Promise<{ imageUrl: string }> {
-  const normalizedImageUrl = normalizePublicHttpsUrl(imageUrl, "Daraz migration input");
+  const payload: { storage_path?: string; image_url?: string } = {};
+
+  if (typeof source === "string") {
+    payload.image_url = normalizePublicHttpsUrl(source, "Daraz migration input");
+  } else {
+    const storagePath = source.storage_path?.trim();
+    const imageUrl = source.image_url?.trim();
+    if (storagePath) payload.storage_path = storagePath;
+    if (imageUrl) payload.image_url = normalizePublicHttpsUrl(imageUrl, "Daraz migration input");
+    if (!payload.storage_path && !payload.image_url) {
+      throw new ApiError(400, "storage_path or image_url is required.");
+    }
+  }
+
+  const fallbackInputUrl = payload.image_url ?? "";
 
   return request<unknown>("/daraz/migrate_image", {
     method: "POST",
@@ -910,10 +929,10 @@ export function migrateDarazImage(
       Authorization: `Bearer ${accessToken}`,
       "x-daraz-access-token": darazAccessToken,
     },
-    body: JSON.stringify({ image_url: normalizedImageUrl }),
+    body: JSON.stringify(payload),
   }).then((response) => {
     const migratedUrl = extractNestedString(response, ["migrated_url", "migratedUrl", "image_url", "imageUrl", "url", "public_url"]);
-    if (!migratedUrl || migratedUrl === normalizedImageUrl) {
+    if (!migratedUrl || (fallbackInputUrl && migratedUrl === fallbackInputUrl)) {
       throw new ApiError(502, "Daraz did not return a migrated image URL.");
     }
 
