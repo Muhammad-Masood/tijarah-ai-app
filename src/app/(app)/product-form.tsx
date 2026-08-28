@@ -403,17 +403,19 @@ export default function ProductFormScreen() {
         uploadedUrls = upload.uploaded.map((entry) => entry.public_url);
       }
       setPublishProgress('creating_product'); setProgressDetail('Creating Shopify product');
-      const response = await publishToConnectedStores(accessToken, { shopify: {
-        title: title.trim(),
-        descriptionHtml: description.trim(),
-        vendor: vendor.trim() || null,
-        tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-        collectionsToJoin: selectedShopifyCollectionIds,
-        category: selectedShopifyCategoryId,
-        inventory,
-        price: price.trim(),
-        images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
-      } });
+      const response = await publishToConnectedStores(accessToken, {
+        shopify: {
+          title: title.trim(),
+          descriptionHtml: description.trim(),
+          vendor: vendor.trim() || null,
+          tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          collectionsToJoin: selectedShopifyCollectionIds,
+          category: selectedShopifyCategoryId,
+          inventory,
+          price: price.trim(),
+          images: uploadedUrls.map((url) => ({ originalSource: url, alt: title.trim(), mediaContentType: 'IMAGE' })),
+        }
+      });
       setPublishProgress('completed'); setProgressDetail('Product published');
       const failed = response.results.filter((result) => !result.success);
       if (failed.length) {
@@ -771,6 +773,25 @@ export default function ProductFormScreen() {
                 keyboardType="url"
                 error={fieldErrors.image}
               />}
+              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <View style={styles.sectionTitleRow}><View style={styles.categoryCopy}><SectionHeading title="Product images" subtitle="JPEG, PNG or WebP · up to 5 MB each. Daraz accepts up to 8." /></View><ThemedText type="bodySm" themeColor="textSecondary">{selectedImageAssets.length} of 8</ThemedText></View>
+                <View style={styles.mediaGrid}>
+                  {selectedImageAssets.map((asset, index) => (
+                    <View key={asset.assetId ?? asset.uri} style={[styles.mediaTile, { borderColor: theme.border }]}>
+                      <Image source={{ uri: asset.uri }} style={styles.mediaImage} contentFit="cover" />
+                      {index === 0 && <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}><ThemedText type="bodySm" themeColor="onPrimary">Primary</ThemedText></View>}
+                      <Pressable onPress={() => removeImage(index)} disabled={isPublishing} style={styles.removeImageButton} accessibilityRole="button" accessibilityLabel={`Remove image ${index + 1}`}><Ionicons name="close" size={18} color="#fff" /></Pressable>
+                      {index > 0 && <Pressable onPress={() => setPrimaryImage(index)} disabled={isPublishing} style={styles.makePrimaryButton} accessibilityRole="button"><ThemedText type="bodySm" themeColor="primary">Set primary</ThemedText></Pressable>}
+                      {isPublishing && ['uploading_images', 'migrating_images'].includes(publishProgress) && <View style={styles.processingOverlay}><ActivityIndicator color="#fff" /><ThemedText type="bodySm" style={styles.processingText}>{publishProgress === 'uploading_images' ? 'Uploading' : 'Migrating'}</ThemedText></View>}
+                    </View>
+                  ))}
+                  {selectedImageAssets.length < 8 && <Pressable onPress={handlePickImage} disabled={isPublishing} style={[styles.addMediaTile, { borderColor: fieldErrors.image ? theme.danger : theme.border, backgroundColor: theme.surfaceContainerLow }]} accessibilityRole="button" accessibilityLabel="Add product images"><Ionicons name="images-outline" size={28} color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">Add Images</ThemedText></Pressable>}
+                </View>
+                {fieldErrors.image && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.image}</ThemedText>}
+                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length || !platform || !selectedDarazCategoryId || isLoadingDarazAttributes || !hasLoadedDarazAttributes || !!darazAttributesError} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+                  {isGenerating ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">{progressDetail || 'Generating product details'}</ThemedText></View> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
+                </Pressable>
+              </View>
               {platform === 'daraz' && selectedDarazCategoryId && <>
                 <SectionHeading title="Category-specific attributes" subtitle="Required marketplace details are marked with an asterisk." />
                 {isLoadingDarazAttributes && <ActivityIndicator color={theme.primary} />}
