@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,21 +9,68 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Channels, isChannelId } from '@/constants/channels';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/hooks/use-auth';
+import { ApiError, getShopifyAuthorizeUrl } from '@/lib/api';
 
 const STEPS = ['Verifying credentials', 'Establishing secure connection', 'Preparing your workspace'];
 const STEP_DELAY_MS = 850;
 const HANDOFF_DELAY_MS = 500;
 
 export default function StoreConnectingScreen() {
-  const { platform } = useLocalSearchParams<{ platform?: string }>();
+  const { platform, shop } = useLocalSearchParams<{ platform?: string; shop?: string }>();
   const channelId = isChannelId(platform) ? platform : 'shopify';
   const channel = Channels[channelId];
+  const { accessToken } = useAuth();
 
-  // Simulated connection handshake — no backend wiring yet, so this steps
-  // through the checklist on a timer and then hands off to the success screen.
   const [stepIndex, setStepIndex] = useState(0);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const oauthStarted = useRef(false);
 
+  // Shopify: call GET /shopify/get_auth_code?shop=… and open the redirected
+  // OAuth authorize URL. Other platforms keep the simulated handshake.
   useEffect(() => {
+    if (channelId !== 'shopify') return;
+    if (oauthStarted.current) return;
+
+    if (!shop?.trim()) {
+      setConnectError('Please enter your Shopify shop domain.');
+      return;
+    }
+    if (!accessToken) {
+      setConnectError('Please log in again to connect Shopify.');
+      return;
+    }
+
+    oauthStarted.current = true;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setConnectError(null);
+        const authorizeUrl = await getShopifyAuthorizeUrl(accessToken, shop);
+        if (cancelled) return;
+        setStepIndex(STEPS.length);
+        console.log('authorizeUrl', authorizeUrl);
+        await WebBrowser.openBrowserAsync(authorizeUrl);
+        if (cancelled) return;
+        router.replace({ pathname: '/store-connected', params: { platform: channelId } });
+      } catch (err) {
+        if (cancelled) return;
+        setConnectError(
+          err instanceof ApiError ? err.message : 'Could not start the Shopify connection. Please try again.',
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, channelId, shop]);
+
+  // Simulated connection handshake for non-Shopify platforms.
+  useEffect(() => {
+    if (channelId === 'shopify') return;
+
     if (stepIndex >= STEPS.length) {
       const timeout = setTimeout(() => {
         router.replace({ pathname: '/store-connected', params: { platform: channelId } });
@@ -33,6 +81,13 @@ export default function StoreConnectingScreen() {
     return () => clearTimeout(timeout);
   }, [stepIndex, channelId]);
 
+  // Advance checklist steps while Shopify OAuth request is in flight.
+  useEffect(() => {
+    if (channelId !== 'shopify' || connectError || stepIndex >= STEPS.length) return;
+    const timeout = setTimeout(() => setStepIndex((index) => Math.min(index + 1, STEPS.length - 1)), STEP_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [channelId, connectError, stepIndex]);
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right', 'bottom']}>
@@ -42,28 +97,34 @@ export default function StoreConnectingScreen() {
           <View style={styles.badgeBlock}>
             <ChannelBadge channelId={channelId} />
             <ThemedText type="headlineSm">{channel.name}</ThemedText>
-            <SyncStatusPill label="Connecting…" />
+            <SyncStatusPill label={connectError ? 'Connection failed' : 'Connecting…'} />
           </View>
 
           <ThemedText type="headlineMd" style={styles.heading}>
-            Connecting to {channel.name}…
+            {connectError ? `Couldn’t connect to ${channel.name}` : `Connecting to ${channel.name}…`}
           </ThemedText>
 
           <View style={styles.checklist}>
             {STEPS.map((label, index) => (
-              <ExecutionStep key={label} label={label} status={stepStatus(index, stepIndex)} />
+              <ExecutionStep key={label} label={label} status={stepStatus(index, stepIndex, Boolean(connectError))} />
             ))}
           </View>
 
-          <ThemedText type="bodySm" themeColor="textSecondary" style={styles.reassurance}>
-            This usually takes a few seconds. Your store data is not changed during this step.
-          </ThemedText>
+          {connectError ? (
+            <ThemedText type="bodySm" themeColor="danger" style={styles.reassurance}>
+              {connectError}
+            </ThemedText>
+          ) : (
+            <ThemedText type="bodySm" themeColor="textSecondary" style={styles.reassurance}>
+              This usually takes a few seconds. Your store data is not changed during this step.
+            </ThemedText>
+          )}
 
           <View style={styles.spacer} />
 
           <Pressable style={styles.cancelRow} onPress={() => router.back()} hitSlop={8}>
             <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.cancelText}>
-              Cancel
+              {connectError ? 'Go back' : 'Cancel'}
             </ThemedText>
           </Pressable>
         </View>
@@ -72,7 +133,8 @@ export default function StoreConnectingScreen() {
   );
 }
 
-function stepStatus(index: number, currentStepIndex: number): StepStatus {
+function stepStatus(index: number, currentStepIndex: number, hasError: boolean): StepStatus {
+  if (hasError) return index < currentStepIndex ? 'done' : 'pending';
   if (index < currentStepIndex) return 'done';
   if (index === currentStepIndex) return 'in-progress';
   return 'pending';

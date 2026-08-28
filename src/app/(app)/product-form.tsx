@@ -56,7 +56,7 @@ const parseAttributeDate = (value: string) => {
   if (!value) return new Date();
   const parsed = new Date(value.replace(' ', 'T'));
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-};const isDarazFlagEnabled = (value: string | number | boolean) =>
+}; const isDarazFlagEnabled = (value: string | number | boolean) =>
   value === true || value === 1 || value === '1';
 
 export default function ProductFormScreen() {
@@ -615,6 +615,38 @@ export default function ProductFormScreen() {
                 </View>
                 {platform === 'shopify' && <ThemedText type="bodySm" themeColor="textSecondary">Shopify publishing is not available in the backend yet.</ThemedText>}
               </>}
+              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <SectionHeading title="Category" subtitle="Required · Select the most specific product category." />
+                <Pressable onPress={() => setIsCategoryModalVisible(true)} disabled={platform !== 'daraz'} style={[styles.categoryCard, { borderColor: fieldErrors.category ? theme.danger : theme.border }]} accessibilityRole="button" accessibilityLabel="Select category">
+                  <View style={[styles.categoryIcon, { backgroundColor: theme.primaryContainer }]}><Ionicons name="grid-outline" size={22} color={theme.primary} /></View>
+                  <View style={styles.categoryCopy}>
+                    <ThemedText type="bodyMd">{selectedDarazCategoryId ? darazCategoryPath.at(-1)?.name ?? category.split(' / ').at(-1) : 'Select Category'}</ThemedText>
+                    <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={2}>{category || 'No category selected'}</ThemedText>
+                  </View>
+                  <ThemedText type="bodyMd" themeColor="primary">{selectedDarazCategoryId ? 'Change' : 'Select'}</ThemedText>
+                </Pressable>
+                {fieldErrors.category && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.category}</ThemedText>}
+                {darazCategoriesError && <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>}
+              </View>
+              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
+                <View style={styles.sectionTitleRow}><View style={styles.categoryCopy}><SectionHeading title="Product images" subtitle="JPEG, PNG or WebP · up to 5 MB each. Daraz accepts up to 8." /></View><ThemedText type="bodySm" themeColor="textSecondary">{selectedImageAssets.length} of 8</ThemedText></View>
+                <View style={styles.mediaGrid}>
+                  {selectedImageAssets.map((asset, index) => (
+                    <View key={asset.assetId ?? asset.uri} style={[styles.mediaTile, { borderColor: theme.border }]}>
+                      <Image source={{ uri: asset.uri }} style={styles.mediaImage} contentFit="cover" />
+                      {index === 0 && <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}><ThemedText type="bodySm" themeColor="onPrimary">Primary</ThemedText></View>}
+                      <Pressable onPress={() => removeImage(index)} disabled={isPublishing} style={styles.removeImageButton} accessibilityRole="button" accessibilityLabel={`Remove image ${index + 1}`}><Ionicons name="close" size={18} color="#fff" /></Pressable>
+                      {index > 0 && <Pressable onPress={() => setPrimaryImage(index)} disabled={isPublishing} style={styles.makePrimaryButton} accessibilityRole="button"><ThemedText type="bodySm" themeColor="primary">Set primary</ThemedText></Pressable>}
+                      {isPublishing && ['uploading_images', 'migrating_images'].includes(publishProgress) && <View style={styles.processingOverlay}><ActivityIndicator color="#fff" /><ThemedText type="bodySm" style={styles.processingText}>{publishProgress === 'uploading_images' ? 'Uploading' : 'Migrating'}</ThemedText></View>}
+                    </View>
+                  ))}
+                  {selectedImageAssets.length < 8 && <Pressable onPress={handlePickImage} disabled={isPublishing} style={[styles.addMediaTile, { borderColor: fieldErrors.image ? theme.danger : theme.border, backgroundColor: theme.surfaceContainerLow }]} accessibilityRole="button" accessibilityLabel="Add product images"><Ionicons name="images-outline" size={28} color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">Add Images</ThemedText></Pressable>}
+                </View>
+                {fieldErrors.image && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.image}</ThemedText>}
+                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length || !platform || !selectedDarazCategoryId || isLoadingDarazAttributes || !hasLoadedDarazAttributes || !!darazAttributesError} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+                  {isGenerating ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">{progressDetail || 'Generating product details'}</ThemedText></View> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
+                </Pressable>
+              </View>
               <AuthField
                 label="Title"
                 value={title}
@@ -635,19 +667,6 @@ export default function ProductFormScreen() {
                 required
                 rightAdornment={<ThemedText type="bodyMd" themeColor="textSecondary">PKR</ThemedText>}
               />
-              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
-                <SectionHeading title="Category" subtitle="Required · Select the most specific product category." />
-                <Pressable onPress={() => setIsCategoryModalVisible(true)} disabled={platform !== 'daraz'} style={[styles.categoryCard, { borderColor: fieldErrors.category ? theme.danger : theme.border }]} accessibilityRole="button" accessibilityLabel="Select category">
-                  <View style={[styles.categoryIcon, { backgroundColor: theme.primaryContainer }]}><Ionicons name="grid-outline" size={22} color={theme.primary} /></View>
-                  <View style={styles.categoryCopy}>
-                    <ThemedText type="bodyMd">{selectedDarazCategoryId ? darazCategoryPath.at(-1)?.name ?? category.split(' / ').at(-1) : 'Select Category'}</ThemedText>
-                    <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={2}>{category || 'No category selected'}</ThemedText>
-                  </View>
-                  <ThemedText type="bodyMd" themeColor="primary">{selectedDarazCategoryId ? 'Change' : 'Select'}</ThemedText>
-                </Pressable>
-                {fieldErrors.category && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.category}</ThemedText>}
-                {darazCategoriesError && <ThemedText type="bodySm" themeColor="danger">{darazCategoriesError}</ThemedText>}
-              </View>
               <Modal visible={isCategoryModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsCategoryModalVisible(false)}>
                 <ThemedView style={styles.modalScreen}>
                   <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
@@ -679,25 +698,6 @@ export default function ProductFormScreen() {
                 keyboardType="url"
                 error={fieldErrors.image}
               />}
-              <View style={[styles.section, { backgroundColor: theme.surfaceContainerLowest, borderColor: theme.border }]}>
-                <View style={styles.sectionTitleRow}><View style={styles.categoryCopy}><SectionHeading title="Product images" subtitle="JPEG, PNG or WebP · up to 5 MB each. Daraz accepts up to 8." /></View><ThemedText type="bodySm" themeColor="textSecondary">{selectedImageAssets.length} of 8</ThemedText></View>
-                <View style={styles.mediaGrid}>
-                  {selectedImageAssets.map((asset, index) => (
-                    <View key={asset.assetId ?? asset.uri} style={[styles.mediaTile, { borderColor: theme.border }]}>
-                      <Image source={{ uri: asset.uri }} style={styles.mediaImage} contentFit="cover" />
-                      {index === 0 && <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}><ThemedText type="bodySm" themeColor="onPrimary">Primary</ThemedText></View>}
-                      <Pressable onPress={() => removeImage(index)} disabled={isPublishing} style={styles.removeImageButton} accessibilityRole="button" accessibilityLabel={`Remove image ${index + 1}`}><Ionicons name="close" size={18} color="#fff" /></Pressable>
-                      {index > 0 && <Pressable onPress={() => setPrimaryImage(index)} disabled={isPublishing} style={styles.makePrimaryButton} accessibilityRole="button"><ThemedText type="bodySm" themeColor="primary">Set primary</ThemedText></Pressable>}
-                      {isPublishing && ['uploading_images', 'migrating_images'].includes(publishProgress) && <View style={styles.processingOverlay}><ActivityIndicator color="#fff" /><ThemedText type="bodySm" style={styles.processingText}>{publishProgress === 'uploading_images' ? 'Uploading' : 'Migrating'}</ThemedText></View>}
-                    </View>
-                  ))}
-                  {selectedImageAssets.length < 8 && <Pressable onPress={handlePickImage} disabled={isPublishing} style={[styles.addMediaTile, { borderColor: fieldErrors.image ? theme.danger : theme.border, backgroundColor: theme.surfaceContainerLow }]} accessibilityRole="button" accessibilityLabel="Add product images"><Ionicons name="images-outline" size={28} color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">Add Images</ThemedText></Pressable>}
-                </View>
-                {fieldErrors.image && <ThemedText type="bodySm" themeColor="danger">{fieldErrors.image}</ThemedText>}
-                <Pressable onPress={handleGenerate} disabled={isGenerating || !selectedImageAssets.length || !platform || !selectedDarazCategoryId || isLoadingDarazAttributes || !hasLoadedDarazAttributes || !!darazAttributesError} style={[styles.secondaryButton, { borderColor: theme.border }]}>
-                  {isGenerating ? <View style={styles.buttonProgress}><ActivityIndicator color={theme.primary} /><ThemedText type="bodyMd" themeColor="primary">{progressDetail || 'Generating product details'}</ThemedText></View> : <ThemedText type="bodyMd" themeColor="primary">Generate with AI</ThemedText>}
-                </Pressable>
-              </View>
               {platform === 'daraz' && selectedDarazCategoryId && <>
                 <SectionHeading title="Category-specific attributes" subtitle="Required marketplace details are marked with an asterisk." />
                 {isLoadingDarazAttributes && <ActivityIndicator color={theme.primary} />}
@@ -865,7 +865,7 @@ const styles = StyleSheet.create({
   marketplaceLogo: { width: 28, height: 28 },
   dateFieldGroup: { gap: Spacing.one },
   dateField: { minHeight: 52, borderWidth: 1, borderRadius: Radius.DEFAULT, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  dateValue: { flex: 1 },  categoryRow: {
+  dateValue: { flex: 1 }, categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
   removeImageButton: { position: 'absolute', right: 4, top: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center' },
   makePrimaryButton: { position: 'absolute', left: 4, right: 4, bottom: 4, minHeight: 28, borderRadius: Radius.sm, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
   processingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)', alignItems: 'center', justifyContent: 'center', gap: Spacing.one },
-  processingText: { color: '#fff' },  imageActions: {
+  processingText: { color: '#fff' }, imageActions: {
     alignItems: 'center',
     gap: Spacing.two,
   },
@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
   modalHeader: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three },
   modalAction: { width: 64, minHeight: 44, justifyContent: 'center' },
   modalContent: { padding: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
-  categoryListItem: { minHeight: 60, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },  sectionHeading: { gap: Spacing.one, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,127,127,0.35)' },
+  categoryListItem: { minHeight: 60, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two }, sectionHeading: { gap: Spacing.one, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(127,127,127,0.35)' },
   secondaryCta: {
     alignItems: 'center',
     justifyContent: 'center',
