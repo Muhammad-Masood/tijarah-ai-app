@@ -187,7 +187,7 @@ export default function ProductsScreen() {
                       </ThemedText>
                       {filteredDarazProducts.map((product, index) => (
                         <ProductRow
-                          key={product.id ?? index}
+                          key={`daraz:${product.id ?? index}`}
                           product={product}
                           marketplaceLogo={darazMarketplace?.logo_url}
                           onPress={() =>
@@ -208,7 +208,26 @@ export default function ProductsScreen() {
                   {isShopifyLoading && <ProductListSkeleton count={3} />}
                   {!isShopifyLoading && shopifyError && <View style={styles.statusBlock}><ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>{shopifyError}</ThemedText><Pressable onPress={refetchShopify}><ThemedText type="bodyMd" themeColor="primary">Try again</ThemedText></Pressable></View>}
                   {!isShopifyLoading && !shopifyError && shopifyProducts.length === 0 && <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>No products found on Shopify yet.</ThemedText>}
-                  {!isShopifyLoading && !shopifyError && filteredShopifyProducts.length > 0 && <View style={styles.list}><ThemedText type="labelMd" themeColor="textSecondary">{filteredShopifyProducts.length} SHOPIFY PRODUCT{filteredShopifyProducts.length === 1 ? '' : 'S'}</ThemedText>{filteredShopifyProducts.map((product, index) => <ProductRow key={product.id ?? index} product={product} marketplaceLogo={shopifyMarketplace?.logo_url} onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id ?? String(index), source: 'shopify' } })} />)}</View>}
+                  {!isShopifyLoading && !shopifyError && filteredShopifyProducts.length > 0 && (
+                    <View style={styles.list}>
+                      <ThemedText type="labelMd" themeColor="textSecondary">
+                        {filteredShopifyProducts.length} SHOPIFY PRODUCT{filteredShopifyProducts.length === 1 ? '' : 'S'}
+                      </ThemedText>
+                      {filteredShopifyProducts.map((product, index) => (
+                        <ProductRow
+                          key={`shopify:${product.id ?? index}`}
+                          product={product}
+                          marketplaceLogo={shopifyMarketplace?.logo_url}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/product-detail',
+                              params: { id: product.id ?? String(index), source: 'shopify' },
+                            })
+                          }
+                        />
+                      ))}
+                    </View>
+                  )}
                 </>
               )}
               {!showDarazProducts && !showShopifyProducts && selectedMarketplace && <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>No products available for {selectedMarketplace.name} yet.</ThemedText>}

@@ -493,6 +493,17 @@ export type Product = {
 
 export type ProductPlatform = "daraz" | "shopify";
 
+/** Keeps the first occurrence when a marketplace feed returns duplicate product ids. */
+export function dedupeProductsById(products: Product[]): Product[] {
+  const seen = new Set<string>();
+  return products.filter((product) => {
+    if (!product.id) return true;
+    if (seen.has(product.id)) return false;
+    seen.add(product.id);
+    return true;
+  });
+}
+
 export type ListingDraft = {
   title: string;
   description: string;
@@ -1010,11 +1021,13 @@ export type ShopifyProduct = {
   createdAt?: string | null;
   updatedAt?: string | null;
   description?: string | null;
+  url?: string | null;
   productType?: string | null;
   totalInventory?: number | null;
   tags: string[];
   category?: { id: string; name: string } | null;
-  images: { src: string; altText?: string | null }[];
+  images: { src?: string | null; url?: string | null; altText?: string | null }[];
+  featuredImage?: { url?: string | null; src?: string | null } | null;
   variants: ShopifyVariant[];
 };
 export type ShopifyProductCreate = {

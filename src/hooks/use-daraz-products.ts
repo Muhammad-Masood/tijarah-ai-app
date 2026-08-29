@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useDarazAccessToken } from "@/hooks/use-daraz-access-token";
-import { ApiError, getDarazAllProducts, type DarazRawProduct, type Product } from "@/lib/api";
+import { ApiError, dedupeProductsById, getDarazAllProducts, type DarazRawProduct, type Product } from "@/lib/api";
 
 type UseDarazProductsResult = {
   /** Daraz catalog items, normalized to the same shape as the local `Product` list. */
@@ -158,7 +158,7 @@ export function useDarazProducts(): UseDarazProductsResult {
     getDarazAllProducts(accessToken, darazAccessToken)
       .then((response) => {
         if (cancelled) return;
-        setProducts(extractDarazProducts(response).map(mapDarazProduct));
+        setProducts(dedupeProductsById(extractDarazProducts(response).map(mapDarazProduct)));
       })
       .catch((err) => {
         if (cancelled) return;

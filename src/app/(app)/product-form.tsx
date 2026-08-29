@@ -8,6 +8,7 @@ import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField, PressableScale } from '@/components/auth-kit';
+import { SearchableSelect } from '@/components/searchable-select';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -545,11 +546,6 @@ export default function ProductFormScreen() {
         migratedUrls.push(migrated.imageUrl);
       }
 
-      await cleanupMarketplaceProductImages(
-        accessToken,
-        uploadedEntries.map((entry) => entry.path),
-      ).catch(() => undefined);
-
       const sanitizedAttributes: Record<string, string> = {
         name: title.trim(),
         name_en: title.trim(),
@@ -593,7 +589,11 @@ export default function ProductFormScreen() {
         category: selectedShopifyCategoryId,
         inventory,
         price: price.trim(),
-        images: uploadedEntries.map((entry) => ({ originalSource: entry.public_url, alt: title.trim(), mediaContentType: 'IMAGE' as const })),
+        images: uploadedEntries.map((entry) => ({
+          originalSource: entry.public_url,
+          alt: title.trim(),
+          mediaContentType: 'IMAGE' as const,
+        })),
       };
 
       setPublishProgress('creating_product');
@@ -611,6 +611,11 @@ export default function ProductFormScreen() {
         setPublishMessage(`${bulkResponse.succeeded} store${bulkResponse.succeeded === 1 ? '' : 's'} published; ${failedStores.length} failed.`);
         return;
       }
+
+      await cleanupMarketplaceProductImages(
+        accessToken,
+        uploadedEntries.map((entry) => entry.path),
+      ).catch(() => undefined);
 
       setPublishMessage(`Published to ${bulkResponse.succeeded} connected store${bulkResponse.succeeded === 1 ? '' : 's'} across Daraz and Shopify.`);
       resetFormAfterPublish();
@@ -1122,19 +1127,15 @@ export default function ProductFormScreen() {
                     }
                     if (attribute.options.length > 0) {
                       return (
-                        <View key={attribute.name}>
-                          <ThemedText type="bodySm" themeColor="textSecondary">{fieldLabel}</ThemedText>
-                          <View style={styles.categoryRow}>
-                            {attribute.options.map((option, optionIndex) => (
-                              <Pressable
-                                key={`${attribute.id ?? attribute.name}:${option.name}:${optionIndex}`}
-                                onPress={() => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: option.name }))}
-                                style={[styles.categoryChip, { borderColor: theme.border }, value === option.name && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-                                <ThemedText type="bodySm" themeColor={value === option.name ? 'onPrimary' : 'text'}>{option.name}</ThemedText>
-                              </Pressable>
-                            ))}
-                          </View>
-                        </View>
+                        <SearchableSelect
+                          key={attribute.name}
+                          label={fieldLabel}
+                          value={value}
+                          options={attribute.options.map((option) => ({ label: option.name, value: option.name }))}
+                          onChange={(nextValue) => setDarazAttributeValues((current) => ({ ...current, [attribute.name]: nextValue }))}
+                          placeholder={`Select ${attribute.label.toLowerCase()}`}
+                          disabled={isPublishing}
+                        />
                       );
                     }
                     return (

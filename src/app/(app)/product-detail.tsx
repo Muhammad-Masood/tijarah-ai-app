@@ -43,6 +43,7 @@ export default function ProductDetailScreen() {
     if (product.images && product.images.length > 0) return product.images;
     return product.image ? [product.image] : [];
   }, [product]);
+  console.log(product, images)
 
   const [tab, setTab] = useState<DetailTab>('details');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -139,125 +140,125 @@ export default function ProductDetailScreen() {
               <ProductChatPanel product={product} insights={insights} style={styles.chatArea} />
             ) : (
               <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
-              {tab === 'details' ? (
-                <>
-                  <ProductImageCarousel images={images} />
+                {tab === 'details' ? (
+                  <>
+                    <ProductImageCarousel images={images} />
 
-                  <View style={styles.headerBlock}>
-                    <ThemedText type="headlineMd">{product.title}</ThemedText>
-                    <ThemedText type="headlineSm" themeColor="primary">
-                      {formatPrice(product.price)}
-                    </ThemedText>
-                  </View>
-
-                  {(product.brand || product.model) && (
-                    <View style={styles.badgeRow}>
-                      {product.brand && (
-                        <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
-                          <ThemedText type="bodySm" themeColor="textSecondary">
-                            {product.brand}
-                          </ThemedText>
-                        </View>
-                      )}
-                      {product.model && (
-                        <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
-                          <ThemedText type="bodySm" themeColor="textSecondary">
-                            {product.model}
-                          </ThemedText>
-                        </View>
-                      )}
+                    <View style={styles.headerBlock}>
+                      <ThemedText type="headlineMd">{product.title}</ThemedText>
+                      <ThemedText type="headlineSm" themeColor="primary">
+                        {formatPrice(product.price)}
+                      </ThemedText>
                     </View>
-                  )}
 
-                  <ListSection>
-                    <ListRow label="Category" value={product.category} showChevron={false} />
-                    <ListRow
-                      label="Price"
-                      value={formatPrice(product.price)}
-                      showChevron={false}
-                      isLast={!product.stockQuantity && !product.warrantyType && !product.url}
-                    />
-                    {typeof product.stockQuantity === 'number' && (
-                      <ListRow
-                        label="In stock"
-                        value={String(product.stockQuantity)}
-                        showChevron={false}
-                        isLast={!product.warrantyType && !product.url}
-                      />
-                    )}
-                    {product.warrantyType && (
-                      <ListRow
-                        label="Warranty"
-                        value={product.warrantyType}
-                        showChevron={false}
-                        isLast={!product.url}
-                      />
-                    )}
-                    {product.url && (
-                      <ListRow label="View on marketplace" onPress={() => Linking.openURL(product.url)} isLast />
-                    )}
-                  </ListSection>
-
-                  <View style={styles.descriptionBlock}>
-                    <ThemedText type="labelMd" themeColor="textSecondary">
-                      DESCRIPTION
-                    </ThemedText>
-                    <ThemedText type="bodyMd">{product.description}</ThemedText>
-                  </View>
-
-                  {(isDaraz || isShopify) && (
-                    <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
-                      This product is managed on {isDaraz ? 'Daraz' : 'Shopify'}.
-                    </ThemedText>
-                  )}
-
-                  {!isDaraz && !isShopify && (
-                    <>
-                      {deleteError && (
-                        <ThemedText type="bodySm" themeColor="danger" style={styles.centerText}>
-                          {deleteError}
-                        </ThemedText>
-                      )}
-
-                      <View style={styles.actionRow}>
-                        <Pressable
-                          onPress={() => router.push({ pathname: '/product-form', params: { id: product.id ?? '' } })}
-                          style={[styles.editButton, { backgroundColor: theme.primary }]}>
-                          <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.actionLabel}>
-                            Edit
-                          </ThemedText>
-                        </Pressable>
-                        <Pressable
-                          onPress={handleDelete}
-                          disabled={isDeleting}
-                          style={[styles.deleteButton, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
-                          {isDeleting ? (
-                            <ActivityIndicator color={theme.danger} />
-                          ) : (
-                            <ThemedText type="bodyLg" themeColor="danger" style={styles.actionLabel}>
-                              Delete
+                    {(product.brand || product.model) && (
+                      <View style={styles.badgeRow}>
+                        {product.brand && (
+                          <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
+                            <ThemedText type="bodySm" themeColor="textSecondary">
+                              {product.brand}
                             </ThemedText>
-                          )}
-                        </Pressable>
+                          </View>
+                        )}
+                        {product.model && (
+                          <View style={[styles.badge, { backgroundColor: theme.backgroundElement }]}>
+                            <ThemedText type="bodySm" themeColor="textSecondary">
+                              {product.model}
+                            </ThemedText>
+                          </View>
+                        )}
                       </View>
-                    </>
-                  )}
-                </>
-              ) : isDaraz ? (
-                <ProductInsightsPanel insights={insights} />
-              ) : (
-                <View style={[styles.insightsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                  <ThemedText type="headlineSm" style={styles.centerText}>
-                    ✨
-                  </ThemedText>
-                  <ThemedText type="bodyLg" style={styles.centerText}>
-                    AI insights are coming soon
-                  </ThemedText>
-                  <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                    Review sentiment and return analytics are available for products synced from Daraz.
-                  </ThemedText>
-                </View>
-              )}
+                    )}
+
+                    <ListSection>
+                      <ListRow label="Category" value={product.category} showChevron={false} />
+                      <ListRow
+                        label="Price"
+                        value={formatPrice(product.price)}
+                        showChevron={false}
+                        isLast={!product.stockQuantity && !product.warrantyType && !product.url}
+                      />
+                      {typeof product.stockQuantity === 'number' && (
+                        <ListRow
+                          label="In stock"
+                          value={String(product.stockQuantity)}
+                          showChevron={false}
+                          isLast={!product.warrantyType && !product.url}
+                        />
+                      )}
+                      {product.warrantyType && (
+                        <ListRow
+                          label="Warranty"
+                          value={product.warrantyType}
+                          showChevron={false}
+                          isLast={!product.url}
+                        />
+                      )}
+                      {product.url && (
+                        <ListRow label="View on marketplace" onPress={() => Linking.openURL(product.url)} isLast />
+                      )}
+                    </ListSection>
+
+                    <View style={styles.descriptionBlock}>
+                      <ThemedText type="labelMd" themeColor="textSecondary">
+                        DESCRIPTION
+                      </ThemedText>
+                      <ThemedText type="bodyMd">{product.description}</ThemedText>
+                    </View>
+
+                    {(isDaraz || isShopify) && (
+                      <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
+                        This product is managed on {isDaraz ? 'Daraz' : 'Shopify'}.
+                      </ThemedText>
+                    )}
+
+                    {!isDaraz && !isShopify && (
+                      <>
+                        {deleteError && (
+                          <ThemedText type="bodySm" themeColor="danger" style={styles.centerText}>
+                            {deleteError}
+                          </ThemedText>
+                        )}
+
+                        <View style={styles.actionRow}>
+                          <Pressable
+                            onPress={() => router.push({ pathname: '/product-form', params: { id: product.id ?? '' } })}
+                            style={[styles.editButton, { backgroundColor: theme.primary }]}>
+                            <ThemedText type="bodyLg" themeColor="onPrimary" style={styles.actionLabel}>
+                              Edit
+                            </ThemedText>
+                          </Pressable>
+                          <Pressable
+                            onPress={handleDelete}
+                            disabled={isDeleting}
+                            style={[styles.deleteButton, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }]}>
+                            {isDeleting ? (
+                              <ActivityIndicator color={theme.danger} />
+                            ) : (
+                              <ThemedText type="bodyLg" themeColor="danger" style={styles.actionLabel}>
+                                Delete
+                              </ThemedText>
+                            )}
+                          </Pressable>
+                        </View>
+                      </>
+                    )}
+                  </>
+                ) : isDaraz ? (
+                  <ProductInsightsPanel insights={insights} />
+                ) : (
+                  <View style={[styles.insightsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                    <ThemedText type="headlineSm" style={styles.centerText}>
+                      ✨
+                    </ThemedText>
+                    <ThemedText type="bodyLg" style={styles.centerText}>
+                      AI insights are coming soon
+                    </ThemedText>
+                    <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
+                      Review sentiment and return analytics are available for products synced from Daraz.
+                    </ThemedText>
+                  </View>
+                )}
               </ScrollView>
             )}
           </>
