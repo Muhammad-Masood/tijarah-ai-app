@@ -1,24 +1,26 @@
 {
   "expo": {
-    "name": "HelloWorld",
+    "name": "Tijarah AI",
     "slug": "expo-template-default",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/tijarah_logo_light.png",
     "scheme": "helloworld",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/tijarah_logo_light.png"
     },
     "android": {
+      "backgroundColor": "#f6f7f8",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#e1f2ee",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
+    "backgroundColor": "#f6f7f8",
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
@@ -28,16 +30,22 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#f6f7f8",
+          "image": "./assets/images/tijarah_logo_light.png",
+          "dark": {
+            "backgroundColor": "#1a1f23",
+            "image": "./assets/images/tijarah_logo_dark.png"
+          },
+          "imageWidth": 120
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     }
   }
 }
