@@ -19,6 +19,7 @@ export default function ProductHuntingToolScreen() {
   const [mode, setMode] = useState<HuntMode>('search');
   const [inputValue, setInputValue] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const search = useCatalogSearch({
     query: submittedQuery,
@@ -119,6 +120,8 @@ export default function ProductHuntingToolScreen() {
                 error={active.error}
                 hasMore={active.hasMore}
                 summaryLabel={summaryLabel}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
                 emptyTitle={mode === 'search' ? 'No products found' : 'No recommendations yet'}
                 emptyDescription={
                   mode === 'search'

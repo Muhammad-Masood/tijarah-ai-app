@@ -473,6 +473,10 @@ export type Product = {
   description: string;
   image: string;
   category: string;
+  /** Average marketplace rating, when the source exposes it (e.g. Daraz). */
+  rating?: number | null;
+  /** Number of marketplace reviews, when the source exposes it. */
+  reviewCount?: number | null;
   /**
    * Full image gallery, when the source has more than one photo (e.g. a
    * Daraz listing's `images`/SKU images). Falls back to `[image]` when

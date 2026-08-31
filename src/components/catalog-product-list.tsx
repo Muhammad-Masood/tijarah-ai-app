@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Vie
 import { CatalogProductRow } from '@/components/catalog-product-row';
 import { ProductListSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { navigateToCatalogProduct } from '@/lib/catalog-navigation';
 import type { CatalogProductItem } from '@/lib/api';
@@ -17,6 +17,8 @@ type CatalogProductListProps = {
   emptyTitle: string;
   emptyDescription?: string;
   summaryLabel?: string;
+  viewMode?: 'list' | 'grid';
+  onViewModeChange?: (mode: 'list' | 'grid') => void;
   onRefresh: () => void;
   onLoadMore: () => void;
   contentContainerStyle?: object;
@@ -31,6 +33,8 @@ export function CatalogProductList({
   emptyTitle,
   emptyDescription,
   summaryLabel,
+  viewMode = 'list',
+  onViewModeChange,
   onRefresh,
   onLoadMore,
   contentContainerStyle,
@@ -71,46 +75,95 @@ export function CatalogProductList({
     );
   }
 
+  const viewOptions: Array<'list' | 'grid'> = ['list', 'grid'];
+
   return (
-    <FlatList
-      data={products}
-      keyExtractor={(item, index) => `${item.item_id || 'catalog'}-${index}`}
-      renderItem={({ item }) => (
-        <CatalogProductRow
-          product={item}
-          onPress={() => navigateToCatalogProduct(item)}
-        />
-      )}
-      contentContainerStyle={[styles.listContent, contentContainerStyle]}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      refreshControl={
-        <RefreshControl refreshing={isLoading && products.length > 0} onRefresh={onRefresh} tintColor={theme.primary} />
-      }
-      onEndReached={() => {
-        if (hasMore && !isLoadingMore && !isLoading) onLoadMore();
-      }}
-      onEndReachedThreshold={0.35}
-      ListHeaderComponent={
-        summaryLabel ? (
-          <ThemedText type="labelMd" themeColor="textSecondary" style={styles.summary}>
-            {summaryLabel}
-          </ThemedText>
-        ) : null
-      }
-      ListFooterComponent={
-        isLoadingMore ? (
-          <View style={styles.footer}>
-            <ActivityIndicator color={theme.primary} />
-          </View>
-        ) : null
-      }
-    />
+    <>
+      {onViewModeChange ? (
+        <View style={styles.viewToggleRow}>
+          {viewOptions.map((mode) => {
+            const isActive = mode === viewMode;
+            return (
+              <Pressable
+                key={mode}
+                onPress={() => onViewModeChange(mode)}
+                style={[
+                  styles.viewToggle,
+                  {
+                    borderColor: isActive ? theme.primary : theme.border,
+                    backgroundColor: isActive ? theme.primaryContainer : theme.surfaceContainerLowest,
+                  },
+                ]}>
+                <ThemedText type="labelMd" themeColor={isActive ? 'onPrimaryContainer' : 'textSecondary'}>
+                  {mode === 'list' ? 'List' : 'Grid'}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      <FlatList
+        data={products}
+        key={viewMode}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
+        keyExtractor={(item, index) => `${item.item_id || 'catalog'}-${index}`}
+        renderItem={({ item }) => (
+          <CatalogProductRow product={item} variant={viewMode} onPress={() => navigateToCatalogProduct(item)} />
+        )}
+        contentContainerStyle={[styles.listContent, viewMode === 'grid' ? styles.gridContent : null, contentContainerStyle]}
+        ItemSeparatorComponent={viewMode === 'list' ? () => <View style={styles.separator} /> : undefined}
+        refreshControl={
+          <RefreshControl refreshing={isLoading && products.length > 0} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+        onEndReached={() => {
+          if (hasMore && !isLoadingMore && !isLoading) onLoadMore();
+        }}
+        onEndReachedThreshold={0.35}
+        ListHeaderComponent={
+          summaryLabel ? (
+            <ThemedText type="labelMd" themeColor="textSecondary" style={styles.summary}>
+              {summaryLabel}
+            </ThemedText>
+          ) : null
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={styles.footer}>
+              <ActivityIndicator color={theme.primary} />
+            </View>
+          ) : null
+        }
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  viewToggleRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  viewToggle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+  },
   listContent: {
     paddingBottom: Spacing.five,
+    gap: Spacing.two,
+  },
+  gridContent: {
+    paddingBottom: Spacing.five,
+    gap: Spacing.two,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
     gap: Spacing.two,
   },
   separator: {

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -53,6 +54,36 @@ export function ProductRow({
           : null;
 
   const eyebrow = (product.brand?.trim() || product.category)?.toUpperCase();
+  const ratingValue = typeof product.rating === 'number' && Number.isFinite(product.rating) ? product.rating : null;
+  const reviewCount = typeof product.reviewCount === 'number' && Number.isFinite(product.reviewCount) ? product.reviewCount : null;
+  const filledStars = ratingValue == null ? 0 : Math.min(5, Math.max(0, Math.round(ratingValue)));
+
+  const ratingText = ratingValue == null && reviewCount == null ? null : (
+    <View style={styles.ratingRow}>
+      {ratingValue != null ? (
+        <>
+          <View style={styles.starRow}>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Ionicons
+                key={`${product.id ?? product.title}-star-${index}`}
+                name={index < filledStars ? 'star' : 'star-outline'}
+                size={12}
+                color={index < filledStars ? theme.tertiary : theme.textSecondary}
+              />
+            ))}
+          </View>
+          <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>
+            {ratingValue.toFixed(1)}
+          </ThemedText>
+        </>
+      ) : null}
+      {reviewCount != null ? (
+        <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>
+          {ratingValue != null ? `· ${reviewCount} reviews` : `${reviewCount} reviews`}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
 
   return (
     <Pressable
@@ -100,6 +131,7 @@ export function ProductRow({
             <ThemedText type="bodyLg" numberOfLines={1} style={styles.title}>
               {product.title}
             </ThemedText>
+            {ratingText}
             {stockLabel ? (
               <View style={styles.stockRow}>
                 <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
@@ -173,6 +205,17 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: '600',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.half,
+  },
+  starRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   stockRow: {
     flexDirection: 'row',

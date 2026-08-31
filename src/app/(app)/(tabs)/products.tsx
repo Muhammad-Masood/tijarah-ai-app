@@ -64,7 +64,7 @@ export default function ProductsScreen() {
   const darazMarketplace = useMemo(
     () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'daraz'),
     [connectedMarketplaces],
-  );  const shopifyMarketplace = useMemo(
+  ); const shopifyMarketplace = useMemo(
     () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'shopify'),
     [connectedMarketplaces],
   );

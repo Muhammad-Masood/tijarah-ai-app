@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,7 @@ export default function ProductRecommendationsScreen() {
   const { niche, title } = useLocalSearchParams<{ niche?: string; title?: string }>();
   const normalizedNiche = typeof niche === 'string' ? niche.trim() : '';
   const headerTitle = typeof title === 'string' && title.trim() ? title.trim() : 'Recommendations';
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const hunt = useProductHunt({
     niche: normalizedNiche,
@@ -49,6 +51,8 @@ export default function ProductRecommendationsScreen() {
                 error={hunt.error}
                 hasMore={hunt.hasMore}
                 summaryLabel={summaryLabel}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
                 emptyTitle="No recommendations found"
                 emptyDescription="We couldn't find strong matches for this category right now. Try again later or hunt from the Product Hunting tool."
                 onRefresh={hunt.refetch}
