@@ -1,0 +1,393 @@
+
+================================================================================
+SHEET: Problem Solution-fit Canvas
+================================================================================
+A1=Problem-Solution Fit canvas
+A2=Define CS, fit into CL | B2=1. CUSTOMER SEGMENT(S) CS
+Who is your customer?
+eg. working parents of 0-5 y.o. kids | G2=5. AVAILABLE SOLUTIONS PLUSES & MINUSES AS
+Which solutions are available to the customer when he/she is facing the problem? What had he/she tried in the past? Pluses & minuses? | J2=Explore AS, differentiate
+B3=Pakistani e-commerce sellers operating on Daraz, Shopify, or both; typically SMB scale (PKR 200K–5M+ monthly sales), solo operators or small teams without a dedicated ops/data team. | D3=Low tolerance for enterprise pricing; limited time for dashboards; varying digital literacy; trust concerns around connecting store credentials; primarily smartphone users; needs mobile-first, simple UX. | G3=Manual spreadsheets; native Daraz/Shopify dashboards; Zoho Inventory/Linnworks; XenonHunt; Ginkgo Retail; manual competitor stalking. These are useful but fragmented, not Pakistan/COD-aware, or lack integrated AI for reviews, returns, profit, competitors, and product discovery.
+A4=Focus on PR, tap into BE, understand RC | B4=2. PROBLEMS / PAINS + ITS FREQUENCY PR | G4=7. BEHAVIOR + ITS INTENSITY BE | J4=Focus on PR, tap into BE, understand RC
+C5=How often does this problem
+ occur? | H5=How often does this related behavior
+ happen?
+B6=Fragmented catalog/order/return/performance management; COD returns and RTO eroding true margin; unstructured reviews and return reasons; competitor pricing/ranking/keyword blind spots. | C6=Catalog/order visibility is checked daily; returns/RTO are reconciled weekly/monthly and spike after campaigns; reviews/return reasons accumulate continuously; competitor checks are weekly and often daily during campaigns. | D6=Fragmented marketplace data; COD-heavy economics; unstructured customer feedback; hidden commissions/shipping/return/campaign costs; lack of real-time competitive intelligence. | G6=Checks seller apps daily; asks questions in Facebook/WhatsApp groups; makes pricing/restock decisions on gut feel; often ignores or bulk-replies to reviews; manually copies listings; researches competitors and product ideas; guesses at titles/tags/keywords. | H6=Seller-app checks are daily; pricing/restock decisions are frequent/high intensity; competitor/product research is medium–high, increasing around launches and campaigns; review handling is ongoing.
+A7=Identify strong TR & EM | D7=10. YOUR SOLUTION SL
+ If you are working on existing business - write down existing solution first, fill in the canvas and check how much does it fit reality.
+ If you are working on a new business proposition then keep it blank until you fill in the canvas and come up with a solution that fits withi | G7=8. CHANNELS of BEHAVIOR CH
+ ONLINE
+ Extract channels from Behavior block | J7=Extract online & offline CH of BE
+B8=Bad month with rising returns; preparing for a sale/campaign; opening a second channel; failed-delivery costs appearing in statements; competitor outranking; seeking a new product to launch; peer/community recommendation. | G8=Online: Facebook seller groups, WhatsApp business groups, YouTube seller tutorials, Daraz/Shopify seller communities, LinkedIn and NIC/incubator networks.
+G9=OFFLINE
+ Extract channels from Behavior block and use for customer development
+B10=Anxious/reactive/guessing → in control; distrust of headline revenue → confidence in real margin; overwhelmed by reviews/returns → relief with clear next steps; competitor FOMO → grounded view of what works. | D10=Tijarah AI: mobile-first AI operations layer connecting Daraz and Shopify, unifying catalog management and deploying specialized agents for sentiment, returns/COD risk, profit, inventory, competitor analysis, and product hunting. | G10=Offline: local wholesale markets and sourcing relationships, courier-hub conversations, and co-working-space meetups.
+
+================================================================================
+SHEET: Lean Business Canvas
+================================================================================
+A1=Problem | E1=Solution | I1=Unique Value Prop. | M1=Unfair Advantage | Q1=Customer Segments
+A3=Top 3 problems | E3=Top 3 features | I3=Single, clear and compelling message that states why you are different and worth buying. | M3=Can't be easily copied or bought. | Q3=Target Customers
+ Target Users
+A4=1. Fragmented multi-channel management
+2. COD returns/RTO erode margin invisibly
+3. Unread reviews and no real-time competitor/product intelligence | E4=Unified Daraz + Shopify dashboard; AI agents for sentiment, COD/returns, profit and inventory; competitor analysis/product hunting; one-click cross-platform publishing. | I4=Built for Pakistani sellers: multi-channel, COD-heavy, mobile-first, with operations intelligence + competitive/product research in one app. | M4=Founder is a working Daraz seller since 2023 with lived experience; 3+ years building IT/AI products; full-stack co-founder shipping mobile/API integrations; direct seller-network beta access. | Q4=Pakistani Daraz/Shopify SMB sellers, single- and multi-channel, especially sellers with high return pain or manual 2+ channel operations.
+A5=Existing Alternatives | E5=Key Metrics | I5=High-Level Concept | M5=Channels | Q5=Early Adopters
+A7=List how these problems are solved today. | E7=Key activities you measure | I7=List your X for Y analogy
+ (e.g. YouTube = Flickr for videos) | M7=Path to customers | Q7=List the characteristics of your ideal customers.
+A8=Spreadsheets; native marketplace dashboards; Zoho/Linnworks; XenonHunt; Ginkgo Retail; manual competitor research. | E8=Connected merchants; free→paid conversion; MRR; churn; agent queries per merchant/month; return-rate delta for active users. | I8=AI operations team for e-commerce sellers. | M8=Seller Facebook/WhatsApp communities; founder network; Shopify App Store (planned); NIC Karachi network. | Q8=Founder's multi-store network; sellers with high return pain; sellers already running two or more channels manually; sellers dealing with bulk products and orders
+A9=Cost Structure | K9=Revenue Streams
+A11=AI inference; cloud hosting; app-store/platform fees; future team, marketing and compliance costs. Modelled AI inference is ~$4.90 per active merchant/month and hosting ~$70/month fixed. | K11=Freemium SaaS: Free / Starter Rs 5,000 / Growth Rs 7,500 / Enterprise Rs 10,000 per month.
+
+================================================================================
+SHEET: Customer Persona Canvas
+================================================================================
+A1=Customer Persona Canvas
+A3=Persona: "Ahmed" — online seller, age 25–45, based in Karachi/Lahore/Islamabad
+A4=Negative Trends: 
+From the Environment | B4=Fear of wasting money on another subscription that does not stick; concern about connecting store data to an unknown startup; fear of losing margin or missing growth opportunities. | E4=One place to see what is actually making money; plain-language explanations; fast, actionable insights; less time spent in dashboards; early warning on returns and competitor changes. | J4=Positive Trends: 
+From the Environment | L4=1. COD returns/RTO silently reduce margin
+2. Too many dashboards and manual operations
+3. Competitor/product research and reviews are time-consuming
+A5=Growth of Pakistani e-commerce and multi-channel selling; increasing operational complexity as order volume grows; COD-driven return pressure; increasing need for data-backed decisions. | B5=Reduce manual work; make faster pricing/restock/listing decisions; identify profitable products; catch recurring customer issues early; grow without hiring a data/ops team. | J5=Growing seller communities and social commerce; more sellers adding Shopify alongside marketplaces; increasing availability of AI tooling; mobile-first workflows. | L5=1. Real profit visibility
+2. Actionable review/return intelligence
+3. Fast competitor and product insights
+B6=Wears every hat: sourcing, listings, customer service and returns; no time to read reviews; manually monitors competitors; reconciles hidden fees and return costs. | E6=Grow revenue while protecting margin; gain clarity and control; spend less time on operations; confidently identify winning products and improve listings. | L6=Free tier with real value, then paid tiers unlocked when returns/profit insights demonstrate ROI within the first two weeks; mobile-first UX and Pakistan/COD-aware intelligence.
+B7=Checks seller apps daily; asks questions in Facebook/WhatsApp groups; makes pricing/restock decisions on gut feel; often bulk-replies to reviews; manually copies listings and researches competitors.
+
+================================================================================
+SHEET: Business Model Canvas
+================================================================================
+A1=Key Partners | E1=Key Activities | I1=Value Propositions | M1=Customer Relationships | Q1=Customer Segments
+A3=Who are our Key Partners?
+Who are our key suppliers?
+Which Key Resources are we acquiring from partners?
+Which Key Activities do partners perform?
+ 
+ MOTIVATIONS FOR PARTNERSHIPS
+ Optimization and economy
+ Reduction of risk and uncertainty
+ Acquisition of particular resources and activities | E3=What Key Activities do our Value Propositions require?
+ Our Distribution Channels?
+ Customer Relationships?
+ Revenue streams?
+ 
+ CATEGORIES
+ Production
+ Problem Solving
+ Platform/Network | I3=What value do we deliver to the customer?
+ Which one of our customer’s problems are we helping to solve?
+ What bundles of products and services are we offering to each Customer Segment?
+ Which customer needs are we satisfying?
+ 
+ CHARACTERISTICS
+ Newness
+ Performance
+ Customization
+ “Getting the Job | Q3=For whom are we creating value?
+ Who are our most important customers?
+ 
+ Mass Market
+ Niche Market
+ Segmented
+ Diversified
+ Multi-sided Platform
+A4=Daraz (marketplace API); Shopify (App Store + API); cloud/AI providers; NIC Karachi; future payment providers. | E4=AI agent development; marketplace integration and maintenance; merchant onboarding/support; community-led GTM. | I4=Unified multi-channel management; AI agents for sentiment, COD/returns, profit and inventory; competitor tracking/product hunting; keyword/SEO recommendations; Pakistan-first, COD-aware design. | M4=Self-serve app; direct founder relationship in early stage; in-app product chat; community support. | Q4=Pakistani Daraz/Shopify SMB sellers, single- and multi-channel.
+E5=What Key Resources do our Value Propositions require?
+ Our Distribution Channels? Customer Relationships?
+ Revenue Streams?
+ 
+ TYPES OF RESOURCES
+ Physical
+ Intellectual (brand patents, copyrights, data)
+ Human
+ Financial | M5=Through which Channels do our Customer Segments want to be reached?
+ How are we reaching them now?
+ How are our Channels integrated?
+ Which ones work best?
+ Which ones are most cost-efficient?
+ How are we integrating them with customer routines?
+ 
+ CHANNEL PHASES
+ 1. Awareness
+ 2. Evaluation
+ 3. Pur
+E6=Engineering/AI capability; marketplace API access; aggregated merchant insight data with consent; founder domain expertise. | M6=Seller communities; founder network; web landing page; Shopify App Store and mobile stores when publicly launched.
+A7=Cost Structure | K7=Revenue Streams
+A9=What are the most important costs inherent in our business model?
+Which Key Resources are most expensive?
+Which Key Activities are most expensive?
+ 
+ IS YOUR BUSINESS MORE
+ Cost Driven (leanest cost structure, low price value proposition, maximum automation, extensive outsourcing)
+ Value Driven (foc | K9=For what value are our customers really willing to pay?
+ For what do they currently pay?
+ How are they currently paying?
+ How would they prefer to pay?
+ How much does each Revenue Stream contribute to overall revenues?
+ 
+ TYPES: Asset sale, Usage fee, Subscription Fees, Lending/Renting/Leasing, Lice
+A10=AI inference and hosting; platform/app-store fees; future salaries, marketing, legal and compliance. Current model is cost-driven with high automation and a freemium entry tier. | K10=Monthly subscription: Free / Starter Rs 5,000 / Growth Rs 7,500 / Enterprise Rs 10,000.
+
+================================================================================
+SHEET: One Minute pitch
+================================================================================
+A1=Startup Madlibs
+A4=My company | B4=Tijarah AI
+B5=Name of company
+A8=is developing | B8=a mobile-first AI operations platform that connects Daraz and Shopify stores, unifies catalogs, and provides AI agents for reviews, returns/COD, profit, inventory, competitor analysis and product hunting
+B9=A defined offering
+A12=to help | B12=Pakistani Daraz and Shopify e-commerce SMB sellers, especially solo/small teams managing one or multiple channels
+B13=A defined audience
+A16=by | B16=fragmented operations, invisible COD/RTO margin leakage, unread customer feedback, and lack of real-time competitive/product intelligence
+B17=Solve a problem
+A20=and | B20=a Pakistan-first, COD-aware AI operations layer combining operational intelligence, competitor tracking, product discovery and one-click cross-platform publishing in one mobile app
+B21=Secret sauce
+
+================================================================================
+SHEET: Product Goto Market Canvas
+================================================================================
+A1=What are you selling?
+
+B2B SaaS mobile app — AI operations layer for e-commerce sellers, including competitor intelligence and product hunting. | D1=Target Market
+
+Pakistani Daraz/Shopify sellers with approximately PKR 200K–5M+ monthly sales, single- or multi-channel. | H1=Launch Strategy
+
+Private beta with 10–20 sellers from the founder network; iterate on returns + review agents; public launch after Play/App Store submission. | L1=Post-Launch
+
+Measure connected merchants, activation, free→paid conversion, 30/90-day retention, agent engagement and NPS; expand integrations and agent modules.
+F7=Value Proposition
+
+The AI operations layer for e-commerce sellers — ops + competitive intelligence + product discovery in one mobile app; Pakistan-first and COD-aware.
+D10=Distribution
+
+Founder seller network → Facebook/WhatsApp communities → Shopify App Store → word-of-mouth case studies. | J10=Competitors
+
+XenonHunt, Ginkgo Retail, Linnworks/Zoho, native marketplace dashboards; Tijarah AI combines ops agents with live competitor/product-hunting capabilities.
+A12=Who’s buying it?
+
+Pakistani Daraz/Shopify SMB sellers, especially sellers with high return pain or already operating 2+ channels manually. | L12=Metrics
+
+Connected merchants; activation rate; free→paid conversion; MRR; 30/90-day retention; agent engagement; NPS.
+A18=Assumptions / Risks
+
+6% free→paid conversion is unvalidated; signup growth is modelled; Daraz formal API partnership may take time; SMB price sensitivity; competitor-data/ToS constraints. | F18=Considerations
+
+Prove ROI quickly on free tier; mobile UX is non-negotiable; strong trust/security messaging for OAuth connections; use compliant data sources.
+
+================================================================================
+SHEET: Product Development RoadMap
+================================================================================
+B1=PRODUCT ROADMAP
+A4=Phase | B4=Task | C4=Start Month | D4=End Month | E4=Progress
+A5=Phase 1 — Foundation | B5=Merchant signup / login | E5=Shipped
+A6=Phase 1 — Foundation | B6=Daraz store connection (OAuth) | E6=Shipped
+A7=Phase 1 — Foundation | B7=Shopify app install & connection | E7=Shipped
+A8=Phase 1 — Foundation | B8=Unified multi-channel product catalog | E8=Shipped
+A9=Phase 1 — Foundation | B9=One-click publish to Daraz + Shopify | E9=Shipped
+A10=Phase 1 — Foundation | B10=Per-product sentiment score & review summaries | E10=Shipped
+A11=Phase 1 — Foundation | B11=AI-suggested action plans for recurring issues | E11=Shipped
+A12=Phase 1 — Foundation | B12=Return rate + root-cause breakdown | E12=Shipped
+A13=Phase 1 — Foundation | B13=Product-level AI chatbot (text) | E13=Shipped
+A14=Phase 1 — Foundation | B14=Home dashboard with agent cards | E14=Partial — UI built; metrics mock
+A15=Phase 1 — Foundation | B15=Store-wide 'Ask Tijarah' chat | E15=Partial
+A16=Phase 1 — Foundation | B16=Insights feed screen | E16=Planned
+A17=Phase 2 — Predictive & financial agents | B17=Predictive COD risk score on incoming orders | C17=Q4 2026 | D17=Q4 2026 | E17=Planned/In progress
+A18=Phase 2 — Predictive & financial agents | B18=Profit Agent — true margin per product/channel | C18=Q4 2026 | D18=Q4 2026 | E18=Planned/In progress
+A19=Phase 2 — Predictive & financial agents | B19=Live home dashboard metrics | C19=Q4 2026 | D19=Q4 2026 | E19=Planned/In progress
+A20=Phase 3 — Inventory, competitor analysis & product hunting | B20=Inventory Agent — reorder alerts from sales velocity | C20=Q1 2027 | D20=Q1 2027 | E20=Planned
+A21=Phase 3 — Inventory, competitor analysis & product hunting | B21=Cross-marketplace product performance comparison | C21=Q1 2027 | D21=Q1 2027 | E21=Planned
+A22=Phase 3 — Inventory, competitor analysis & product hunting | B22=Competitor Analysis module | C22=Q2 2027 | D22=Q2 2027 | E22=Planned
+A23=Phase 3 — Inventory, competitor analysis & product hunting | B23=Side-by-side product comparison | C23=Q2 2027 | D23=Q2 2027 | E23=Planned
+A24=Phase 3 — Inventory, competitor analysis & product hunting | B24=AI keyword & SEO recommendations | C24=Q2 2027 | D24=Q2 2027 | E24=Planned
+A25=Phase 3 — Inventory, competitor analysis & product hunting | B25=Product Hunting module | C25=Q2 2027 | D25=Q2 2027 | E25=Planned
+A26=Phase 3 — Inventory, competitor analysis & product hunting | B26=Competitor watchlists & notifications | C26=Q2 2027 | D26=Q2 2027 | E26=Planned
+A27=Phase 4 — Scale & expansion | B27=WooCommerce and additional marketplace integrations | C27=2027 | D27=2027 | E27=Planned
+A28=Phase 4 — Scale & expansion | B28=Google Play & Apple App Store public release | C28=Q4 2026 | D28=Q4 2026 | E28=Planned
+A29=Phase 4 — Scale & expansion | B29=Enterprise tier + assisted onboarding | C29=2027 | D29=2027 | E29=Planned
+A30=Phase 4 — Scale & expansion | B30=Formal marketplace partner/API status (Daraz) | C30=2027 | D30=2027 | E30=Planned
+
+================================================================================
+SHEET: Product listed
+================================================================================
+A1=Product Listed Google playstore and Appstore
+A2=Google Playstore Link: | C2=Not yet submitted (Q4 2026 target)
+A3=Appstore Link: | C3=Not yet submitted (Q4 2026 target)
+A5=Google Playstore Screenshot: | E5=Appstore Screenshot
+A15=Fully Functional Product
+A17=Website Link: | B17=https://tijarah-ai-web.vercel.app/
+A18=Demo Link of the product: | C18=Available on request — private beta / Expo dev build
+A20=Pictures | E20=Pictures
+
+================================================================================
+SHEET: Business Plan
+================================================================================
+A1=Business Plan
+A2=No. | B2=Heading | C2=Description: | D2=Responses:
+A3=1 | B3=Executive Summary | C3=Provide a concise overview of the entire business plan, highlighting the key points of each section. | D3=Tijarah AI is a mobile-first AI operations platform for Pakistani e-commerce sellers. It connects Daraz and Shopify stores into one catalog, automates cross-platform publishing, and applies specialized AI agents to reviews, returns, profit, inventory, competitor analysis and product hunting. The pro
+A4=2 | B4=Company Description | C4=Introduce the company and its background, including its history, mission statement, values, and ownership structure. | D4=Tijarah AI; founder Muhammad; not yet incorporated; Muhammad holds 100% informal equity and Muhammad Sameer is an active co-founder with 0% equity. Mission: give every Pakistani e-commerce seller an AI operations team so they can grow on clarity, not guesswork. Product: React Native (Expo) mobile ap
+A5=3 | B5=Market Analysis | C5=Define the target market for the company's products or services, including their demographics, needs, and preferences. | D5=Target market: Pakistani Daraz/Shopify SMB sellers, generally PKR 200K–5M+ monthly sales. Modelled Pakistan e-commerce GMV TAM is $6.5B–$10.4B for 2025; SAM is 200K+ active online sellers and 550K+ registered Daraz merchants; Year 1 SOM model is 168 paying merchants and ~2,800 connected free users.
+A6=4 | B6=Marketing and Sales Strategies | C6=Outline the company's marketing strategy, including its branding, messaging, and promotional channels. | D6=Private beta with 10–20 sellers from founder network; weekly feedback; community-led GTM through Facebook/WhatsApp seller groups; Shopify App Store listing when production-ready; self-serve Free/Starter/Growth and assisted Enterprise onboarding; case studies and short product demonstrations.
+A7=5 | B7=Management and Operations | C7=Introduce the company's management team, highlighting their experience and qualifications. | D7=Founder & CEO Muhammad: Daraz seller since 2023; 3+ years building IT/AI products; owns product, engineering and early GTM. Co-founder Muhammad Sameer: full-stack engineer leading React Native/Expo mobile development and client-side backend API integration. Operations are cloud-hosted with OAuth mar
+A8=6 | B8=Financial Projections | C8=Provide detailed financial forecasts for the upcoming years, including revenue projections, expenses, and cash flow statements. | D8=Modelled revenue: Year 1 $18,436, Year 2 $46,089, Year 3 $82,960. Modelled COGS: $64,615, $161,278 and $290,222 respectively; gross profit remains negative at blended level because free-tier merchants consume AI compute. Paid-subscriber AI-only variable gross margin is modelled at ~79%.
+A9=7 | B9=Company Milestones | C9=Outline the company's key milestones and achievements to date. | D9=Problem validation via own Daraz stores (2023–2025); MVP with Daraz OAuth + catalog (2025); Shopify integration + cross-publish (2026); AI review analysis + return insights (2026); product-level AI chat (2026); private beta (2026); company registration planned (2026); public app-store launch targete
+A10=8 | B10=Social Responsibility and Sustainability | C10=Describe the company's commitment to social responsibility and sustainability initiatives. | D10=SMB empowerment through SMB-priced tooling; mobile-first digital inclusion for sellers outside major metros; projected 2–4 direct roles in the first 24 months after funding. Specific environmental initiatives are not applicable at the current stage.
+A11=9 | B11=Intellectual Property and Technology | C11=Discuss the company's intellectual property portfolio, including patents, trademarks, and copyrights. | D11=Mobile app (Expo/React Native) and backend API/agent orchestration are proprietary. Aggregated merchant insights are a potential trade secret/data asset, with policy TBD. No patents filed. Tijarah AI trademark registration planned. Tech stack: React Native (Expo 54), TypeScript, REST + WebSocket API
+A12=10 | B12=Exit Strategy | C12=Outline the company's potential exit strategies, such as acquisition, IPO, or management buyout. | D12=No active exit pursuit. Long-term options include strategic acquisition by a regional e-commerce enablement platform or marketplace services provider, or continued independent growth. Detail to be developed with NIC mentorship.
+A13=11 | B13=Risk Management | C13=Identify the potential risks that the company faces, including market risks, operational risks, and financial risks. | D13=Key risks: Daraz API/partner delays, low free-to-paid conversion, negative unit economics, founder-dependent execution, competitive response, pre-registration/legal status, and competitor-data/ToS constraints. Mitigations include Shopify/open-ecosystem value, usage caps, model optimization, tiered a
+
+================================================================================
+SHEET: LoIs or Partnership
+================================================================================
+A1=LoIs or Partnerships
+A3=Link of the drive for LoIs or Partnership Agreements:
+A5=LoIs or Partnership Agreement #1 | E5=LoIs or Partnership Agreement #2 | I5=LoIs or Partnership Agreement #3
+M8=* Insert clear images of LoIs or partnership agreements.
+A17=LoIs or Partnership Agreement #4 | E17=LoIs or Partnership Agreement #5 | I17=LoIs or Partnership Agreement #6
+
+================================================================================
+SHEET: Company Registration Document
+================================================================================
+A1=Company Registration Document
+A3=Insert the picture of registration document below: | E3=Note: * Incase of any assistance reach out To Faiza Umrani
+
+================================================================================
+SHEET: Pre-Investment CapTable
+================================================================================
+A1=Capitalization Table Prior to Investment | F1=Note:
+A2=Shareholder | F2=Only adjust values that appear in Blue.
+B3=Stock | C3=Fully Diluted | D3=% FD | F3=Values that appear in Black are formulas.
+A4=Muhammad (Founder & CEO) | C4=100
+A5=Muhammad Sameer (Co-founder) | C5=0
+A6=Employee #3 | C6=0
+A7=Other Employees | C7=0
+A8=Advisor #1 | C8=0
+A9=Advisor #2 | C9=0
+A10=Consultant #1 | C10=0
+A11=Pre-Investment Option Pool | C11=0
+A12=Total
+A14=Cap Table Summary
+A15=Shareholder | B15=Fully Diluted | C15=% FD
+A16=Employees | B16=100
+A17=Advisors | B17=0
+A18=Option Pool | B18=0
+A19=TOTAL
+A21=Security Definitions
+A22=Common Options: Frequently issued to employees, board members, and advisors. Common options provide the holder with the right to purchase a share of the company's common stock for a fixed price in the future (strike price).
+A23=Common Stock: Frequently held by employees who have exercised their vested options or by founders.
+A24=Preferred Stock: Preferred stock is commonly issued to investors, for example in Series A and B rounds.
+
+================================================================================
+SHEET: Financial Model
+================================================================================
+A1=Assumptions | H1=Revenue | K1=Customer Acquisition | N1=Profit
+A3=Month | B3=Growth Rate | C3=Key Driver 1 (i.e. Users) | D3=Key Driver 2 (i.e. Visits/Month) | E3=Key Driver 3 (i.e. Page Views/Visit) | F3=Key Driver 4 | H3=Month | I3=Advertising (CPM) | K3=Month | L3=Cost of Customer Acquisition | N3=Month | O3=Gross Profit | P3=EBIT
+A4=Assumptions | C4=New signups / month (Y1) | D4=Paid subscribers | E4=MRR (PKR) | F4=6% paid conversion; 18% MoM signup growth; ARPU Rs 6,625 | H4=Assumptions | I4=Monthly revenue (PKR) | K4=Assumptions | L4=CAC (PKR) — not modelled | N4=Assumptions | O4=Gross profit (PKR) | P4=EBIT (PKR) — pre-salary
+A5=Month 1 | C5=80 | D5=5 | E5=31800 | H5=Month 1 | I5=31800 | K5=Month 1 | L5=0 | N5=Month 1 | O5=-137600 | P5=-137600
+A6=Month 2 | B6=0.18 | C6=94 | D6=10 | E6=69324 | H6=Month 2 | I6=69324 | K6=Month 2 | L6=0 | N6=Month 2 | O6=-189676 | P6=-189676
+A7=Month 3 | B7=0.18 | C7=111 | D7=17 | E7=113602 | H7=Month 3 | I7=113602 | K7=Month 3 | L7=0 | N7=Month 3 | O7=-297998 | P7=-297998
+A8=Month 4 | B8=0.18 | C8=131 | D8=25 | E8=165851 | H8=Month 4 | I8=165851 | K8=Month 4 | L8=0 | N8=Month 4 | O8=-426069 | P8=-426069
+A9=Month 5 | B9=0.18 | C9=155 | D9=34 | E9=227504 | H9=Month 5 | I9=227504 | K9=Month 5 | L9=0 | N9=Month 5 | O9=-577216 | P9=-577216
+A10=Month 6 | B10=0.18 | C10=183 | D10=45 | E10=300255 | H10=Month 6 | I10=300255 | K10=Month 6 | L10=0 | N10=Month 6 | O10=-755625 | P10=-755625
+A11=Month 7 | B11=0.18 | C11=216 | D11=58 | E11=386100 | H11=Month 7 | I11=386100 | K11=Month 7 | L11=0 | N11=Month 7 | O11=-966020 | P11=-966020
+A12=Month 8 | B12=0.18 | C12=255 | D12=74 | E12=487398 | H12=Month 8 | I12=487398 | K12=Month 8 | L12=0 | N12=Month 8 | O12=-1214442 | P12=-1214442
+A13=Month 9 | B13=0.18 | C13=301 | D13=92 | E13=606930 | H13=Month 9 | I13=606930 | K13=Month 9 | L13=0 | N13=Month 9 | O13=-1507630 | P13=-1507630
+A14=Month 10 | B14=0.18 | C14=355 | D14=113 | E14=747978 | H14=Month 10 | I14=747978 | K14=Month 10 | L14=0 | N14=Month 10 | O14=-1853222 | P14=-1853222
+A15=Month 11 | B15=0.18 | C15=419 | D15=138 | E15=914414 | H15=Month 11 | I15=914414 | K15=Month 11 | L15=0 | N15=Month 11 | O15=-2261346 | P15=-2261346
+A16=Month 12 | B16=0.18 | C16=494 | D16=168 | E16=1110808 | H16=Month 12 | I16=1110808 | K16=Month 12 | L16=0 | N16=Month 12 | O16=-2742832 | P16=-2742832
+A18=Assumptions | C18=Y2 cumulative merchants | D18=Y2 paid subscribers | E18=Y2 MRR (PKR) | F18=~9.5% MoM MRR growth (modelled) | H18=Assumptions | K18=Assumptions | N18=Assumptions
+A19=Month 13 | B19=0.095 | C19=3129 | D19=187 | E19=622114 | H19=Month 1 | I19=622114 | K19=Month 1 | L19=0 | N19=Month 1 | O19=-3141039 | P19=-3141039
+A20=Month 14 | B20=0.095 | C20=3504 | D20=210 | E20=681214 | H20=Month 2 | I20=681214 | K20=Month 2 | L20=0 | N20=Month 2 | O20=-3081939 | P20=-3081939
+A21=Month 15 | B21=0.095 | C21=3924 | D21=235 | E21=745929 | H21=Month 3 | I21=745929 | K21=Month 3 | L21=0 | N21=Month 3 | O21=-3017224 | P21=-3017224
+A22=Month 16 | B22=0.095 | C22=4394 | D22=263 | E22=816793 | H22=Month 4 | I22=816793 | K22=Month 4 | L22=0 | N22=Month 4 | O22=-2946360 | P22=-2946360
+A23=Month 17 | B23=0.095 | C23=4921 | D23=295 | E23=894388 | H23=Month 5 | I23=894388 | K23=Month 5 | L23=0 | N23=Month 5 | O23=-2868765 | P23=-2868765
+A24=Month 18 | B24=0.095 | C24=5511 | D24=330 | E24=979354 | H24=Month 6 | I24=979354 | K24=Month 6 | L24=0 | N24=Month 6 | O24=-2783799 | P24=-2783799
+A25=Month 19 | B25=0.095 | C25=6172 | D25=370 | E25=1072393 | H25=Month 7 | I25=1072393 | K25=Month 7 | L25=0 | N25=Month 7 | O25=-2690760 | P25=-2690760
+A26=Month 20 | B26=0.095 | C26=6912 | D26=414 | E26=1174270 | H26=Month 8 | I26=1174270 | K26=Month 8 | L26=0 | N26=Month 8 | O26=-2588883 | P26=-2588883
+A27=Month 21 | B27=0.095 | C27=7741 | D27=464 | E27=1285825 | H27=Month 9 | I27=1285825 | K27=Month 9 | L27=0 | N27=Month 9 | O27=-2477328 | P27=-2477328
+A28=Month 22 | B28=0.095 | C28=8669 | D28=520 | E28=1407978 | H28=Month 10 | I28=1407978 | K28=Month 10 | L28=0 | N28=Month 10 | O28=-2355175 | P28=-2355175
+A29=Month 23 | B29=0.095 | C29=9709 | D29=582 | E29=1541736 | H29=Month 11 | I29=1541736 | K29=Month 11 | L29=0 | N29=Month 11 | O29=-2221417 | P29=-2221417
+A30=Month 24 | B30=0.095 | C30=10874 | D30=652 | E30=1688200 | H30=Month 12 | I30=1688200 | K30=Month 12 | L30=0 | N30=Month 12 | O30=-2074953 | P30=-2074953
+A32=Expenses
+A34=Month | B34=Headcount | E34=Marketing Expense (per month) | F34=Salaries Expense (per month) | H34=Operating Expenses | I34=Rent (per month) | J34=Marketing (per month) | K34=Legal (per month) | L34=Hosting | M34=Travel & Entertainment (per month) | N34=Miscellaneous (per month)
+A35=Assumptions | B35=2 | E35=0 | F35=0 | H35=0 | I35=0 | J35=0 | K35=0 | L35=19600 | M35=0 | N35=0
+A36=Month 1 | B36=2 | E36=0 | F36=0 | H36=149800 | J36=0 | K36=40000 | L36=19600
+A37=Month 2 | B37=2 | E37=0 | F37=0 | H37=239400 | J37=0 | K37=0 | L37=19600
+A38=Month 3 | B38=2 | E38=0 | F38=0 | H38=392000 | J38=0 | K38=0 | L38=19600
+A39=Month 4 | B39=2 | E39=0 | F39=0 | H39=572320 | J39=0 | K39=0 | L39=19600
+A40=Month 5 | B40=2 | E40=0 | F40=0 | H40=785120 | J40=0 | K40=0 | L40=19600
+A41=Month 6 | B41=2 | E41=0 | F41=0 | H41=1036280 | J41=0 | K41=0 | L41=19600
+A42=Month 7 | B42=2 | E42=0 | F42=0 | H42=1332520 | J42=0 | K42=0 | L42=19600
+A43=Month 8 | B43=2 | E43=0 | F43=0 | H43=1682240 | J43=0 | K43=0 | L43=19600
+A44=Month 9 | B44=2 | E44=0 | F44=0 | H44=2094960 | J44=0 | K44=0 | L44=19600
+A45=Month 10 | B45=2 | E45=0 | F45=0 | H45=2581600 | J45=0 | K45=0 | L45=19600
+A46=Month 11 | B46=2 | E46=0 | F46=0 | H46=3156160 | J46=0 | K46=0 | L46=19600
+A47=Month 12 | B47=2 | E47=0 | F47=0 | H47=3834040 | J47=0 | K47=0 | L47=19600
+A49=Assumptions | C49=0 | D49=0 | E49=0 | F49=0 | G49=0 | H49=0 | I49=0 | J49=0 | K49=0 | L49=0 | M49=0 | N49=0
+A50=Month 1 | B50=3 | F50=0 | H50=3743553 | L50=19600
+A51=Month 2 | B51=3 | F51=0 | H51=3743553 | L51=19600
+A52=Month 3 | B52=3 | F52=0 | H52=3743553 | L52=19600
+A53=Month 4 | B53=3 | F53=150000 | H53=3743553 | L53=19600
+A54=Month 5 | B54=3 | F54=150000 | H54=3743553 | L54=19600
+A55=Month 6 | B55=3 | F55=150000 | H55=3743553 | L55=19600
+A56=Month 7 | B56=3 | F56=150000 | H56=3743553 | L56=19600
+A57=Month 8 | B57=3 | F57=150000 | H57=3743553 | L57=19600
+A58=Month 9 | B58=3 | F58=150000 | H58=3743553 | L58=19600
+A59=Month 10 | B59=3 | F59=150000 | H59=3743553 | L59=19600
+A60=Month 11 | B60=3 | F60=150000 | H60=3743553 | L60=19600
+A61=Month 12 | B61=3 | F61=150000 | H61=3743553 | L61=19600
+
+================================================================================
+SHEET: Information Memorandum
+================================================================================
+A1=Information Memorandum
+A3=Link: | B3=https://tijarah-ai-web.vercel.app/
+A5=Share your Document Link: | D5=https://tijarah-ai-web.vercel.app/ (product); NIC pack in project docs/
+B7=Business Description | E7=Market Overview | G7=Investment Thesis
+B8=Core Activities: | E8=Total Available Market (TAM): | G8=Growth Potential:
+B9=B2B SaaS — AI-powered e-commerce operations for Pakistani marketplace sellers. | E9=Pakistan e-commerce GMV estimated at $6.5B–$10.4B in 2025; 80%+ of orders are mobile. 200K+ active online sellers and 550K+ registered Daraz merchants are cited as the serviceable market. | G9=E-commerce growth, increasing multi-channel complexity, falling AI inference costs, and persistent COD/return-related margin leakage.
+B12=Value Proposition: | E12=Servicable Addressable Market (SAM):
+B13=Unified multi-channel management plus AI agents for sentiment, COD/returns, profit, inventory, competitor analysis and product hunting; mobile-first and Pakistan-first. | E13=200K+ active online sellers across marketplaces/own-store channels; 550K+ registered Daraz merchants.
+G14=Investment Consideration:
+G15=NIC mentorship in business development, GTM, investor readiness and marketplace partnerships.
+B16=Impact: | E16=Serviceable Obtainable Market (SOM):
+B17=Helps SMB sellers reduce return-driven margin leakage and make faster, data-backed listing and restock decisions. | E17=Year 1 model: 168 paying merchants and ~2,800 connected free users.
+B22=Business Model | F22=Investment Utilization | I22=Key Risk & Mitigation Strategy
+B23=Major Revenue Sources: | F23=Description | G23=PKR (Rupees) | I23=Key Risks & Challanges | K23=Plans to Address the Challange
+B24=Monthly subscription: Free / Rs 5,000 / Rs 7,500 / Rs 10,000. | F24=Complete COD risk, profit, inventory agents; Competitor Analysis and Product Hunting modules; live dashboard. | G24=2500000 | I24=Daraz formal API/partner access delays | K24=Ship value on Shopify's open ecosystem and pursue Daraz partnership in parallel.
+B27=Major Expenses: | F27=AI/cloud costs as usage scales. | G27=800000 | I27=Low free-to-paid conversion | K27=Freemium upgrade triggers, free-tier AI usage caps and pricing validation.
+B28=AI inference; cloud hosting; app-store/platform fees; future payroll, marketing, legal and compliance. | G28=500000
+F30=First engineering and customer-success hires. | G30=4000000 | I30=Negative unit economics at scale | K30=Usage caps, model optimization, tiered agent access and improve conversion to 8–10%+.
+B31=Key Assumptions:
+B32=FX PKR 280/USD; paid pricing Rs 5K/7.5K/10K; 50/35/15 paid tier mix; blended paid ARPU Rs 6,625/month; 6% free-to-paid conversion assumption; 18% MoM signup growth; AI cost ~$4.90 per active merchant/month; hosting $70/month.
+F33=Beta cohort onboarding, case studies and community marketing; incorporation and formal API partnerships. | G33=1200000 | I33=Competitor-data scraping / ToS risk | K33=Use official APIs where available and prioritize compliant data sources.
+F34=Total
+B37=List of Competitoes | M37=Pricing
+B38=Direct Competitors | F38=Indirect Competitors | I38=Available Facility | M38=# | N38=Products | O38=Average Prices (PKR)
+B39=XenonHunt; Ginkgo Retail | F39=Linnworks; Zoho Inventory; Jungle Scout / Helium 10; native marketplace dashboards | M39=1 | N39=Starter | O39=5000
+M40=2 | N40=Growth | O40=7500
+M41=3 | N41=Enterprise | O41=10000
+B45=Sales & Marketing Strategy:
+B46=Beta with 10–20 founder-network sellers; community GTM via Facebook/WhatsApp seller groups; Shopify App Store listing; self-serve Free/Starter/Growth and assisted Enterprise onboarding; case-study-led growth.
+F47=Team | L47=Legal Status and Ownership Structure
+F48=# | G48=Team | H48=Eductaion | I48=Business Experience | J48=Designation | L48=# | M48=Name of Shareholders | N48=% of Share
+F49=1 | G49=Muhammad | I49=Daraz seller since 2023; 3+ years IT/AI product development | J49=Founder & CEO / Product | M49=Muhammad | N49=100
+F50=2 | G50=Muhammad Sameer | I50=Full stack engineer; React Native/Expo mobile development and API integration | J50=Co-founder / Engineering (0% equity) | M50=Muhammad Sameer | N50=0
+F51=3
+B54=Key Numbers | E54=Ratio Analysis | M54=Impact Summary
+B55=Existing Investment (Equity) (PKR) | C55=Bootstrapped / founder sweat equity | E55=ROA (%) | F55=2026 | G55=2027 | H55=2028 | I55=2029 | J55=2030 | K55=2031 | M55=In 5 Years | N55=PreInvestment | O55=PostInvestment | P55=% Change
+B56=Investment Sought (PKR) | C56=Primarily NIC mentorship; open to aligned grant/equity up to PKR 9M | E56=ROE (%) | M56=Jobs creation-Women
+B57=Owner's contribution (PKR) | C57=Bootstrapped founder + co-founder time to date | E57=Gross Margin (%) | F57=-251 | G57=-251 | H57=-251 | M57=Jobs creation-Men | N57=2 | O57=4 | P57=100
+B58=Business's Own Cashflows (PKR) | C58=Pre-revenue at scale; no operating cashflows yet | E58=Net Margin (%) | F58=-251 | G58=-251 | H58=-251 | M58=Indirect Jobs-Women | N58=1 | O58=3 | P58=200
+B59=Total Investment Required (PKR) | C59=9000000 | E59=EBITDA Margin | F59=-251 | G59=-251 | H59=-251 | M59=Indirect Jobs-Men
+B60=Financing Type, Collateral | C60=Grant / equity / accelerator support (if available) | E60=Asset Turnover | M60=Cloud/AI providers; Daraz; Shopify
+B61=Interest Rate (%) & Grace period | C61=N/A — not debt-financed at this stage | E61=Interest Coverage | M61=Pakistani e-commerce SMB sellers
+B62=Repayment Duration & Repayment | C62=N/A
+B63=Mode | C63=Mentorship + optional aligned capital
+B64=Expected Financing Date | C64=Aug 2026 (NIC Cohort 4) | E64=Financial Projections
+E65=In PKR Mn | F65=2026 | G65=2027 | H65=2028 | I65=2029 | J65=2030 | K65=2031
+E66=Revenue | F66=5.16408 | G66=12.9102 | H66=23.2288
+E67=Gross Profit | F67=-12.9302 | G67=-32.2529 | H67=-58.0334
+E68=EBITDA | F68=-12.9302 | G68=-32.2529 | H68=-58.0334
+E69=Total Assets
+E70=Total Equity

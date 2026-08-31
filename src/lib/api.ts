@@ -1362,3 +1362,221 @@ export function analyzeProductReviews(
     "Could not analyze reviews for this product. Please try again.",
   );
 }
+
+// --- Catalog search & product hunt ---
+
+export type CatalogProductItem = {
+  item_id: string;
+  name: string;
+  image: string;
+  price: string;
+  original_price?: string | null;
+  discount?: string | null;
+  rating_score?: string | null;
+  review_count?: string | null;
+  seller_name?: string | null;
+  seller_id?: string | null;
+  brand_name?: string | null;
+  brand_id?: string | null;
+  location?: string | null;
+  in_stock: boolean;
+  item_url?: string | null;
+  item_sold?: string | null;
+  categories: number[];
+};
+
+export type CatalogFilterOption = {
+  title: string;
+  value: string;
+  url?: string | null;
+};
+
+export type CatalogFilter = {
+  name: string;
+  title: string;
+  filter_type: string;
+  options: CatalogFilterOption[];
+};
+
+export type CatalogSearchRequest = {
+  query: string;
+  page?: number;
+  max_pages?: number;
+  sort_by?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+};
+
+export type CatalogSearchResponse = {
+  query: string;
+  page: number;
+  total_pages: number;
+  total_products: number;
+  products: CatalogProductItem[];
+  available_filters: CatalogFilter[];
+  subcategories: CatalogFilterOption[];
+};
+
+export type ProductHuntRequest = {
+  niche: string;
+  max_pages?: number;
+  min_rating?: number;
+  min_reviews?: number;
+  max_price?: number | null;
+};
+
+export type ProductHuntResponse = {
+  niche: string;
+  total_scraped: number;
+  total_recommended: number;
+  subcategories: CatalogFilterOption[];
+  recommended_products: CatalogProductItem[];
+};
+
+/** Ensures marketplace URLs are absolute so Android/iOS can open them. */
+export function normalizeExternalUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+/** Normalizes catalog product payloads that may use API aliases (`nid`, `ratingScore`, etc.). */
+export function normalizeCatalogProduct(raw: Record<string, unknown>): CatalogProductItem {
+  const itemId = raw.item_id ?? raw.nid;
+  return {
+    item_id: itemId != null ? String(itemId) : "",
+    name: typeof raw.name === "string" ? raw.name : "",
+    image: typeof raw.image === "string" ? raw.image : "",
+    price: typeof raw.price === "string" ? raw.price : String(raw.price ?? ""),
+    original_price:
+      typeof raw.original_price === "string"
+        ? raw.original_price
+        : raw.original_price != null
+          ? String(raw.original_price)
+          : null,
+    discount: typeof raw.discount === "string" ? raw.discount : raw.discount != null ? String(raw.discount) : null,
+    rating_score:
+      typeof raw.rating_score === "string"
+        ? raw.rating_score
+        : typeof raw.ratingScore === "string"
+          ? raw.ratingScore
+          : raw.rating_score != null
+            ? String(raw.rating_score)
+            : raw.ratingScore != null
+              ? String(raw.ratingScore)
+              : null,
+    review_count:
+      typeof raw.review_count === "string"
+        ? raw.review_count
+        : typeof raw.review === "string"
+          ? raw.review
+          : raw.review_count != null
+            ? String(raw.review_count)
+            : raw.review != null
+              ? String(raw.review)
+              : null,
+    seller_name:
+      typeof raw.seller_name === "string"
+        ? raw.seller_name
+        : typeof raw.sellerName === "string"
+          ? raw.sellerName
+          : null,
+    seller_id:
+      typeof raw.seller_id === "string"
+        ? raw.seller_id
+        : typeof raw.sellerId === "string"
+          ? raw.sellerId
+          : null,
+    brand_name:
+      typeof raw.brand_name === "string"
+        ? raw.brand_name
+        : typeof raw.brandName === "string"
+          ? raw.brandName
+          : null,
+    brand_id:
+      typeof raw.brand_id === "string"
+        ? raw.brand_id
+        : typeof raw.brandId === "string"
+          ? raw.brandId
+          : null,
+    location: typeof raw.location === "string" ? raw.location : null,
+    in_stock: raw.in_stock === false || raw.inStock === false ? false : true,
+    item_url: normalizeExternalUrl(
+      typeof raw.item_url === "string"
+        ? raw.item_url
+        : typeof raw.itemUrl === "string"
+          ? raw.itemUrl
+          : null,
+    ),
+    item_sold:
+      typeof raw.item_sold === "string"
+        ? raw.item_sold
+        : typeof raw.itemSoldCntShow === "string"
+          ? raw.itemSoldCntShow
+          : null,
+    categories: Array.isArray(raw.categories)
+      ? raw.categories.filter((value): value is number => typeof value === "number")
+      : [],
+  };
+}
+
+function normalizeCatalogSearchResponse(body: Record<string, unknown>): CatalogSearchResponse {
+  const products = Array.isArray(body.products)
+    ? body.products.map((item) => normalizeCatalogProduct(item as Record<string, unknown>))
+    : [];
+
+  return {
+    query: typeof body.query === "string" ? body.query : "",
+    page: typeof body.page === "number" ? body.page : 1,
+    total_pages: typeof body.total_pages === "number" ? body.total_pages : 1,
+    total_products: typeof body.total_products === "number" ? body.total_products : products.length,
+    products,
+    available_filters: Array.isArray(body.available_filters) ? (body.available_filters as CatalogFilter[]) : [],
+    subcategories: Array.isArray(body.subcategories) ? (body.subcategories as CatalogFilterOption[]) : [],
+  };
+}
+
+function normalizeProductHuntResponse(body: Record<string, unknown>): ProductHuntResponse {
+  const recommended = Array.isArray(body.recommended_products)
+    ? body.recommended_products.map((item) => normalizeCatalogProduct(item as Record<string, unknown>))
+    : [];
+
+  return {
+    niche: typeof body.niche === "string" ? body.niche : "",
+    total_scraped: typeof body.total_scraped === "number" ? body.total_scraped : 0,
+    total_recommended: typeof body.total_recommended === "number" ? body.total_recommended : recommended.length,
+    subcategories: Array.isArray(body.subcategories) ? (body.subcategories as CatalogFilterOption[]) : [],
+    recommended_products: recommended,
+  };
+}
+
+export function catalogSearch(
+  accessToken: string,
+  payload: CatalogSearchRequest,
+): Promise<CatalogSearchResponse> {
+  return request<Record<string, unknown>>("/daraz/catalog/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  }).then(normalizeCatalogSearchResponse);
+}
+
+export function productHunt(
+  accessToken: string,
+  payload: ProductHuntRequest,
+): Promise<ProductHuntResponse> {
+  return request<Record<string, unknown>>("/daraz/catalog/hunt", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  }).then(normalizeProductHuntResponse);
+}

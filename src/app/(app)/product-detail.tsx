@@ -29,6 +29,7 @@ export default function ProductDetailScreen() {
   const isDaraz = source === 'daraz';
   const isShopify = source === 'shopify';
   const daraz = useDarazProducts();
+  console.log("daraz products: ", daraz.products);
   const shopify = useShopifyProducts();
 
   const product: Product | null = isDaraz
@@ -43,7 +44,8 @@ export default function ProductDetailScreen() {
     if (product.images && product.images.length > 0) return product.images;
     return product.image ? [product.image] : [];
   }, [product]);
-  console.log(product, images)
+  console.log(product, product?.category);
+  const recommendationNiche = product?.category?.trim() ?? '';
 
   const [tab, setTab] = useState<DetailTab>('details');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -172,11 +174,23 @@ export default function ProductDetailScreen() {
 
                     <ListSection>
                       <ListRow label="Category" value={product.category} showChevron={false} />
+                      {recommendationNiche ? (
+                        <ListRow
+                          label="Similar products"
+                          value="Recommendations"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/product-recommendations',
+                              params: { niche: recommendationNiche, title: 'Similar products' },
+                            })
+                          }
+                        />
+                      ) : null}
                       <ListRow
                         label="Price"
                         value={formatPrice(product.price)}
                         showChevron={false}
-                        isLast={!product.stockQuantity && !product.warrantyType && !product.url}
+                        isLast={!product.stockQuantity && !product.warrantyType && !product.url && !recommendationNiche}
                       />
                       {typeof product.stockQuantity === 'number' && (
                         <ListRow

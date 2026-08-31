@@ -28,6 +28,7 @@ type UseDarazProductsResult = {
  * the reliable fallback).
  */
 function mapDarazProduct(raw: DarazRawProduct): Product {
+  console.log("raw: ", raw)
   const itemId = raw.item_id;
   const attributes = (raw.attributes ?? {}) as Record<string, unknown>;
   const skus = raw.skus as Record<string, unknown>[] | undefined;
@@ -65,9 +66,9 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
 
   const stockQuantity = Array.isArray(skus)
     ? skus.reduce((total, sku) => {
-        const quantity = sku.quantity ?? sku.Available;
-        return total + (typeof quantity === "number" ? quantity : 0);
-      }, 0)
+      const quantity = sku.quantity ?? sku.Available;
+      return total + (typeof quantity === "number" ? quantity : 0);
+    }, 0)
     : undefined;
 
   const url = (firstSku?.Url as string) ?? null;
@@ -82,7 +83,7 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
     price,
     image,
     images,
-    category: "Daraz",
+    category: raw.primary_category_name as string,
     brand: typeof brand === "string" && brand ? brand : undefined,
     model: typeof model === "string" && model ? model : undefined,
     warrantyType:
@@ -158,6 +159,7 @@ export function useDarazProducts(): UseDarazProductsResult {
     getDarazAllProducts(accessToken, darazAccessToken)
       .then((response) => {
         if (cancelled) return;
+        console.log("all products response: ", response);
         setProducts(dedupeProductsById(extractDarazProducts(response).map(mapDarazProduct)));
       })
       .catch((err) => {
