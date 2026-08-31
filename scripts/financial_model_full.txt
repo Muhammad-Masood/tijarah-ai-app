@@ -1,0 +1,56 @@
+R1: A1=Assumptions | H1=Revenue | K1=Customer Acquisition | N1=Profit
+R3: A3=Month | B3=Growth Rate | C3=Key Driver 1 (i.e. Users) | D3=Key Driver 2 (i.e. Visits/Month) | E3=Key Driver 3 (i.e. Page Views/Visit) | F3=Key Driver 4 | H3=Month | I3=Advertising (CPM) | K3=Month | L3=Cost of Customer Acquisition | N3=Month | O3=Gross Profit | P3=EBIT
+R4: A4=Assumptions | D4=2.0 | E4=10.0 | H4=Assumptions | K4=Assumptions | N4=Assumptions
+R5: A5=Month 1 | C5=500.0 | D5==C5*D4 | E5==D5*E4 | H5=Month 1 | K5=Month 1 | N5=Month 1
+R6: A6=Month 2 | B6=0.18 | C6==C5+(C5*B6) | D6==D5+(D5*B6) | E6==E5+(E5*B6) | H6=Month 2 | K6=Month 2 | N6=Month 2
+R7: A7=Month 3 | B7=0.18 | C7==C6+(C6*B7) | D7==D6+(D6*B7) | E7==E6+(E6*B7) | H7=Month 3 | K7=Month 3 | N7=Month 3
+R8: A8=Month 4 | B8=0.18 | C8==C7+(C7*B8) | D8==D7+(D7*B8) | E8==E7+(E7*B8) | H8=Month 4 | K8=Month 4 | N8=Month 4
+R9: A9=Month 5 | B9=0.18 | C9==C8+(C8*B9) | D9==D8+(D8*B9) | E9==E8+(E8*B9) | H9=Month 5 | K9=Month 5 | N9=Month 5
+R10: A10=Month 6 | B10=0.18 | C10==C9+(C9*B10) | D10==D9+(D9*B10) | E10==E9+(E9*B10) | H10=Month 6 | K10=Month 6 | N10=Month 6
+R11: A11=Month 7 | B11=0.18 | C11==C10+(C10*B11) | D11==D10+(D10*B11) | E11==E10+(E10*B11) | H11=Month 7 | K11=Month 7 | N11=Month 7
+R12: A12=Month 8 | B12=0.18 | C12==C11+(C11*B12) | D12==D11+(D11*B12) | E12==E11+(E11*B12) | H12=Month 8 | K12=Month 8 | N12=Month 8
+R13: A13=Month 9 | B13=0.18 | C13==C12+(C12*B13) | D13==D12+(D12*B13) | E13==E12+(E12*B13) | H13=Month 9 | K13=Month 9 | N13=Month 9
+R14: A14=Month 10 | B14=0.18 | C14==C13+(C13*B14) | D14==D13+(D13*B14) | E14==E13+(E13*B14) | H14=Month 10 | K14=Month 10 | N14=Month 10
+R15: A15=Month 11 | B15=0.18 | C15==C14+(C14*B15) | D15==D14+(D14*B15) | E15==E14+(E14*B15) | H15=Month 11 | K15=Month 11 | N15=Month 11
+R16: A16=Month 12 | B16=0.18 | C16==C15+(C15*B16) | D16==D15+(D15*B16) | E16==E15+(E15*B16) | H16=Month 12 | K16=Month 12 | N16=Month 12
+R18: A18=Assumptions | D18=2.0 | E18=10.0 | H18=Assumptions | K18=Assumptions | N18=Assumptions
+R19: A19=Month 13 | B19=0.2 | C19==C17+(C17*B19) | D19==C19*D18 | E19==D19*E18 | H19=Month 1 | K19=Month 1 | N19=Month 1
+R20: A20=Month 14 | B20=0.2 | C20==C19+(C19*B20) | D20==C20*D19 | E20==D20*E19 | H20=Month 2 | K20=Month 2 | N20=Month 2
+R21: A21=Month 15 | B21=0.2 | C21==C20+(C20*B21) | D21==C21*D20 | E21==D21*E20 | H21=Month 3 | K21=Month 3 | N21=Month 3
+R22: A22=Month 16 | B22=0.2 | C22==C21+(C21*B22) | D22==C22*D21 | E22==D22*E21 | H22=Month 4 | K22=Month 4 | N22=Month 4
+R23: A23=Month 17 | B23=0.2 | C23==C22+(C22*B23) | D23==C23*D22 | E23==D23*E22 | H23=Month 5 | K23=Month 5 | N23=Month 5
+R24: A24=Month 18 | B24=0.2 | C24==C23+(C23*B24) | D24==C24*D23 | E24==D24*E23 | H24=Month 6 | K24=Month 6 | N24=Month 6
+R25: A25=Month 19 | B25=0.2 | C25==C24+(C24*B25) | D25==C25*D24 | E25==D25*E24 | H25=Month 7 | K25=Month 7 | N25=Month 7
+R26: A26=Month 20 | B26=0.2 | C26==C25+(C25*B26) | D26==C26*D25 | E26==D26*E25 | H26=Month 8 | K26=Month 8 | N26=Month 8
+R27: A27=Month 21 | B27=0.2 | C27==C26+(C26*B27) | D27==C27*D26 | E27==D27*E26 | H27=Month 9 | K27=Month 9 | N27=Month 9
+R28: A28=Month 22 | B28=0.2 | C28==C27+(C27*B28) | D28==C28*D27 | E28==D28*E27 | H28=Month 10 | K28=Month 10 | N28=Month 10
+R29: A29=Month 23 | B29=0.2 | C29==C28+(C28*B29) | D29==C29*D28 | E29==D29*E28 | H29=Month 11 | K29=Month 11 | N29=Month 11
+R30: A30=Month 24 | B30=0.2 | C30==C29+(C29*B30) | D30==C30*D29 | E30==D30*E29 | H30=Month 12 | K30=Month 12 | N30=Month 12
+R32: A32=Expenses
+R34: A34=Month | B34=Headcount | E34=Marketing Expense (per month) | F34=Salaries Expense (per month) | H34=Operating Expenses | I34=Rent (per month) | J34=Marketing (per month) | K34=Legal (per month) | L34=Hosting | M34=Travel & Entertainment (per month) | N34=Miscellaneous (per month)
+R35: A35=Assumptions | E35=0.0 | F35=0.0 | H35=0.0 | I35=0.0 | J35=0.0 | K35=0.0 | L35=0.0 | M35=0.0 | N35=0.0
+R36: A36=Month 1
+R37: A37=Month 2
+R38: A38=Month 3
+R39: A39=Month 4
+R40: A40=Month 5
+R41: A41=Month 6
+R42: A42=Month 7
+R43: A43=Month 8
+R44: A44=Month 9
+R45: A45=Month 10
+R46: A46=Month 11
+R47: A47=Month 12
+R49: A49=Assumptions | C49=0.0 | D49=0.0 | E49=0.0 | F49=0.0 | G49=0.0 | H49=0.0 | I49=0.0 | J49=0.0 | K49=0.0 | L49=0.0 | M49=0.0 | N49=0.0
+R50: A50=Month 1
+R51: A51=Month 2
+R52: A52=Month 3
+R53: A53=Month 4
+R54: A54=Month 5
+R55: A55=Month 6
+R56: A56=Month 7
+R57: A57=Month 8
+R58: A58=Month 9
+R59: A59=Month 10
+R60: A60=Month 11
+R61: A61=Month 12

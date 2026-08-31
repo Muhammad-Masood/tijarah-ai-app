@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useDarazAccessToken } from "@/hooks/use-daraz-access-token";
-import { ApiError, getDarazAllProducts, type DarazRawProduct, type Product } from "@/lib/api";
+import { ApiError, dedupeProductsById, getDarazAllProducts, type DarazRawProduct, type Product } from "@/lib/api";
 
 type UseDarazProductsResult = {
   /** Daraz catalog items, normalized to the same shape as the local `Product` list. */
@@ -28,6 +28,7 @@ type UseDarazProductsResult = {
  * the reliable fallback).
  */
 function mapDarazProduct(raw: DarazRawProduct): Product {
+  console.log("raw: ", raw)
   const itemId = raw.item_id;
   const attributes = (raw.attributes ?? {}) as Record<string, unknown>;
   const skus = raw.skus as Record<string, unknown>[] | undefined;
@@ -65,9 +66,9 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
 
   const stockQuantity = Array.isArray(skus)
     ? skus.reduce((total, sku) => {
-        const quantity = sku.quantity ?? sku.Available;
-        return total + (typeof quantity === "number" ? quantity : 0);
-      }, 0)
+      const quantity = sku.quantity ?? sku.Available;
+      return total + (typeof quantity === "number" ? quantity : 0);
+    }, 0)
     : undefined;
 
   const url = (firstSku?.Url as string) ?? null;
@@ -82,7 +83,7 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
     price,
     image,
     images,
-    category: "Daraz",
+    category: raw.primary_category_name as string,
     brand: typeof brand === "string" && brand ? brand : undefined,
     model: typeof model === "string" && model ? model : undefined,
     warrantyType:
@@ -158,7 +159,8 @@ export function useDarazProducts(): UseDarazProductsResult {
     getDarazAllProducts(accessToken, darazAccessToken)
       .then((response) => {
         if (cancelled) return;
-        setProducts(extractDarazProducts(response).map(mapDarazProduct));
+        console.log("all products response: ", response);
+        setProducts(dedupeProductsById(extractDarazProducts(response).map(mapDarazProduct)));
       })
       .catch((err) => {
         if (cancelled) return;

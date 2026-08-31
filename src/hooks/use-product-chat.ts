@@ -166,15 +166,6 @@ function buildReply(
   return `I can help with reviews, returns, pricing, and stock for ${product.title}. Try one of the suggestions above, or ask something specific.`;
 }
 
-/**
- * Per-product chat. On native, once a Daraz connection is resolved, this
- * drives the live tool-calling agent at `WS /reviews/product_chat` — scoped
- * to this product server-side, so it can pull fresh reviews/returns/order
- * data instead of only what `insights` (the Insights tab's own fetch,
- * reused here for the welcome/suggested prompts) already has. Falls back to
- * a local, deterministic responder grounded in `insights` on web or while
- * the Daraz connection isn't resolved yet — see `buildReply`.
- */
 export function useProductChat(
   product: Product,
   insights: { reviewAnalysis: ReviewAnalysisResponse | null; returnsInsights: ReturnsInsights | null },

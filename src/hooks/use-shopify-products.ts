@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/hooks/use-auth';
 import { useShopifyAccessToken } from '@/hooks/use-shopify-access-token';
-import { ApiError, getShopifyProducts, type Product, type ShopifyProduct } from '@/lib/api';
+import { ApiError, dedupeProductsById, getShopifyProducts, type Product, type ShopifyProduct } from '@/lib/api';
 
 export function mapShopifyProduct(raw: ShopifyProduct): Product {
-  const images = raw.images.map((image) => image.src).filter(Boolean);
+  const images = [
+    ...(raw.images ?? []).map((image) => image.src ?? image.url ?? '').filter(Boolean),
+    ...(raw.featuredImage?.url ?? raw.featuredImage?.src ? [raw.featuredImage.url ?? raw.featuredImage.src ?? ''] : []),
+  ].filter((value, index, all) => value && all.indexOf(value) === index);
   const firstVariant = raw.variants[0];
   const price = Number(firstVariant?.price ?? 0);
   return {
@@ -16,7 +19,8 @@ export function mapShopifyProduct(raw: ShopifyProduct): Product {
     image: images[0] ?? '', images,
     category: raw.category?.name ?? raw.productType ?? 'Shopify',
     stockQuantity: raw.totalInventory ?? firstVariant?.inventoryQuantity ?? undefined,
-    url: '', platform: 'shopify',
+    url: raw.url ?? '', 
+    platform: 'shopify',
   };
 }
 
@@ -35,7 +39,7 @@ export function useShopifyProducts() {
     let cancelled = false;
     setIsLoading(true); setError(null);
     getShopifyProducts(accessToken, connection.shopifyAccessToken)
-      .then((items) => { if (!cancelled) setProducts(items.map(mapShopifyProduct)); })
+      .then((items) => { if (!cancelled) console.log(items); setProducts(dedupeProductsById(items.map(mapShopifyProduct))); })
       .catch((err) => { if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load Shopify products.'); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };

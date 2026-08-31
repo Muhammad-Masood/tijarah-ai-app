@@ -14,6 +14,9 @@ export default function AppLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="product-detail" />
       <Stack.Screen name="product-form" />
+      <Stack.Screen name="product-hunting-tool" />
+      <Stack.Screen name="product-recommendations" />
+      <Stack.Screen name="catalog-product-detail" />
     </Stack>
   );
 }
