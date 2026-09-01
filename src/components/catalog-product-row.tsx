@@ -190,18 +190,19 @@ const styles = StyleSheet.create({
   gridCard: {
     flex: 1,
     minWidth: 0,
+    marginHorizontal: 4,
     borderWidth: 1,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.DEFAULT,
     padding: Spacing.two,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   gridThumbnail: {
     width: '100%',
-    height: 120,
-    borderRadius: Radius.md,
+    height: 140,
+    borderRadius: Radius.sm,
     overflow: 'hidden',
     marginBottom: Spacing.two,
   },
@@ -214,13 +215,14 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   gridBody: {
-    gap: Spacing.half,
+    gap: Spacing.one,
   },
   title: {
     fontWeight: '600',
   },
   gridTitle: {
     fontWeight: '600',
+    lineHeight: 18,
   },
   reviewRow: {
     flexDirection: 'row',
@@ -237,7 +239,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.one,
-    marginTop: Spacing.half,
+    marginTop: Spacing.one,
   },
   trailing: {
     alignItems: 'flex-end',
@@ -252,7 +254,6 @@ const styles = StyleSheet.create({
   priceText: {
     fontWeight: '700',
     lineHeight: 16,
-    textAlign: 'right',
   },
   chevron: {
     marginLeft: Spacing.half,

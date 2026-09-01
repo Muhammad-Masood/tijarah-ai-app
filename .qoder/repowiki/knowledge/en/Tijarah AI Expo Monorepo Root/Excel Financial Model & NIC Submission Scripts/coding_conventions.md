@@ -1,0 +1,5 @@
+- Each script is self-contained with module-level `PATH` constants pointing to the source Excel file and operates on named sheets via `wb["Sheet Name"]`.
+- Writing to potentially merged cells goes through a helper that detects `MergedCell`, iterates `ws.merged_cells.ranges`, calls `ws.unmerge_cells(...)`, then assigns `cell.value = value`.
+- Year-over-year projections are built by looping over `range(12)` and computing row offsets like `r = 5 + i` for Y1 and `r = 19 + i` for Y2, writing into fixed column letters per metric (C/D/E/I/O/P/H/L/K/F).
+- Inspection scripts iterate rows/columns with `for r in range(...)` and `ws.cell(r, c).value`, filtering out `None` and empty strings before printing or appending to output buffers.
+- Constants for financial assumptions (FX=280, AI_USD_PER_PAID=4.90, HOSTING_USD=70, PLATFORM_FEE_USD_M1=143) are declared as module-level globals and reused across update and verification scripts.

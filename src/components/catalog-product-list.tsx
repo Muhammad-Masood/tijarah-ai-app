@@ -1,4 +1,5 @@
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { CatalogProductRow } from '@/components/catalog-product-row';
 import { ProductListSkeleton } from '@/components/skeleton';
@@ -91,12 +92,14 @@ export function CatalogProductList({
                   styles.viewToggle,
                   {
                     borderColor: isActive ? theme.primary : theme.border,
-                    backgroundColor: isActive ? theme.primaryContainer : theme.surfaceContainerLowest,
+                    backgroundColor: isActive ? theme.primaryContainer : 'transparent',
                   },
                 ]}>
-                <ThemedText type="labelMd" themeColor={isActive ? 'onPrimaryContainer' : 'textSecondary'}>
-                  {mode === 'list' ? 'List' : 'Grid'}
-                </ThemedText>
+                <MaterialCommunityIcons
+                  name={mode === 'list' ? 'format-list-bulleted' : 'view-grid'}
+                  size={20}
+                  color={isActive ? theme.onPrimaryContainer : theme.textSecondary}
+                />
               </Pressable>
             );
           })}
@@ -106,13 +109,16 @@ export function CatalogProductList({
       <FlatList
         data={products}
         key={viewMode}
-        numColumns={viewMode === 'grid' ? 2 : 1}
-        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
+        numColumns={viewMode === 'grid' ? undefined : 1}
         keyExtractor={(item, index) => `${item.item_id || 'catalog'}-${index}`}
         renderItem={({ item }) => (
           <CatalogProductRow product={item} variant={viewMode} onPress={() => navigateToCatalogProduct(item)} />
         )}
-        contentContainerStyle={[styles.listContent, viewMode === 'grid' ? styles.gridContent : null, contentContainerStyle]}
+        contentContainerStyle={[
+          styles.listContent,
+          viewMode === 'grid' ? styles.gridContent : null,
+          contentContainerStyle,
+        ]}
         ItemSeparatorComponent={viewMode === 'list' ? () => <View style={styles.separator} /> : undefined}
         refreshControl={
           <RefreshControl refreshing={isLoading && products.length > 0} onRefresh={onRefresh} tintColor={theme.primary} />
@@ -143,28 +149,26 @@ export function CatalogProductList({
 const styles = StyleSheet.create({
   viewToggleRow: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Spacing.one,
     marginBottom: Spacing.two,
   },
   viewToggle: {
-    flex: 1,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.two,
     borderWidth: 1,
-    borderRadius: Radius.md,
+    borderRadius: Radius.DEFAULT,
   },
   listContent: {
     paddingBottom: Spacing.five,
     gap: Spacing.two,
   },
   gridContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 0,
     paddingBottom: Spacing.five,
-    gap: Spacing.two,
-  },
-  gridRow: {
-    justifyContent: 'space-between',
-    gap: Spacing.two,
   },
   separator: {
     height: Spacing.two,

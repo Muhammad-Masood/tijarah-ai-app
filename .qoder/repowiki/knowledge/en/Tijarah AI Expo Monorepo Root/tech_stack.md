@@ -1,0 +1,1 @@
+Expo SDK 54 with Expo Router on React Native 0.81 / React 19, TypeScript ~5.9, ESLint via `eslint-config-expo`, plus Node and Python tooling in `scripts/` for Excel manipulation.

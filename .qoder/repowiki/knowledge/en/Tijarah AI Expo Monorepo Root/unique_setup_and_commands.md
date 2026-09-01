@@ -1,0 +1,1 @@
+`npm install` then `npx expo start` to launch the dev server; `npm run android|ios|web` to target platforms; `npm run reset-project` to scaffold a fresh `app/`; `npm run lint` runs the shared Expo ESLint pipeline.

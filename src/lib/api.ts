@@ -1584,3 +1584,233 @@ export function productHunt(
     body: JSON.stringify(payload),
   }).then(normalizeProductHuntResponse);
 }
+
+// ---------------------------------------------------------------------------
+// Daraz Financial Module
+// ---------------------------------------------------------------------------
+
+export type PayoutInfo = {
+  payout_id: string;
+  statement_number: string;
+  status: string;
+  amount: number;
+  currency: string;
+  item_revenue: number;
+  fees_total: number;
+  refunds: number;
+  fees_on_refunds_total: number;
+  other_revenue_total: number;
+  shipment_fee_credit: number;
+  closing_balance: number;
+  opening_balance: number;
+  paid: boolean;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type CashFlowEntry = {
+  date: string;
+  inflow: number;
+  outflow: number;
+  net: number;
+};
+
+export type FeeBreakdownData = {
+  total_revenue: number;
+  total_commission: number;
+  total_payment_fees: number;
+  total_shipping_fees: number;
+  total_refunds: number;
+  total_penalties: number;
+  total_promotional_discounts: number;
+  net_payout: number;
+  effective_fee_rate: number;
+};
+
+export type FinancialDashboardResponse = {
+  total_revenue: number;
+  total_payouts: number;
+  pending_payouts: number;
+  upcoming_payouts: number;
+  total_fees: number;
+  total_refunds: number;
+  net_profit: number;
+  profit_margin: number;
+  average_order_value: number;
+  fee_breakdown: FeeBreakdownData;
+  recent_payouts: PayoutInfo[];
+  cash_flow_trend: CashFlowEntry[];
+};
+
+export type Transaction = {
+  order_no: string;
+  transaction_date: string;
+  amount: string;
+  paid_status: string;
+  fee_name: string;
+  fee_type: string;
+  transaction_type: string;
+  transaction_number: string;
+  reference: string;
+  statement: string;
+  details?: string;
+  seller_sku?: string;
+  lazada_sku?: string;
+  shipping_provider?: string;
+  shipment_type?: string;
+  orderItem_status?: string;
+  VAT_in_amount?: string;
+  WHT_amount?: string;
+  comment?: string;
+};
+
+export type TransactionDetailsResponse = {
+  code: string;
+  data: Transaction[];
+  message?: string;
+};
+
+export type PayoutAnalyticsResponse = {
+  total_payouts: number;
+  upcoming: PayoutInfo[];
+  pending: PayoutInfo[];
+  paid: PayoutInfo[];
+  failed: PayoutInfo[];
+  total_amount: number;
+  upcoming_amount: number;
+  pending_amount: number;
+  paid_amount: number;
+};
+
+export type FeeBreakdownResponse = FeeBreakdownData;
+
+export type ProfitAnalyticsResponse = {
+  period: string;
+  total_revenue: number;
+  total_costs: number;
+  net_profit: number;
+  profit_margin: number;
+  order_count: number;
+};
+
+export type ReconciledOrder = {
+  order_no: string;
+  order_value: number;
+  fees: number;
+  refunds: number;
+  net: number;
+};
+
+export type ReconcileSettlementResponse = {
+  payout_id: string;
+  payout_amount: number;
+  payout_date?: string;
+  orders: ReconciledOrder[];
+  total_order_value: number;
+  total_deductions: number;
+  calculated_payout: number;
+  difference: number;
+  status: string;
+};
+
+function darazFinancialHeaders(accessToken: string, darazAccessToken: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "x-daraz-access-token": darazAccessToken,
+  };
+}
+
+export function getFinancialDashboard(
+  accessToken: string,
+  darazAccessToken: string,
+  days = 30,
+): Promise<FinancialDashboardResponse> {
+  return request<FinancialDashboardResponse>(
+    `/daraz/financial/dashboard?days=${days}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getFinancialTransactions(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string; page?: number; pageSize?: number },
+): Promise<TransactionDetailsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+    page: String(params.page ?? 1),
+    page_size: String(params.pageSize ?? 100),
+  });
+  return request<TransactionDetailsResponse>(
+    `/daraz/financial/transactions?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getPayoutAnalytics(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<PayoutAnalyticsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<PayoutAnalyticsResponse>(
+    `/daraz/financial/payouts/analytics?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getFeeBreakdown(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<FeeBreakdownResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<FeeBreakdownResponse>(
+    `/daraz/financial/fees/breakdown?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getProfitAnalytics(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<ProfitAnalyticsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<ProfitAnalyticsResponse>(
+    `/daraz/financial/profit?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getCashFlow(
+  accessToken: string,
+  darazAccessToken: string,
+  days = 30,
+): Promise<CashFlowEntry[]> {
+  return request<CashFlowEntry[]>(
+    `/daraz/financial/cashflow?days=${days}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getSettlementReconciliation(
+  accessToken: string,
+  darazAccessToken: string,
+  payoutId: string,
+): Promise<ReconcileSettlementResponse> {
+  return request<ReconcileSettlementResponse>(
+    `/daraz/financial/settlement/reconcile/${encodeURIComponent(payoutId)}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}

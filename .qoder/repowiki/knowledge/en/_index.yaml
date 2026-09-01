@@ -1,0 +1,34 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: masood-dev
+nodes_managed: true
+exported_at: "2026-09-01T19:57:48Z"
+modules:
+    "":
+        dir_name: Tijarah AI Expo Monorepo Root
+        title: Tijarah AI Expo Monorepo Root
+        scope:
+            - README.md
+            - .gitignore
+            - app.json
+            - package.json
+            - tsconfig.json
+            - eslint.config.js
+            - AGENTS.md
+            - LICENSE
+            - package-lock.json
+        source_files: []
+        children:
+            - scripts
+        depends_on: []
+        related_to: []
+    scripts:
+        dir_name: Excel Financial Model & NIC Submission Scripts
+        title: Excel Financial Model & NIC Submission Scripts
+        scope:
+            - scripts/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
