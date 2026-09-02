@@ -1,2 +1,0 @@
-- Project bootstrapped from `create-expo-app` and follows Expo Router's file-based routing convention inside `src/app/`.
-- Linting is configured centrally via `eslint.config.js` and invoked through the `expo lint` script rather than direct ESLint invocation.

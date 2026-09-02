@@ -3,31 +3,31 @@ schema_version: 1
 locale: en-US
 branch: masood-dev
 nodes_managed: true
-exported_at: "2026-09-01T19:57:48Z"
+exported_at: "2026-09-02T15:51:06Z"
 modules:
     "":
-        dir_name: Tijarah AI Expo Monorepo Root
-        title: Tijarah AI Expo Monorepo Root
+        dir_name: Tijarah AI App Root
+        title: Tijarah AI App Root
         scope:
             - README.md
             - .gitignore
             - app.json
             - package.json
+            - package-lock.json
             - tsconfig.json
             - eslint.config.js
-            - AGENTS.md
-            - LICENSE
-            - package-lock.json
         source_files: []
         children:
-            - scripts
+            - scripts_and_assets
         depends_on: []
         related_to: []
-    scripts:
-        dir_name: Excel Financial Model & NIC Submission Scripts
-        title: Excel Financial Model & NIC Submission Scripts
+    scripts_and_assets:
+        dir_name: Financial Model Audit & Asset Scripts
+        title: Financial Model Audit & Asset Scripts
         scope:
             - scripts/
+            - assets/
+            - docs/
         source_files: []
         children: []
         depends_on: []

@@ -1,1 +1,0 @@
-Python and Node scripts that inspect, audit, fix, and update the NIC Acceleration Cohort Excel workbook's Financial Model, Information Memorandum, and related sheets.

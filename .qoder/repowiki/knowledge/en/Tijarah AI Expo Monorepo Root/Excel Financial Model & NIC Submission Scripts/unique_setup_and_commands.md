@@ -1,1 +1,0 @@
-Scripts assume a specific Windows path to the downloaded NIC workbook at `c:\Users\dossani\Downloads\Acceleration Cohort 4- Application Deliverables - Tijarah AI_filled.xlsx`; running them requires that file to exist. Run Python scripts directly with `python scripts/<name>.py`; run the project reset with `node scripts/reset-project.js` from the repo root.

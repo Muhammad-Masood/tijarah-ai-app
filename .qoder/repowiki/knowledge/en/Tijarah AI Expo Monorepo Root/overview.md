@@ -1,1 +1,0 @@
-Root of the Tijarah AI Expo monorepo that co-locates an Expo Router mobile app under `src/` and NIC Excel financial-modeling tooling under `scripts/`, sharing a single Node workspace for build, lint, and environment configuration.

@@ -1,20 +1,23 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type Block =
   | { kind: 'paragraph'; lines: string[] }
   | { kind: 'ordered'; items: string[] }
-  | { kind: 'bullet'; items: string[] };
+  | { kind: 'bullet'; items: string[] }
+  | { kind: 'table'; headers: string[]; rows: string[][] };
 
-/** Splits assistant markdown into simple blocks — enough for chat-style bold, lists, and paragraphs. */
+/** Splits assistant markdown into simple blocks — enough for chat-style bold, lists, tables, and paragraphs. */
 function parseBlocks(text: string): Block[] {
   const blocks: Block[] = [];
   const lines = text.split('\n');
   let paragraphLines: string[] = [];
   let listKind: 'ordered' | 'bullet' | null = null;
   let listItems: string[] = [];
+  let tableRows: string[] = [];
 
   const flushParagraph = () => {
     if (paragraphLines.length === 0) return;
@@ -29,10 +32,48 @@ function parseBlocks(text: string): Block[] {
     listItems = [];
   };
 
+  const flushTable = () => {
+    if (tableRows.length < 2) {
+      // Not a valid table, treat as paragraph
+      paragraphLines.push(...tableRows);
+      tableRows = [];
+      return;
+    }
+    
+    const parseRow = (row: string): string[] => {
+      return row
+        .split('|')
+        .slice(1, -1)
+        .map((cell) => cell.trim());
+    };
+    
+    const headers = parseRow(tableRows[0]);
+    const rows = tableRows.slice(2).map(parseRow); // Skip header and separator
+    
+    blocks.push({ kind: 'table', headers, rows });
+    tableRows = [];
+  };
+
   for (const line of lines) {
     const trimmed = line.trim();
     const orderedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
     const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+    const isTableRow = trimmed.startsWith('|') && trimmed.endsWith('|');
+    const isTableSeparator = /^\|[-:\s|]+\|$/.test(trimmed);
+
+    if (isTableRow) {
+      flushParagraph();
+      flushList();
+      if (!isTableSeparator) {
+        tableRows.push(trimmed);
+      }
+      continue;
+    }
+
+    // If we were collecting table rows but this line isn't a table row, flush the table
+    if (tableRows.length > 0) {
+      flushTable();
+    }
 
     if (orderedMatch) {
       flushParagraph();
@@ -63,6 +104,7 @@ function parseBlocks(text: string): Block[] {
   }
 
   flushList();
+  flushTable();
   flushParagraph();
   return blocks;
 }
@@ -95,6 +137,7 @@ function InlineText({ text, muted }: { text: string; muted?: boolean }) {
 
 /** User-friendly rendering for assistant chat markdown — no raw `**` or list markers. */
 export function ChatMarkdown({ text }: { text: string }) {
+  const theme = useTheme();
   const blocks = parseBlocks(text);
 
   if (blocks.length === 0) {
@@ -109,6 +152,31 @@ export function ChatMarkdown({ text }: { text: string }) {
             <View key={index} style={styles.paragraph}>
               {block.lines.map((line, lineIndex) => (
                 <InlineText key={lineIndex} text={line} />
+              ))}
+            </View>
+          );
+        }
+
+        if (block.kind === 'table') {
+          return (
+            <View key={index} style={[styles.table, { borderColor: theme.border }]}>
+              <View style={[styles.tableRow, { borderBottomColor: theme.border }]}>
+                {block.headers.map((header, cellIndex) => (
+                  <View key={cellIndex} style={styles.tableCell}>
+                    <ThemedText type="labelMd" themeColor="textSecondary">
+                      {header}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+              {block.rows.map((row, rowIndex) => (
+                <View key={rowIndex} style={[styles.tableRow, { borderBottomColor: theme.border }]}>
+                  {row.map((cell, cellIndex) => (
+                    <View key={cellIndex} style={styles.tableCell}>
+                      <InlineText text={cell} />
+                    </View>
+                  ))}
+                </View>
               ))}
             </View>
           );
@@ -139,6 +207,20 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     gap: Spacing.half,
+  },
+  table: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tableCell: {
+    flex: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one + 2,
   },
   list: {
     gap: Spacing.one,
