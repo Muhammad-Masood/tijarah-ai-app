@@ -1,10 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import {
+  FinanceChartSkeleton,
   FinanceColors,
+  FinanceEmptyState,
   FinanceErrorState,
   FinanceStatusBadge,
   formatPKR,
@@ -17,8 +19,10 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function FinanceSettlementScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const { payout_id } = useLocalSearchParams<{ payout_id: string }>();
   const { data, isLoading, error, refetch } = useSettlementReconciliation(payout_id ?? null);
+  const isWideLayout = width >= 680;
 
   if (error) {
     return (
@@ -36,27 +40,37 @@ export default function FinanceSettlementScreen() {
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
         <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
-          {/* Back button */}
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back to payouts">
             <MaterialCommunityIcons name="arrow-left" size={20} color={theme.onSurface} />
             <ThemedText type="bodyMd">Back to Payouts</ThemedText>
           </Pressable>
 
           {isLoading ? (
-            <ThemedText type="bodyMd" themeColor="textSecondary">Loading settlement details...</ThemedText>
+            <View style={styles.loadingState} accessibilityLabel="Loading settlement details">
+              <FinanceChartSkeleton height={96} />
+              <FinanceChartSkeleton height={144} />
+              <FinanceChartSkeleton height={220} />
+            </View>
           ) : data ? (
             <>
-              {/* Header */}
-              <View style={styles.headerRow}>
-                <View>
-                  <ThemedText type="headlineSm">{data.payout_id}</ThemedText>
-                  {data.payout_date && (
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      Paid on {new Date(data.payout_date).toLocaleDateString()}
-                    </ThemedText>
-                  )}
+              <View style={styles.headerBlock}>
+                <ThemedText type="labelMd" themeColor="primary">SETTLEMENT CHECK</ThemedText>
+                <View style={styles.headerRow}>
+                  <View style={styles.titleBlock}>
+                    <ThemedText type="displayLgMobile">Settlement</ThemedText>
+                    <ThemedText type="bodyMd" numberOfLines={1}>{data.payout_id}</ThemedText>
+                  </View>
+                  <FinanceStatusBadge status={isDiscrepancy ? 'discrepancy' : 'reconciled'} />
                 </View>
-                <FinanceStatusBadge status={isDiscrepancy ? 'discrepancy' : 'reconciled'} />
+                {data.payout_date && (
+                  <ThemedText type="bodySm" themeColor="textSecondary">
+                    Paid on {new Date(data.payout_date).toLocaleDateString()}
+                  </ThemedText>
+                )}
               </View>
 
               {/* Discrepancy Warning */}
@@ -76,19 +90,23 @@ export default function FinanceSettlementScreen() {
                 </ThemedView>
               )}
 
-              {/* Comparison Cards */}
-              <View style={styles.comparisonRow}>
+              <View style={styles.sectionIntro}>
+                <ThemedText type="headlineSm">Payout reconciliation</ThemedText>
+                <ThemedText type="bodySm" themeColor="textSecondary">Compare the platform transfer with the calculated amount.</ThemedText>
+              </View>
+
+              <View style={[styles.comparisonRow, !isWideLayout && styles.comparisonStack]}>
                 <ThemedView type="surfaceContainerLowest" style={styles.comparisonCard}>
-                  <ThemedText type="bodySm" themeColor="textSecondary">Daraz Payout</ThemedText>
+                  <ThemedText type="labelMd" themeColor="textSecondary">DARAZ PAYOUT</ThemedText>
                   <ThemedText type="headlineSm" style={{ color: FinanceColors.primary }}>
                     {formatPKR(data.payout_amount)}
                   </ThemedText>
                 </ThemedView>
-                <View style={styles.vsDivider}>
+                <View style={[styles.vsDivider, !isWideLayout && styles.vsDividerStack]}>
                   <ThemedText type="bodySm" themeColor="textSecondary">vs</ThemedText>
                 </View>
                 <ThemedView type="surfaceContainerLowest" style={styles.comparisonCard}>
-                  <ThemedText type="bodySm" themeColor="textSecondary">Calculated Payout</ThemedText>
+                  <ThemedText type="labelMd" themeColor="textSecondary">CALCULATED PAYOUT</ThemedText>
                   <ThemedText
                     type="headlineSm"
                     style={{ color: isDiscrepancy ? FinanceColors.fees : FinanceColors.profit }}>
@@ -97,10 +115,12 @@ export default function FinanceSettlementScreen() {
                 </ThemedView>
               </View>
 
-              {/* Difference */}
               <ThemedView type="surfaceContainerLowest" style={styles.differenceCard}>
                 <View style={styles.differenceRow}>
-                  <ThemedText type="bodyMd">Difference</ThemedText>
+                  <View style={styles.differenceLabel}>
+                    <ThemedText type="bodyMd">Difference</ThemedText>
+                    <ThemedText type="bodySm" themeColor="textSecondary">Platform payout minus calculated payout</ThemedText>
+                  </View>
                   <ThemedText
                     type="headlineSm"
                     style={{ color: Math.abs(data.difference) < 1 ? FinanceColors.profit : FinanceColors.fees }}>
@@ -109,9 +129,11 @@ export default function FinanceSettlementScreen() {
                 </View>
               </ThemedView>
 
-              {/* Breakdown Table */}
               <ThemedView type="surfaceContainerLowest" style={styles.breakdownTable}>
-                <ThemedText type="bodyLg" style={styles.breakdownTitle}>Statement Breakdown</ThemedText>
+                <View style={styles.cardHeading}>
+                  <ThemedText type="bodyLg">Statement breakdown</ThemedText>
+                  <ThemedText type="bodySm" themeColor="textSecondary">How the calculated payout is formed.</ThemedText>
+                </View>
                 <BreakdownRow label="Total Order Value (Item Revenue)" value={formatPKR(data.total_order_value)} color={FinanceColors.revenue} />
                 <BreakdownRow label="Total Deductions (Fees)" value={`-${formatPKR(data.total_deductions)}`} color={FinanceColors.fees} />
                 <BreakdownRow
@@ -123,22 +145,32 @@ export default function FinanceSettlementScreen() {
                 />
               </ThemedView>
 
-              {/* Orders Table (if any) */}
               {data.orders && data.orders.length > 0 && (
                 <ThemedView type="surfaceContainerLowest" style={styles.breakdownTable}>
-                  <ThemedText type="bodyLg" style={styles.breakdownTitle}>Order Details</ThemedText>
+                  <View style={styles.cardHeading}>
+                    <ThemedText type="bodyLg">Order details</ThemedText>
+                    <ThemedText type="bodySm" themeColor="textSecondary">{data.orders.length} orders in this statement.</ThemedText>
+                  </View>
+                  <View style={styles.orderHeader}>
+                    <ThemedText type="labelMd" themeColor="textSecondary">ORDER</ThemedText>
+                    <ThemedText type="labelMd" themeColor="textSecondary">VALUE</ThemedText>
+                    <ThemedText type="labelMd" themeColor="textSecondary">FEES</ThemedText>
+                    <ThemedText type="labelMd" themeColor="textSecondary">NET</ThemedText>
+                  </View>
                   {data.orders.map((order, i) => (
-                    <View key={order.order_no} style={[styles.orderRow, { borderBottomColor: theme.border }]}>
-                      <ThemedText type="bodySm">#{order.order_no}</ThemedText>
-                      <ThemedText type="bodySm" style={{ color: FinanceColors.revenue }}>{formatPKR(order.order_value)}</ThemedText>
-                      <ThemedText type="bodySm" style={{ color: FinanceColors.fees }}>{formatPKR(order.fees)}</ThemedText>
-                      <ThemedText type="bodySm" style={{ fontWeight: '600' }}>{formatPKR(order.net)}</ThemedText>
+                    <View key={order.order_no} style={[styles.orderRow, { borderBottomColor: theme.border }, i === data.orders.length - 1 && styles.orderRowLast]}>
+                      <ThemedText type="bodySm" numberOfLines={1} style={styles.orderId}>#{order.order_no}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.revenue }]}>{formatPKR(order.order_value)}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.fees }]}>{formatPKR(order.fees)}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, styles.orderNet]}>{formatPKR(order.net)}</ThemedText>
                     </View>
                   ))}
                 </ThemedView>
               )}
             </>
-          ) : null}
+          ) : (
+            <FinanceEmptyState message="No settlement details are available for this payout." />
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -171,7 +203,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.containerMargin,
     paddingTop: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.four,
+    gap: Spacing.five,
+  },
+  loadingState: {
     gap: Spacing.four,
+  },
+  headerBlock: {
+    gap: Spacing.two,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: Spacing.one,
+  },
+  sectionIntro: {
+    gap: Spacing.one,
   },
   backButton: {
     flexDirection: 'row',
@@ -202,6 +248,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  comparisonStack: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: Spacing.two,
+  },
   comparisonCard: {
     flex: 1,
     padding: Spacing.three,
@@ -211,6 +262,10 @@ const styles = StyleSheet.create({
   },
   vsDivider: {
     paddingHorizontal: Spacing.one,
+  },
+  vsDividerStack: {
+    alignItems: 'center',
+    paddingVertical: 0,
   },
   differenceCard: {
     padding: Spacing.three,
@@ -222,6 +277,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  differenceLabel: {
+    flex: 1,
+    gap: Spacing.one,
+  },
   breakdownTable: {
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -229,7 +288,8 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  breakdownTitle: {
+  cardHeading: {
+    gap: Spacing.one,
     marginBottom: Spacing.one,
   },
   breakdownRow: {
@@ -244,5 +304,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.two,
     borderBottomWidth: 1,
+  },
+  orderRowLast: {
+    borderBottomWidth: 0,
+  },
+  orderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: Spacing.one,
+  },
+  orderId: {
+    width: '22%',
+  },
+  orderAmount: {
+    width: '26%',
+    textAlign: 'right',
+  },
+  orderNet: {
+    fontWeight: '600',
   },
 });

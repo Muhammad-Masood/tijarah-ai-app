@@ -28,7 +28,6 @@ type UseDarazProductsResult = {
  * the reliable fallback).
  */
 function mapDarazProduct(raw: DarazRawProduct): Product {
-  console.log("raw: ", raw)
   const itemId = raw.item_id;
   const attributes = (raw.attributes ?? {}) as Record<string, unknown>;
   const skus = raw.skus as Record<string, unknown>[] | undefined;
@@ -192,7 +191,6 @@ export function useDarazProducts(): UseDarazProductsResult {
     getDarazAllProducts(accessToken, darazAccessToken)
       .then((response) => {
         if (cancelled) return;
-        console.log("all products response: ", response);
         setProducts(dedupeProductsById(extractDarazProducts(response).map(mapDarazProduct)));
       })
       .catch((err) => {

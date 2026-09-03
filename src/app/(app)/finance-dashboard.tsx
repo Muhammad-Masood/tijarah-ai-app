@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AreaChart, ChartLegend, DonutChart } from '@/components/finance-charts';
@@ -7,11 +7,14 @@ import {
   DateRangeSelector,
   type DateRangePreset,
   FinanceColors,
+  FinanceChartSkeleton,
+  FinanceEmptyState,
   FinanceErrorState,
   FinanceKPICard,
   FinanceKPISkeleton,
   FinanceSection,
   FinanceStatusBadge,
+  FinanceTableSkeleton,
   formatPKR,
   formatPercent,
 } from '@/components/finance-kit';
@@ -23,8 +26,10 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function FinanceDashboardScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const [days, setDays] = useState<DateRangePreset>(30);
   const { data, isLoading, error, refetch } = useFinancialDashboard(days);
+  const isWideLayout = width >= 760;
 
   if (error) {
     return (
@@ -55,18 +60,30 @@ export default function FinanceDashboardScreen() {
     inflow: entry.inflow,
     outflow: entry.outflow,
   })) ?? [];
+  const hasFeeData = feeDonutData.some((slice) => slice.value > 0);
 
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
         <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.headerRow}>
-            <ThemedText type="headlineMd">Financial Dashboard</ThemedText>
-            <DateRangeSelector value={days} onChange={setDays} />
+          <View style={styles.headerBlock}>
+            <ThemedText type="labelMd" themeColor="primary">FINANCIAL PULSE</ThemedText>
+            <View style={styles.headerRow}>
+              <View style={styles.titleBlock}>
+                <ThemedText type="displayLgMobile">Financial Dashboard</ThemedText>
+                <ThemedText type="bodySm" themeColor="textSecondary">
+                  Track what came in, what went out, and what remains.
+                </ThemedText>
+              </View>
+              <DateRangeSelector value={days} onChange={setDays} />
+            </View>
           </View>
 
-          {/* KPI Cards */}
+          <View style={styles.sectionIntro}>
+            <ThemedText type="headlineSm">At a glance</ThemedText>
+            <ThemedText type="bodySm" themeColor="textSecondary">Your key numbers for the selected period.</ThemedText>
+          </View>
+
           {isLoading ? (
             <View style={styles.kpiGrid}>
               {Array.from({ length: 5 }).map((_, i) => (
@@ -113,7 +130,7 @@ export default function FinanceDashboardScreen() {
           <FinanceSection title="Cash Flow Trend">
             <ThemedView type="surfaceContainerLowest" style={styles.chartCard}>
               {isLoading ? (
-                <View style={styles.chartPlaceholder} />
+                <FinanceChartSkeleton height={200} />
               ) : cashFlowData.length > 0 ? (
                 <>
                   <AreaChart data={cashFlowData} />
@@ -125,66 +142,73 @@ export default function FinanceDashboardScreen() {
                   />
                 </>
               ) : (
-                <View style={styles.chartPlaceholder} />
+                <FinanceEmptyState message="No cash flow activity for this period." />
               )}
             </ThemedView>
           </FinanceSection>
 
-          {/* Fee Breakdown + Recent Payouts */}
-          <View style={styles.bottomSection}>
-            {/* Fee Donut */}
-            <FinanceSection title="Fee Breakdown">
-              <ThemedView type="surfaceContainerLowest" style={styles.donutCard}>
-                {data ? (
-                  <>
-                    <DonutChart
-                      data={feeDonutData}
-                      size={200}
-                      centerLabel="Net Payout"
-                      centerValue={`PKR ${(data.fee_breakdown.net_payout / 1000).toFixed(1)}K`}
-                    />
-                    <ChartLegend items={feeDonutData.map((d) => ({ label: d.label, color: d.color }))} />
-                  </>
-                ) : null}
-              </ThemedView>
-            </FinanceSection>
+          <View style={[styles.bottomSection, isWideLayout && styles.bottomSectionWide]}>
+            <View style={styles.bottomColumn}>
+              <FinanceSection title="Fee Breakdown">
+                <ThemedView type="surfaceContainerLowest" style={styles.donutCard}>
+                  {isLoading ? (
+                    <FinanceChartSkeleton height={200} />
+                  ) : data && hasFeeData ? (
+                    <>
+                      <DonutChart
+                        data={feeDonutData}
+                        size={200}
+                        centerLabel="Net Payout"
+                        centerValue={`PKR ${(data.fee_breakdown.net_payout / 1000).toFixed(1)}K`}
+                      />
+                      <ChartLegend items={feeDonutData.map((d) => ({ label: d.label, color: d.color }))} />
+                    </>
+                  ) : (
+                    <FinanceEmptyState message="No fee activity for this period." />
+                  )}
+                </ThemedView>
+              </FinanceSection>
+            </View>
 
-            {/* Recent Payouts */}
-            <FinanceSection title="Recent Payouts">
-              <ThemedView type="surfaceContainerLowest" style={styles.payoutTable}>
-                {data?.recent_payouts?.map((payout, index) => (
-                  <View
-                    key={payout.payout_id}
-                    style={[
-                      styles.payoutRow,
-                      { borderBottomColor: theme.border },
-                      index === data.recent_payouts.length - 1 && styles.payoutRowLast,
-                    ]}>
-                    <View style={styles.payoutInfo}>
-                      <ThemedText type="bodyMd" numberOfLines={1}>
-                        {payout.statement_number}
-                      </ThemedText>
+            <View style={styles.bottomColumn}>
+              <FinanceSection title="Recent Payouts">
+                <ThemedView type="surfaceContainerLowest" style={styles.payoutTable}>
+                  {isLoading ? (
+                    <FinanceTableSkeleton rows={3} />
+                  ) : data?.recent_payouts?.map((payout, index) => (
+                    <View
+                      key={payout.payout_id}
+                      style={[
+                        styles.payoutRow,
+                        { borderBottomColor: theme.border },
+                        index === data.recent_payouts.length - 1 && styles.payoutRowLast,
+                      ]}>
+                      <View style={styles.payoutInfo}>
+                        <ThemedText type="bodyMd" numberOfLines={1}>
+                          {payout.statement_number}
+                        </ThemedText>
+                        <ThemedText type="bodySm" themeColor="textSecondary">
+                          {new Date(payout.created_at).toLocaleDateString()}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.payoutRight}>
+                        <ThemedText type="bodyMd" style={{ color: FinanceColors.revenue }}>
+                          {formatPKR(payout.amount)}
+                        </ThemedText>
+                        <FinanceStatusBadge status={payout.status} />
+                      </View>
+                    </View>
+                  ))}
+                  {!isLoading && (!data?.recent_payouts || data.recent_payouts.length === 0) && (
+                    <View style={styles.emptyRow}>
                       <ThemedText type="bodySm" themeColor="textSecondary">
-                        {new Date(payout.created_at).toLocaleDateString()}
+                        No recent payouts for this period.
                       </ThemedText>
                     </View>
-                    <View style={styles.payoutRight}>
-                      <ThemedText type="bodyMd" style={{ color: FinanceColors.revenue }}>
-                        {formatPKR(payout.amount)}
-                      </ThemedText>
-                      <FinanceStatusBadge status={payout.status} />
-                    </View>
-                  </View>
-                ))}
-                {(!data?.recent_payouts || data.recent_payouts.length === 0) && (
-                  <View style={styles.emptyRow}>
-                    <ThemedText type="bodySm" themeColor="textSecondary">
-                      No recent payouts
-                    </ThemedText>
-                  </View>
-                )}
-              </ThemedView>
-            </FinanceSection>
+                  )}
+                </ThemedView>
+              </FinanceSection>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -202,14 +226,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.containerMargin,
     paddingTop: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.four,
-    gap: Spacing.four,
+    gap: Spacing.five,
+  },
+  headerBlock: {
+    gap: Spacing.two,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.three,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 220,
+    gap: Spacing.one,
+  },
+  sectionIntro: {
+    gap: Spacing.one,
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -217,17 +252,21 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   chartCard: {
-    padding: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: 0,
     borderRadius: Radius.md,
     borderWidth: 1,
     alignItems: 'center',
   },
-  chartPlaceholder: {
-    height: 200,
-    width: '100%',
-  },
   bottomSection: {
     gap: Spacing.four,
+  },
+  bottomSectionWide: {
+    flexDirection: 'row',
+  },
+  bottomColumn: {
+    flex: 1,
+    minWidth: 0,
   },
   donutCard: {
     padding: Spacing.three,

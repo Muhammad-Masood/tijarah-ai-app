@@ -29,9 +29,7 @@ export default function ProductDetailScreen() {
   const isDaraz = source === 'daraz';
   const isShopify = source === 'shopify';
   const daraz = useDarazProducts();
-  console.log("daraz products: ", daraz.products);
   const shopify = useShopifyProducts();
-
   const product: Product | null = isDaraz
     ? (daraz.products.find((item) => item.id === id) ?? null)
     : isShopify ? (shopify.products.find((item) => item.id === id) ?? null) : null;
@@ -44,7 +42,6 @@ export default function ProductDetailScreen() {
     if (product.images && product.images.length > 0) return product.images;
     return product.image ? [product.image] : [];
   }, [product]);
-  console.log(product, product?.category);
   const recommendationNiche = product?.category?.trim() ?? '';
 
   const [tab, setTab] = useState<DetailTab>('details');
