@@ -59,11 +59,11 @@ export default function AskTijarahScreen() {
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
-        <View style={[styles.flex, { paddingBottom: BottomTabInset }]}>
-          <KeyboardAvoidingView
+        <View style={styles.flex}>
+          {/* <KeyboardAvoidingView
             style={styles.flex}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}> */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View style={styles.headerTopRow}>
               <View style={styles.headerTitleRow}>
@@ -93,19 +93,12 @@ export default function AskTijarahScreen() {
                 </Pressable>
               )}
             </View>
-            {isConnected && marketplaces.length > 0 && (
-              <View style={[styles.marketplaceBanner, { backgroundColor: theme.primaryContainer }]}>
-                <ThemedText type="bodySm" themeColor="onPrimaryContainer">
-                  Connected: {marketplaces.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(', ')}
-                </ThemedText>
-              </View>
-            )}
           </View>
 
           <ScrollView
             ref={scrollRef}
             style={styles.flex}
-            contentContainerStyle={styles.threadContent}
+            contentContainerStyle={[styles.threadContent, { paddingBottom: BottomTabInset }]}
             onScroll={(event) => {
               const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
               shouldAutoScrollRef.current =
@@ -113,7 +106,7 @@ export default function AskTijarahScreen() {
             }}
             scrollEventThrottle={100}
             keyboardShouldPersistTaps="handled">
-            {messages.map((message) => (
+            {messages.map((message: any) => (
               <MessageBubble key={message.id} message={message} />
             ))}
             {isSending && activeToolCalls.length > 0 && <ToolChips toolCalls={activeToolCalls} />}
@@ -123,7 +116,7 @@ export default function AskTijarahScreen() {
           </ScrollView>
 
           {!hasConversation && (
-            <View style={styles.groups}>
+            <View style={[styles.groups, { paddingBottom: BottomTabInset + Spacing.two }]}>
               {suggestedGroups.map((group) => (
                 <View key={group.label} style={styles.group}>
                   <ThemedText type="labelMd" themeColor="textSecondary">
@@ -156,9 +149,9 @@ export default function AskTijarahScreen() {
             onSend={handleSend}
             isSending={isSending}
             placeholder="Ask about your catalog, stock, or financials…"
-            bottomInset={keyboardOffset > 0 ? 0 : undefined}
+            bottomInset={0}
           />
-        </KeyboardAvoidingView>
+        {/* </KeyboardAvoidingView> */}
         </View>
       </SafeAreaView>
     </ThemedView>
