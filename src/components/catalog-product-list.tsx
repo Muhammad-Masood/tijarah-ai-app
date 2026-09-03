@@ -171,7 +171,9 @@ export function CatalogProductList({
         products.length === 0 && styles.emptyListContainer,
         contentContainerStyle,
       ]}
-      ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
+      ItemSeparatorComponent={() => (
+        <View style={viewMode === 'grid' ? styles.gridRowSeparator : styles.rowSeparator} />
+      )}
       refreshControl={
         <RefreshControl
           refreshing={isLoading && products.length > 0}
@@ -196,7 +198,7 @@ export function CatalogProductList({
 
 const styles = StyleSheet.create({
   listContainer: {
-    paddingHorizontal: Spacing.one,
+    // paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.six,
   },
@@ -238,16 +240,20 @@ const styles = StyleSheet.create({
   },
   // Grid / List Item Structure
   gridRowGutter: {
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   gridCardWrapper: {
-    flex: 1, // 50% width on 2 columns
+    flex: 1,
+    minWidth: 0,
   },
   listCardWrapper: {
     width: '100%',
   },
   rowSeparator: {
     height: Spacing.three,
+  },
+  gridRowSeparator: {
+    height: Spacing.two,
   },
   // State Views (Empty & Error)
   stateContainer: {
