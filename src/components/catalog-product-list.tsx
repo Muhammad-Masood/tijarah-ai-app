@@ -196,7 +196,7 @@ export function CatalogProductList({
 
 const styles = StyleSheet.create({
   listContainer: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.one,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.six,
   },
