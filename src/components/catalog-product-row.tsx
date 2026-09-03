@@ -28,6 +28,7 @@ export function CatalogProductRow({
   const eyebrow = (product.brand_name?.trim() || product.seller_name?.trim())?.toUpperCase();
   const parsedRating = product.rating_score ? Number.parseFloat(product.rating_score) : null;
   const hasValidRating = Number.isFinite(parsedRating) && parsedRating !== null;
+  const filledStars = hasValidRating ? Math.min(5, Math.max(0, Math.round(parsedRating))) : 0;
 
   const ratingText = hasValidRating
     ? `${parsedRating.toFixed(1)}${product.review_count ? ` (${product.review_count})` : ''}`
@@ -37,7 +38,18 @@ export function CatalogProductRow({
 
   const reviewMarkup = ratingText || product.item_sold ? (
     <View style={styles.reviewRow}>
-      {hasValidRating ? <Ionicons name="star" size={11} color="#FFB800" style={styles.ratingStar} /> : null}
+      {hasValidRating ? (
+        <View style={styles.starRow}>
+          {Array.from({ length: 5 }, (_, index) => (
+            <Ionicons
+              key={`${product.item_id}-rating-star-${index}`}
+              name={index < filledStars ? 'star' : 'star-outline'}
+              size={11}
+              color={index < filledStars ? '#FFB800' : '#D1D5DB'}
+            />
+          ))}
+        </View>
+      ) : null}
       {ratingText ? (
         <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1} style={styles.ratingText}>
           {ratingText}
@@ -256,19 +268,27 @@ const styles = StyleSheet.create({
   reviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    width: '100%',
+    minWidth: 0,
     marginTop: 2,
   },
-  ratingStar: {
-    marginRight: 2,
+  starRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    marginRight: 4,
   },
   ratingText: {
     fontSize: 11,
     color: '#757575',
+    flexShrink: 1,
   },
   soldText: {
     fontSize: 11,
     color: '#757575',
     marginLeft: 6,
+    flexShrink: 0,
   },
   gridFooter: {
     flexDirection: 'row',
