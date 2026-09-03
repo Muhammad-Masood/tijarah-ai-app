@@ -23,6 +23,7 @@ export default function MoreScreen() {
             <ListSection>
               <ListRow label="Profile" onPress={() => router.push('/profile')} />
               <ListRow label="Finance" onPress={() => router.push('/finance')} />
+              <ListRow label="Expenses" onPress={() => router.push('/expenses')} />
               <ListRow label="Products" onPress={() => router.push('/products')} />
               <ListRow label="Connected Stores" onPress={() => router.push('/connect-stores')} />
               <ListRow label="Product Hunting" onPress={() => router.push('/product-hunting-tool')} />

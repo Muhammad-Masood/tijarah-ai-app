@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
 
 import { GroupedBarChart, ChartLegend } from '@/components/finance-charts';
 import {
@@ -10,6 +11,8 @@ import {
   FinanceKPICard,
   FinanceKPISkeleton,
   ProfitMarginRing,
+  DateRangePicker,
+  type DateRange,
   formatPKR,
 } from '@/components/finance-kit';
 import { ThemedText } from '@/components/themed-text';
@@ -18,7 +21,7 @@ import { Skeleton } from '@/components/skeleton';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useProfitAnalytics } from '@/hooks/use-finance-profit';
 
-function getDefaultDates() {
+function getDefaultDates(): DateRange {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 30);
@@ -30,7 +33,7 @@ function getDefaultDates() {
 
 export default function FinanceProfitScreen() {
   const { width } = useWindowDimensions();
-  const dates = getDefaultDates();
+  const [dates, setDates] = useState<DateRange>(getDefaultDates);
   const { data, isLoading, error, refetch } = useProfitAnalytics(dates);
   const isWideLayout = width >= 760;
 
@@ -47,6 +50,7 @@ export default function FinanceProfitScreen() {
   const chartData = data
     ? [
         { label: 'Revenue', value: data.total_revenue, color: FinanceColors.revenue },
+        { label: 'Net Revenue', value: data.net_revenue, color: FinanceColors.primary },
         { label: 'Costs', value: data.total_costs, color: FinanceColors.fees },
         { label: 'Net Profit', value: data.net_profit, color: data.net_profit >= 0 ? FinanceColors.profit : FinanceColors.fees },
       ]
@@ -58,10 +62,15 @@ export default function FinanceProfitScreen() {
         <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerBlock}>
             <ThemedText type="labelMd" themeColor="primary">PROFITABILITY</ThemedText>
-            <ThemedText type="displayLgMobile">Profit &amp; Loss</ThemedText>
-            <ThemedText type="bodySm" themeColor="textSecondary">
-              See how revenue turns into profit after costs.
-            </ThemedText>
+            <View style={styles.headerRow}>
+              <View style={styles.titleBlock}>
+                <ThemedText type="displayLgMobile">Profit &amp; Loss</ThemedText>
+                <ThemedText type="bodySm" themeColor="textSecondary">
+                  See how revenue turns into profit after costs.
+                </ThemedText>
+              </View>
+              <DateRangePicker value={dates} onChange={setDates} />
+            </View>
           </View>
 
           {isLoading ? (
@@ -111,7 +120,9 @@ export default function FinanceProfitScreen() {
 
               <View style={styles.kpiRow}>
                 <FinanceKPICard title="Revenue" value={formatPKR(data.total_revenue)} icon="cash-multiple" tone="revenue" />
+                <FinanceKPICard title="Net Revenue" value={formatPKR(data.net_revenue)} icon="cash" tone="revenue" />
                 <FinanceKPICard title="Costs" value={formatPKR(data.total_costs)} icon="receipt" tone="fees" />
+                <FinanceKPICard title="Product Expenses" value={formatPKR(data.total_product_expenses)} icon="package-variant" tone="fees" />
                 <FinanceKPICard title="Orders" value={String(data.order_count)} icon="package-variant-closed" tone="primary" />
               </View>
 
@@ -133,6 +144,7 @@ export default function FinanceProfitScreen() {
                   <ChartLegend
                     items={[
                       { label: 'Revenue', color: FinanceColors.revenue },
+                      { label: 'Net Revenue', color: FinanceColors.primary },
                       { label: 'Costs', color: FinanceColors.fees },
                       { label: 'Net Profit', color: FinanceColors.profit },
                     ]}
@@ -163,6 +175,18 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     gap: Spacing.two,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 200,
+    gap: Spacing.one,
   },
   sectionIntro: {
     gap: Spacing.one,

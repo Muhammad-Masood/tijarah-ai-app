@@ -19,11 +19,12 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive view mode toggle system supporting list and grid layouts with dynamic switching
-- Enhanced rating visualization with star display and review counts across all product components
-- Improved product data handling with rating/review count parsing from multiple source formats
-- Integrated view mode toggle UI across product hunting tool and recommendations screens
-- Updated component architecture to support flexible rendering modes
+- Enhanced catalog product display components with improved grid and list view layouts featuring dynamic switching capabilities
+- Implemented comprehensive rating visualization system with star displays and review counts across all product components
+- Added unified toolbar integration with segmented view mode controls for seamless layout switching
+- Improved empty and error states with better user experience and retry functionality
+- Refactored product rows for enhanced visual hierarchy and spacing across different display modes
+- Integrated view mode state management across product hunting tool and recommendations screens
 
 ## Table of Contents
 1. Introduction
@@ -39,14 +40,14 @@
 ## Introduction
 This document explains the product catalog browsing functionality that unifies products from multiple marketplaces (Daraz and Shopify) into a single interface. It covers how products are fetched, searched, filtered, and rendered; marketplace-specific rendering with logos and source attribution; store selection; error handling; loading states; and performance optimizations such as pagination, deduplication, and efficient re-rendering for large lists.
 
-**Updated** The system now includes a comprehensive view mode toggle system that allows users to switch between list and grid layouts dynamically, enhanced rating visualization with star displays and review counts, and improved product data handling for better compatibility across different marketplace formats.
+**Updated** The system now features enhanced catalog product display components with comprehensive grid and list view layouts, sophisticated rating visualization with star displays and review counts, unified toolbar integration for seamless view mode switching, improved empty and error states, and refactored product rows optimized for better visual hierarchy and spacing across different display modes.
 
 ## Project Structure
 The catalog feature spans screens, hooks, components, and API utilities:
 - Screen orchestration and UI composition: Products screen, Product Hunting Tool, Recommendations
 - Marketplace data fetching hooks: Daraz and Shopify
 - Store selector component for filtering by connected marketplace
-- Unified list and row components for rendering catalog items with view mode support
+- Unified list and row components for rendering catalog items with advanced view mode support
 - Centralized API layer for requests, normalization, and error handling
 
 ```mermaid
@@ -90,13 +91,13 @@ N --> J
 ## Core Components
 - Products screen: Orchestrates fetching from Daraz and Shopify, applies local search and store filters, renders sections per marketplace, and provides refresh/retry flows.
 - Store selector sheet: Modal bottom sheet to filter by connected marketplace, showing logos and allowing navigation to connect stores.
-- Product rows: Two row components—unified catalog row with view mode support and marketplace-aware row with provenance badge and stock status.
+- Product rows: Two row components—unified catalog row with advanced view mode support and marketplace-aware row with provenance badge and stock status.
 - Hooks:
   - useDarazProducts: Resolves connection token and fetches full Daraz catalog, mapping raw responses to a normalized Product shape.
   - useShopifyProducts: Resolves connection token and fetches Shopify products, mapping to normalized Product shape.
   - useSupportedMarketplaces: Fetches supported and connected marketplaces for display and filtering.
   - useCatalogSearch: Paginated search over the unified catalog endpoint with query, sort, and price filters.
-- **New** View mode toggle: Comprehensive system supporting dynamic switching between list and grid layouts with state management across screens.
+- **Enhanced** View mode toggle: Comprehensive system supporting dynamic switching between list and grid layouts with state management across screens, unified toolbar integration, and improved visual feedback.
 
 **Section sources**
 - [products.tsx:29-80](file://src/app/(app)/(tabs)/products.tsx#L29-L80)
@@ -115,7 +116,7 @@ The system composes marketplace-specific data into a unified view with flexible 
 - Each hook handles authentication tokens, network requests, normalization, deduplication, and error states.
 - The UI renders separate sections per marketplace when connected, with a shared store selector to filter by marketplace.
 - A unified catalog search hook supports paginated queries against a backend catalog endpoint.
-- **New** View mode toggle system provides consistent list/grid switching across all product browsing screens.
+- **Enhanced** View mode toggle system provides consistent list/grid switching across all product browsing screens with unified toolbar integration and improved user experience.
 
 ```mermaid
 sequenceDiagram
@@ -181,56 +182,56 @@ Key behaviors:
 - [store-selector-sheet.tsx:22-131](file://src/components/store-selector-sheet.tsx#L22-L131)
 - [store-selector-sheet.tsx:133-159](file://src/components/store-selector-sheet.tsx#L133-L159)
 
-### View Mode Toggle System: Dynamic Layout Switching
-- **New** Comprehensive view mode toggle supporting list and grid layouts
-- Implemented in CatalogProductList component with configurable props
-- State management handled at screen level (ProductHuntingTool, ProductRecommendations)
-- Visual feedback with active/inactive button states and theme integration
-- Responsive layout switching with FlatList column configuration
+### Enhanced View Mode Toggle System: Dynamic Layout Switching
+- **Enhanced** Comprehensive view mode toggle supporting list and grid layouts with unified toolbar integration
+- Implemented in CatalogProductList component with configurable props and segmented control UI
+- State management handled at screen level (ProductHuntingTool, ProductRecommendations) with persistent state
+- Visual feedback with active/inactive button states, theme integration, and smooth transitions
+- Responsive layout switching with FlatList column configuration and optimized re-rendering
 
 ```mermaid
 flowchart TD
 Start(["User selects view mode"]) --> CheckProps{"onViewModeChange prop?"}
-CheckProps --> |Yes| ShowToggle["Show List/Grid toggle buttons"]
-CheckProps --> |No| HideToggle["Hide toggle controls"]
-ShowToggle --> UserAction["User clicks List or Grid"]
-UserAction --> UpdateState["Update viewMode state"]
-UpdateState --> Reconfigure["Reconfigure FlatList columns"]
-Reconfigure --> RenderItems["Render items in selected layout"]
-HideToggle --> RenderItems
-RenderItems --> End(["Display products"])
+CheckProps --> |Yes| ShowToolbar["Show unified toolbar with segmented controls"]
+CheckProps --> |No| HideControls["Hide toggle controls"]
+ShowToolbar --> UserAction["User clicks List or Grid in toolbar"]
+UserAction --> UpdateState["Update viewMode state with animation"]
+UpdateState --> Reconfigure["Reconfigure FlatList columns and styling"]
+Reconfigure --> RenderItems["Render items in selected layout with optimized performance"]
+HideControls --> RenderItems
+RenderItems --> End(["Display products with enhanced UX"])
 ```
 
 **Diagram sources**
-- [catalog-product-list.tsx:20-25](file://src/components/catalog-product-list.tsx#L20-L25)
-- [catalog-product-list.tsx:78-104](file://src/components/catalog-product-list.tsx#L78-L104)
+- [catalog-product-list.tsx:20-25](file://src/components/catalog-product-list.tsx#L20-25)
+- [catalog-product-list.tsx:71-113](file://src/components/catalog-product-list.tsx#L71-L113)
 - [product-hunting-tool.tsx:22-139](file://src/app/(app)/product-hunting-tool.tsx#L22-L139)
 - [product-recommendations.tsx:16-73](file://src/app/(app)/product-recommendations.tsx#L16-L73)
 
 **Section sources**
-- [catalog-product-list.tsx:20-25](file://src/components/catalog-product-list.tsx#L20-L25)
-- [catalog-product-list.tsx:78-104](file://src/components/catalog-product-list.tsx#L78-L104)
+- [catalog-product-list.tsx:20-25](file://src/components/catalog-product-list.tsx#L20-25)
+- [catalog-product-list.tsx:71-113](file://src/components/catalog-product-list.tsx#L71-L113)
 - [product-hunting-tool.tsx:22-139](file://src/app/(app)/product-hunting-tool.tsx#L22-L139)
 - [product-recommendations.tsx:16-73](file://src/app/(app)/product-recommendations.tsx#L16-L73)
 
 ### Enhanced Rating Visualization: Star Display and Review Counts
-- **New** Comprehensive rating visualization with star icons and review counts
-- Supports multiple rating formats: numeric ratings, review counts, or combined display
-- Dynamic star rendering based on parsed rating values with proper rounding
-- Theme-aware color coding for filled vs. outline stars
-- Graceful fallback handling for missing or invalid rating data
+- **Enhanced** Comprehensive rating visualization with star icons and review counts across all product components
+- Supports multiple rating formats: numeric ratings, review counts, or combined display with intelligent parsing
+- Dynamic star rendering based on parsed rating values with proper rounding and theme-aware color coding
+- Graceful fallback handling for missing or invalid rating data with smart defaults
+- Integration with both catalog products and marketplace-specific products
 
 ```mermaid
 flowchart TD
-Start(["Product with rating data"]) --> ParseRating["Parse rating_score and review_count"]
+Start(["Product with rating data"]) --> ParseRating["Parse rating_score and review_count from multiple formats"]
 ParseRating --> Validate{"Valid rating value?"}
-Validate --> |Yes| CalculateStars["Calculate filled stars (0-5)"]
-Validate --> |No| UseReviewCount["Use review count only"]
-CalculateStars --> RenderStars["Render star icons"]
-UseReviewCount --> RenderText["Render review text"]
-RenderStars --> Combine["Combine stars with review count"]
+Validate --> |Yes| CalculateStars["Calculate filled stars (0-5) with rounding"]
+Validate --> |No| UseReviewCount["Use review count only or item sold count"]
+CalculateStars --> RenderStars["Render star icons with theme colors"]
+UseReviewCount --> RenderText["Render review text or sold count"]
+RenderStars --> Combine["Combine stars with review count and sold info"]
 RenderText --> Combine
-Combine --> Display["Display rating visualization"]
+Combine --> Display["Display enhanced rating visualization"]
 ```
 
 **Diagram sources**
@@ -241,6 +242,59 @@ Combine --> Display["Display rating visualization"]
 **Section sources**
 - [catalog-product-row.tsx:29-57](file://src/components/catalog-product-row.tsx#L29-L57)
 - [product-kit.tsx:57-86](file://src/components/product-kit.tsx#L57-L86)
+
+### Enhanced Product Rows: Improved Visual Hierarchy and Spacing
+- **Enhanced** CatalogProductRow with sophisticated grid and list variants featuring improved visual hierarchy
+- Grid variant includes thumbnail image, brand/seller eyebrow, enhanced rating display, stock status, and pricing with discount indicators
+- List variant maintains compact design with thumbnail, content area, and trailing price information
+- Animated press interactions with smooth scaling effects and theme-aware border colors
+- Optimized spacing and typography for better readability across different screen sizes
+
+```mermaid
+flowchart TD
+Start(["Render CatalogProductRow"]) --> CheckVariant{"Grid or List variant?"}
+CheckVariant --> |Grid| GridLayout["Grid layout with thumbnail, content, footer"]
+CheckVariant --> |List| ListLayout["List layout with thumbnail, body, trailing"]
+GridLayout --> GridContent["Brand eyebrow, title, rating, stock, price"]
+ListLayout --> ListContent["Brand eyebrow, title, rating, stock, price capsule"]
+GridContent --> EnhancedUI["Enhanced visual hierarchy with proper spacing"]
+ListContent --> EnhancedUI
+EnhancedUI --> Animate["Animated press interactions"]
+Animate --> Display["Display with optimized layout"]
+```
+
+**Diagram sources**
+- [catalog-product-row.tsx:66-179](file://src/components/catalog-product-row.tsx#L66-L179)
+- [catalog-product-row.tsx:181-309](file://src/components/catalog-product-row.tsx#L181-L309)
+
+**Section sources**
+- [catalog-product-row.tsx:10-179](file://src/components/catalog-product-row.tsx#L10-L179)
+
+### Enhanced Empty and Error States: Better User Experience
+- **Enhanced** Integrated empty and error states with improved user experience and clear action paths
+- Error states include descriptive messages, retry buttons, and consistent visual styling
+- Empty states provide helpful guidance with contextual messages and icons
+- Pull-to-refresh functionality integrated directly into state views for better usability
+- Theme-aware styling with appropriate colors and spacing for consistency
+
+```mermaid
+flowchart TD
+Start(["Load products"]) --> CheckState{"Loading, Error, or Empty?"}
+CheckState --> |Loading| Skeleton["Show skeleton loader"]
+CheckState --> |Error| ErrorState["Show error with retry button"]
+CheckState --> |Empty| EmptyState["Show empty state with guidance"]
+Skeleton --> End(["Ready to render"])
+ErrorState --> Retry["User clicks Try Again"]
+Retry --> Refresh["Trigger refresh"]
+Refresh --> End
+EmptyState --> End
+```
+
+**Diagram sources**
+- [catalog-product-list.tsx:52-157](file://src/components/catalog-product-list.tsx#L52-L157)
+
+**Section sources**
+- [catalog-product-list.tsx:52-157](file://src/components/catalog-product-list.tsx#L52-L157)
 
 ### Marketplace-Specific Rendering and Attribution
 - ProductRow shows thumbnail, brand/category eyebrow, stock status, formatted price, and an overlay marketplace logo badge for provenance.
@@ -339,13 +393,13 @@ OnEndReached --> |No| Done(["Complete"])
 - [api.ts:1368-1418](file://src/lib/api.ts#L1368-L1418)
 - [api.ts:1526-1568](file://src/lib/api.ts#L1526-L1568)
 
-### List Rendering and Loading States
+### Enhanced List Rendering and Loading States
 - CatalogProductList:
-  - Shows skeleton while initial load, error block with retry if first load fails, empty state message, and FlatList with pull-to-refresh and infinite scroll.
-  - **New** View mode toggle with List/Grid buttons for dynamic layout switching.
-  - Renders CatalogProductRow for each item and triggers navigation to detail.
+  - Shows skeleton while initial load, enhanced error block with retry if first load fails, improved empty state message, and FlatList with pull-to-refresh and infinite scroll.
+  - **Enhanced** Unified toolbar with segmented view mode controls for seamless list/grid switching
+  - Renders CatalogProductRow for each item and triggers navigation to detail
 - ProductRow:
-  - Renders marketplace-aware rows with provenance badge and stock status.
+  - Renders marketplace-aware rows with provenance badge and stock status
 
 **Section sources**
 - [catalog-product-list.tsx:25-109](file://src/components/catalog-product-list.tsx#L25-L109)
@@ -378,9 +432,9 @@ OnEndReached --> |No| Done(["Complete"])
   - useSupportedMarketplaces for store options
   - StoreSelectorSheet for UI filtering
   - ProductRow and CatalogProductRow for rendering
-- **New** View mode dependencies:
-  - Screens manage view mode state locally
-  - CatalogProductList receives view mode props and callbacks
+- **Enhanced** View mode dependencies:
+  - Screens manage view mode state locally with persistent state management
+  - CatalogProductList receives view mode props and callbacks with unified toolbar integration
   - Consistent implementation across ProductHuntingTool and ProductRecommendations
 - Hooks depend on:
   - Authentication context for access tokens
@@ -430,17 +484,19 @@ CPL --> API
 - Efficient Re-rendering:
   - Memoized filtering in the Products screen avoids unnecessary recalculations.
   - FlatList in CatalogProductList optimizes large list rendering.
-  - **New** View mode switching uses FlatList key prop to force re-render with optimal performance.
+  - **Enhanced** View mode switching uses FlatList key prop to force re-render with optimal performance and smooth transitions.
 - Image Handling:
   - expo-image is used for optimized image loading and caching.
 - Request Guarding:
   - Hooks guard against concurrent requests using refs and cancellation patterns to avoid race conditions.
 - Local Search:
   - Real-time filtering runs client-side for responsiveness; consider moving heavy filtering to the server for very large datasets.
-- **New** View Mode Optimization:
-  - Grid layout uses numColumns prop for native optimization
+- **Enhanced** View Mode Optimization:
+  - Grid layout uses numColumns prop for native optimization with responsive column configuration
   - List separators only rendered in list mode to reduce overhead
   - Conditional rendering of view toggle controls based on prop presence
+  - Smooth animations and transitions for better user experience
+  - Optimized re-rendering with proper key management
 
 [No sources needed since this section provides general guidance]
 
@@ -456,10 +512,11 @@ Common issues and resolutions:
   - When no products exist, friendly messages guide users to connect stores or adjust filters.
 - Streaming endpoints:
   - For long-running operations, SSE streams provide progress events; errors surface through streamToResult.
-- **New** View Mode Issues:
+- **Enhanced** View Mode Issues:
   - If view mode toggle doesn't appear, ensure onViewModeChange prop is provided to CatalogProductList
   - Grid layout may require sufficient screen width for two-column display
   - State persistence across screen navigation requires additional implementation
+  - Toolbar integration requires proper prop passing for segmented controls
 
 **Section sources**
 - [api.ts:5-77](file://src/lib/api.ts#L5-L77)
@@ -470,4 +527,4 @@ Common issues and resolutions:
 ## Conclusion
 The product catalog browsing feature integrates Daraz and Shopify products into a cohesive interface with robust search, filtering, and marketplace attribution. It leverages reusable hooks for data fetching and normalization, a centralized API layer for consistent error handling, and performant list rendering with pagination and deduplication. The store selector enables targeted filtering by connected marketplace, while clear loading and error states improve user experience.
 
-**Updated** Recent enhancements include a comprehensive view mode toggle system that allows users to switch between list and grid layouts dynamically, enhanced rating visualization with star displays and review counts, and improved product data handling for better compatibility across different marketplace formats. These improvements provide a more flexible and user-friendly browsing experience across all product discovery screens including the main products tab, product hunting tool, and recommendations views. Future enhancements can include server-side filtering for large catalogs, expanded marketplace support, and persistent view mode preferences.
+**Enhanced** Recent improvements include comprehensive catalog product display components with sophisticated grid and list view layouts featuring dynamic switching capabilities, enhanced rating visualization with star displays and review counts across all product components, unified toolbar integration for seamless view mode switching, improved empty and error states with better user experience, and refactored product rows optimized for better visual hierarchy and spacing across different display modes. These enhancements provide a more flexible, intuitive, and visually appealing browsing experience across all product discovery screens including the main products tab, product hunting tool, and recommendations views. Future enhancements can include server-side filtering for large catalogs, expanded marketplace support, persistent view mode preferences, and additional customization options for the display layouts.

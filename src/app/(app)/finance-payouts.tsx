@@ -13,6 +13,8 @@ import {
   FinanceKPISkeleton,
   FinanceTableSkeleton,
   FinanceStatusBadge,
+  DateRangePicker,
+  type DateRange,
   formatPKR,
 } from '@/components/finance-kit';
 import { SegmentedTabs } from '@/components/segmented-tabs';
@@ -24,7 +26,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 type PayoutTab = 'all' | 'paid' | 'upcoming';
 
-function getDefaultDates() {
+function getDefaultDates(): DateRange {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 30);
@@ -38,7 +40,7 @@ export default function FinancePayoutsScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<PayoutTab>('all');
-  const dates = getDefaultDates();
+  const [dates, setDates] = useState<DateRange>(getDefaultDates);
   const { data, isLoading, error, refetch } = usePayoutAnalytics(dates);
   const isWideLayout = width >= 760;
 
@@ -83,6 +85,7 @@ export default function FinancePayoutsScreen() {
                   Track paid transfers and what is scheduled next.
                 </ThemedText>
               </View>
+              <DateRangePicker value={dates} onChange={setDates} />
             </View>
             <SegmentedTabs
               options={[

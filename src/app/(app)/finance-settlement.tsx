@@ -153,16 +153,16 @@ export default function FinanceSettlementScreen() {
                   </View>
                   <View style={styles.orderHeader}>
                     <ThemedText type="labelMd" themeColor="textSecondary">ORDER</ThemedText>
-                    <ThemedText type="labelMd" themeColor="textSecondary">VALUE</ThemedText>
-                    <ThemedText type="labelMd" themeColor="textSecondary">FEES</ThemedText>
+                    <ThemedText type="labelMd" themeColor="textSecondary">GROSS</ThemedText>
+                    <ThemedText type="labelMd" themeColor="textSecondary">DEDUCTIONS</ThemedText>
                     <ThemedText type="labelMd" themeColor="textSecondary">NET</ThemedText>
                   </View>
                   {data.orders.map((order, i) => (
-                    <View key={order.order_no} style={[styles.orderRow, { borderBottomColor: theme.border }, i === data.orders.length - 1 && styles.orderRowLast]}>
-                      <ThemedText type="bodySm" numberOfLines={1} style={styles.orderId}>#{order.order_no}</ThemedText>
-                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.revenue }]}>{formatPKR(order.order_value)}</ThemedText>
-                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.fees }]}>{formatPKR(order.fees)}</ThemedText>
-                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, styles.orderNet]}>{formatPKR(order.net)}</ThemedText>
+                    <View key={String(order.order_id)} style={[styles.orderRow, { borderBottomColor: theme.border }, i === data.orders.length - 1 && styles.orderRowLast]}>
+                      <ThemedText type="bodySm" numberOfLines={1} style={styles.orderId}>#{String(order.order_id)}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.revenue }]}>{formatPKR(order.gross_value)}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, { color: FinanceColors.fees }]}>-{formatPKR(order.deductions)}</ThemedText>
+                      <ThemedText type="bodySm" numberOfLines={1} style={[styles.orderAmount, styles.orderNet]}>{formatPKR(order.net_value)}</ThemedText>
                     </View>
                   ))}
                 </ThemedView>

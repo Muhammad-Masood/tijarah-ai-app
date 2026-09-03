@@ -1633,9 +1633,11 @@ export type FinancialDashboardResponse = {
   upcoming_payouts: number;
   total_fees: number;
   total_refunds: number;
+  net_revenue: number;
   net_profit: number;
   profit_margin: number;
   average_order_value: number;
+  total_product_expenses: number;
   fee_breakdown: FeeBreakdownData;
   recent_payouts: PayoutInfo[];
   cash_flow_trend: CashFlowEntry[];
@@ -1687,17 +1689,18 @@ export type ProfitAnalyticsResponse = {
   period: string;
   total_revenue: number;
   total_costs: number;
+  net_revenue: number;
+  total_product_expenses: number;
   net_profit: number;
   profit_margin: number;
   order_count: number;
 };
 
 export type ReconciledOrder = {
-  order_no: string;
-  order_value: number;
-  fees: number;
-  refunds: number;
-  net: number;
+  order_id: string;
+  gross_value: number;
+  deductions: number;
+  net_value: number;
 };
 
 export type ReconcileSettlementResponse = {
@@ -1812,4 +1815,97 @@ export function getSettlementReconciliation(
     `/daraz/financial/settlement/reconcile/${encodeURIComponent(payoutId)}`,
     { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Product Expenses Module
+// ---------------------------------------------------------------------------
+
+export type ProductExpenseCreate = {
+  sku_id: string;
+  platform: string;
+  category: string;
+  amount: number;
+  description?: string | null;
+};
+
+export type ProductExpenseUpdate = {
+  sku_id?: string | null;
+  platform?: string | null;
+  category?: string | null;
+  amount?: number | null;
+  description?: string | null;
+};
+
+export type ProductExpenseRead = {
+  id: string;
+  merchant_id: string;
+  sku_id: string;
+  platform: string;
+  category: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export function getProductExpenses(
+  accessToken: string,
+  params?: { platform?: string; sku_id?: string },
+): Promise<ProductExpenseRead[]> {
+  const query = new URLSearchParams();
+  if (params?.platform) query.set('platform', params.platform);
+  if (params?.sku_id) query.set('sku_id', params.sku_id);
+  const qs = query.toString();
+  return request<ProductExpenseRead[]>(`/expenses/${qs ? `?${qs}` : ''}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function getProductExpense(
+  accessToken: string,
+  expenseId: string,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>(`/expenses/${expenseId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function createProductExpense(
+  accessToken: string,
+  data: ProductExpenseCreate,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>('/expenses/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateProductExpense(
+  accessToken: string,
+  expenseId: string,
+  data: ProductExpenseUpdate,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>(`/expenses/${expenseId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProductExpense(
+  accessToken: string,
+  expenseId: string,
+): Promise<void> {
+  return request<void>(`/expenses/${expenseId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 }

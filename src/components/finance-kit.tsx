@@ -10,8 +10,9 @@
  *   primary action           -> FinanceColors.primary  (#3B82F6 blue)
  */
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { type ReactNode, useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { type ReactNode, useEffect, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { Skeleton } from '@/components/skeleton';
@@ -603,5 +604,106 @@ const comparisonStyles = StyleSheet.create({
     width: 1,
     height: 48,
     marginHorizontal: Spacing.three,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Date Range Picker (custom start/end date selection)
+// ---------------------------------------------------------------------------
+
+export type DateRange = {
+  startDate: string;
+  endDate: string;
+};
+
+function formatDateLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function DateRangePicker({
+  value,
+  onChange,
+}: {
+  value: DateRange;
+  onChange: (range: DateRange) => void;
+}) {
+  const theme = useTheme();
+  const [pickerField, setPickerField] = useState<'start' | 'end' | null>(null);
+
+  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
+    if (!selectedDate || !pickerField) {
+      setPickerField(null);
+      return;
+    }
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    if (pickerField === 'start') {
+      const end = new Date(value.endDate);
+      if (selectedDate > end) {
+        onChange({ startDate: dateStr, endDate: dateStr });
+      } else {
+        onChange({ ...value, startDate: dateStr });
+      }
+    } else {
+      const start = new Date(value.startDate);
+      if (selectedDate < start) {
+        onChange({ startDate: dateStr, endDate: dateStr });
+      } else {
+        onChange({ ...value, endDate: dateStr });
+      }
+    }
+    setPickerField(null);
+  };
+
+  const pickerDate = pickerField === 'start' ? new Date(value.startDate) : new Date(value.endDate);
+
+  return (
+    <>
+      <View style={[datePickerStyles.row, { backgroundColor: theme.backgroundElement }]}>
+        <Pressable
+          onPress={() => setPickerField('start')}
+          style={[datePickerStyles.field, { borderColor: theme.border }]}>
+          <ThemedText type="labelMd" themeColor="textSecondary">From</ThemedText>
+          <ThemedText type="bodyMd">{formatDateLabel(value.startDate)}</ThemedText>
+        </Pressable>
+        <ThemedText type="bodySm" themeColor="textSecondary" style={datePickerStyles.separator}>—</ThemedText>
+        <Pressable
+          onPress={() => setPickerField('end')}
+          style={[datePickerStyles.field, { borderColor: theme.border }]}>
+          <ThemedText type="labelMd" themeColor="textSecondary">To</ThemedText>
+          <ThemedText type="bodyMd">{formatDateLabel(value.endDate)}</ThemedText>
+        </Pressable>
+      </View>
+      {pickerField && (
+        <DateTimePicker
+          value={pickerDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
+    </>
+  );
+}
+
+const datePickerStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.DEFAULT,
+    padding: Spacing.one,
+    gap: Spacing.one,
+  },
+  field: {
+    flex: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    gap: 2,
+  },
+  separator: {
+    paddingHorizontal: Spacing.half,
   },
 });

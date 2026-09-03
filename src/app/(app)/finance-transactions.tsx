@@ -9,6 +9,8 @@ import {
   FinanceEmptyState,
   FinanceErrorState,
   FinanceStatusBadge,
+  DateRangePicker,
+  type DateRange,
   formatPKR,
 } from '@/components/finance-kit';
 import { ThemedText } from '@/components/themed-text';
@@ -19,7 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 type PaidFilter = 'all' | 'paid' | 'unpaid';
 
-function getDefaultDates() {
+function getDefaultDates(): DateRange {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 30);
@@ -34,7 +36,7 @@ export default function FinanceTransactionsScreen() {
   const [page, setPage] = useState(1);
   const [paidFilter, setPaidFilter] = useState<PaidFilter>('all');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const dates = getDefaultDates();
+  const [dates, setDates] = useState<DateRange>(getDefaultDates);
 
   const { data, isLoading, error, refetch } = useFinancialTransactions({
     ...dates,
@@ -76,6 +78,7 @@ export default function FinanceTransactionsScreen() {
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
         <View style={styles.headerArea}>
           <ThemedText type="headlineMd">Transactions</ThemedText>
+          <DateRangePicker value={dates} onChange={(range) => { setDates(range); setPage(1); }} />
           <SegmentedTabs
             options={[
               { value: 'all', label: 'All' },

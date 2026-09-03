@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
 
 import { DonutChart, HorizontalBarChart, ChartLegend } from '@/components/finance-charts';
 import {
@@ -9,6 +10,8 @@ import {
   FinanceEmptyState,
   FinanceErrorState,
   FeeGaugeBar,
+  DateRangePicker,
+  type DateRange,
   formatPKR,
 } from '@/components/finance-kit';
 import { Skeleton } from '@/components/skeleton';
@@ -18,7 +21,7 @@ import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/th
 import { useFeeBreakdown } from '@/hooks/use-finance-fees';
 import { useTheme } from '@/hooks/use-theme';
 
-function getDefaultDates() {
+function getDefaultDates(): DateRange {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 30);
@@ -30,7 +33,7 @@ function getDefaultDates() {
 
 export default function FinanceFeesScreen() {
   const { width } = useWindowDimensions();
-  const dates = getDefaultDates();
+  const [dates, setDates] = useState<DateRange>(getDefaultDates);
   const { data, isLoading, error, refetch } = useFeeBreakdown(dates);
   const isWideLayout = width >= 760;
 
@@ -75,10 +78,15 @@ export default function FinanceFeesScreen() {
         <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerBlock}>
             <ThemedText type="labelMd" themeColor="primary">COST OF SELLING</ThemedText>
-            <ThemedText type="displayLgMobile">Fee Breakdown</ThemedText>
-            <ThemedText type="bodySm" themeColor="textSecondary">
-              Understand what the platform takes from every sale.
-            </ThemedText>
+            <View style={styles.headerRow}>
+              <View style={styles.titleBlock}>
+                <ThemedText type="displayLgMobile">Fee Breakdown</ThemedText>
+                <ThemedText type="bodySm" themeColor="textSecondary">
+                  Understand what the platform takes from every sale.
+                </ThemedText>
+              </View>
+              <DateRangePicker value={dates} onChange={setDates} />
+            </View>
           </View>
 
           {isLoading ? (
@@ -209,6 +217,18 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     gap: Spacing.two,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 200,
+    gap: Spacing.one,
   },
   sectionIntro: {
     gap: Spacing.one,

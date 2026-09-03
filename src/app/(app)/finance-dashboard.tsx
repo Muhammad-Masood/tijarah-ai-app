@@ -67,7 +67,6 @@ export default function FinanceDashboardScreen() {
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
         <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerBlock}>
-            <ThemedText type="labelMd" themeColor="primary">FINANCIAL PULSE</ThemedText>
             <View style={styles.headerRow}>
               <View style={styles.titleBlock}>
                 <ThemedText type="displayLgMobile">Financial Dashboard</ThemedText>
@@ -86,7 +85,7 @@ export default function FinanceDashboardScreen() {
 
           {isLoading ? (
             <View style={styles.kpiGrid}>
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <FinanceKPISkeleton key={i} />
               ))}
             </View>
@@ -96,6 +95,12 @@ export default function FinanceDashboardScreen() {
                 title="Total Revenue"
                 value={formatPKR(data.total_revenue)}
                 icon="cash-multiple"
+                tone="revenue"
+              />
+              <FinanceKPICard
+                title="Net Revenue"
+                value={formatPKR(data.net_revenue)}
+                icon="cash"
                 tone="revenue"
               />
               <FinanceKPICard
@@ -115,6 +120,12 @@ export default function FinanceDashboardScreen() {
                 title="Total Fees"
                 value={formatPKR(data.total_fees)}
                 icon="receipt-outline"
+                tone="fees"
+              />
+              <FinanceKPICard
+                title="Product Expenses"
+                value={formatPKR(data.total_product_expenses)}
+                icon="package-variant"
                 tone="fees"
               />
               <FinanceKPICard

@@ -25,6 +25,8 @@ export default function AppLayout() {
       <Stack.Screen name="finance-profit" />
       <Stack.Screen name="finance-cashflow" />
       <Stack.Screen name="finance-settlement" />
+      <Stack.Screen name="expenses" />
+      <Stack.Screen name="expense-form" />
     </Stack>
   );
 }

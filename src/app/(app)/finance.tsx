@@ -61,6 +61,13 @@ const financeItems: FinanceNavItem[] = [
     route: '/finance-cashflow',
     tint: '#6366F1',
   },
+  {
+    title: 'Expenses',
+    description: 'Track product costs, fuel, packaging',
+    icon: 'receipt-outline',
+    route: '/expenses',
+    tint: '#EF4444',
+  },
 ];
 
 export default function FinanceScreen() {
@@ -101,9 +108,10 @@ export default function FinanceScreen() {
             <MaterialCommunityIcons name={item.icon} size={isFeatured ? 28 : 22} color={item.tint} />
           </View>
           {isFeatured ? (
-            <ThemedText type="labelMd" themeColor="primary" style={styles.startLabel}>
-              START HERE
-            </ThemedText>
+            <></>
+            // <ThemedText type="labelMd" themeColor="primary" style={styles.startLabel}>
+            //   START HERE
+            // </ThemedText>
           ) : (
             <MaterialCommunityIcons name="arrow-up-right" size={20} color={theme.textSecondary} style={styles.arrow} />
           )}
