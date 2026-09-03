@@ -417,7 +417,6 @@ export async function getShopifyAuthorizeUrl(
       `${API_BASE_URL}/shopify/get_auth_code?shop=${encodeURIComponent(normalizedShop)}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-    console.log('response', response);
   } catch {
     throw new ApiError(
       0,

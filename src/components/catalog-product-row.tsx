@@ -28,31 +28,26 @@ export function CatalogProductRow({
   const eyebrow = (product.brand_name?.trim() || product.seller_name?.trim())?.toUpperCase();
   const parsedRating = product.rating_score ? Number.parseFloat(product.rating_score) : null;
   const hasValidRating = Number.isFinite(parsedRating) && parsedRating !== null;
-  const ratingLabel =
-    product.rating_score && product.review_count
-      ? `${product.rating_score} · ${product.review_count} reviews`
-      : product.rating_score
-        ? `${product.rating_score} rating`
-        : product.review_count
-          ? `${product.review_count} reviews`
-          : null;
-  const filledStars = hasValidRating ? Math.min(5, Math.max(0, Math.round(parsedRating as number))) : 0;
 
-  const reviewMarkup = ratingLabel ? (
+  const ratingText = hasValidRating
+    ? `${parsedRating.toFixed(1)}${product.review_count ? ` (${product.review_count})` : ''}`
+    : product.review_count
+      ? `${product.review_count} reviews`
+      : null;
+
+  const reviewMarkup = ratingText || product.item_sold ? (
     <View style={styles.reviewRow}>
-      <View style={styles.starRow}>
-        {Array.from({ length: 5 }, (_, index) => (
-          <Ionicons
-            key={`${product.item_id}-star-${index}`}
-            name={index < filledStars ? 'star' : 'star-outline'}
-            size={12}
-            color={index < filledStars ? theme.tertiary : theme.textSecondary}
-          />
-        ))}
-      </View>
-      <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>
-        {hasValidRating ? parsedRating?.toFixed(1) : ratingLabel}
-      </ThemedText>
+      {hasValidRating ? <Ionicons name="star" size={11} color="#FFB800" style={styles.ratingStar} /> : null}
+      {ratingText ? (
+        <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1} style={styles.ratingText}>
+          {ratingText}
+        </ThemedText>
+      ) : null}
+      {product.item_sold ? (
+        <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1} style={styles.soldText}>
+          {product.item_sold} sold
+        </ThemedText>
+      ) : null}
     </View>
   ) : null;
 
@@ -60,27 +55,30 @@ export function CatalogProductRow({
     variant === 'grid' ? (
       <View style={styles.gridBody}>
         {eyebrow ? (
-          <ThemedText type="labelMd" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="labelMd" themeColor="textSecondary" numberOfLines={1} style={styles.gridBrand}>
             {eyebrow}
           </ThemedText>
         ) : null}
+
         <ThemedText type="bodyMd" numberOfLines={2} style={styles.gridTitle}>
           {product.name}
         </ThemedText>
+
         {reviewMarkup}
+
         {!product.in_stock ? (
-          <ThemedText type="bodySm" themeColor="danger">
+          <ThemedText type="bodySm" themeColor="danger" style={{ marginTop: 2 }}>
             Out of stock
           </ThemedText>
         ) : null}
+
         <View style={styles.gridFooter}>
-          <View style={[styles.priceCapsule, { backgroundColor: theme.primaryContainer }]}>
-            <ThemedText type="bodyMd" themeColor="onPrimaryContainer" style={styles.priceText}>
-              {product.price}
-            </ThemedText>
-          </View>
+          <ThemedText type="bodyLg" style={[styles.gridPrice, { color: '#F57224' }]}>
+            {product.price}
+          </ThemedText>
+
           {product.discount ? (
-            <ThemedText type="bodySm" themeColor="success" numberOfLines={1}>
+            <ThemedText type="bodySm" style={styles.gridDiscount}>
               {product.discount}
             </ThemedText>
           ) : null}
@@ -169,6 +167,7 @@ export function CatalogProductRow({
 }
 
 const styles = StyleSheet.create({
+  // ===== LIST VARIANT (untouched) =====
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,59 +186,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     overflow: 'hidden',
   },
-  gridCard: {
-    flex: 1,
-    minWidth: 0,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderRadius: Radius.DEFAULT,
-    padding: Spacing.two,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  gridThumbnail: {
-    width: '100%',
-    height: 140,
-    borderRadius: Radius.sm,
-    overflow: 'hidden',
-    marginBottom: Spacing.two,
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
-  },
   body: {
     flex: 1,
     gap: Spacing.half,
   },
-  gridBody: {
-    gap: Spacing.one,
-  },
   title: {
     fontWeight: '600',
-  },
-  gridTitle: {
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  reviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.half,
-  },
-  starRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  gridFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.one,
-    marginTop: Spacing.one,
   },
   trailing: {
     alignItems: 'flex-end',
@@ -257,5 +209,81 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: Spacing.half,
+  },
+
+  // ===== GRID VARIANT (updated to match Daraz) =====
+  gridCard: {
+    flex: 1,
+    minWidth: 0,
+    borderWidth: 0, // removed heavy border
+    borderRadius: 10,
+    padding: 0,
+    backgroundColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  gridThumbnail: {
+    width: '100%',
+    aspectRatio: 1,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    overflow: 'hidden',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridBody: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 3,
+  },
+  gridBrand: {
+    fontSize: 11,
+    letterSpacing: 0.3,
+    opacity: 0.7,
+  },
+  gridTitle: {
+    fontWeight: '500',
+    fontSize: 13,
+    lineHeight: 17,
+    color: '#212121',
+  },
+  reviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  ratingStar: {
+    marginRight: 2,
+  },
+  ratingText: {
+    fontSize: 11,
+    color: '#757575',
+  },
+  soldText: {
+    fontSize: 11,
+    color: '#757575',
+    marginLeft: 6,
+  },
+  gridFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  gridPrice: {
+    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  gridDiscount: {
+    fontSize: 12,
+    color: '#F57224',
+    fontWeight: '500',
   },
 });

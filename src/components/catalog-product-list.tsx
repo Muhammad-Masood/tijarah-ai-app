@@ -1,4 +1,11 @@
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { CatalogProductRow } from '@/components/catalog-product-row';
@@ -42,152 +49,248 @@ export function CatalogProductList({
 }: CatalogProductListProps) {
   const theme = useTheme();
 
+  // 1. Initial full-page skeleton loader
   if (isLoading && products.length === 0) {
-    return <ProductListSkeleton count={5} />;
+    return <ProductListSkeleton count={6} />;
   }
 
-  if (error && products.length === 0) {
-    return (
-      <View style={styles.statusBlock}>
-        <ThemedText type="bodyMd" themeColor="danger" style={styles.centerText}>
-          {error}
-        </ThemedText>
-        <Pressable onPress={onRefresh} hitSlop={8}>
-          <ThemedText type="bodyMd" themeColor="primary" style={styles.retryText}>
-            Try again
+  const renderItem = ({ item }: { item: CatalogProductItem }) => (
+    <View style={viewMode === 'grid' ? styles.gridCardWrapper : styles.listCardWrapper}>
+      <CatalogProductRow
+        product={item}
+        variant={viewMode}
+        onPress={() => navigateToCatalogProduct(item)}
+      />
+    </View>
+  );
+
+  const keyExtractor = (item: CatalogProductItem, index: number) =>
+    `${item.item_id || 'catalog'}-${index}`;
+
+  // 3. Clean, unified Toolbar (Summary + Segmented View Switcher)
+  const renderHeader = !summaryLabel && !onViewModeChange ? null : (
+      <View style={styles.toolbarContainer}>
+        {summaryLabel ? (
+          <ThemedText type="labelMd" themeColor="textSecondary" style={styles.summaryText}>
+            {summaryLabel}
           </ThemedText>
-        </Pressable>
+        ) : (
+          <View />
+        )}
+
+        {onViewModeChange && (
+          <View style={[styles.segmentedControl, { backgroundColor: theme.surfaceContainer || '#f1f5f9' }]}>
+            <Pressable
+              onPress={() => onViewModeChange('grid')}
+              style={[
+                styles.segmentTab,
+                viewMode === 'grid' && [styles.activeSegmentTab, { backgroundColor: theme.surface || '#ffffff' }],
+              ]}
+              hitSlop={4}>
+              <MaterialCommunityIcons
+                name="view-grid-outline"
+                size={18}
+                color={viewMode === 'grid' ? theme.primary : theme.textSecondary}
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => onViewModeChange('list')}
+              style={[
+                styles.segmentTab,
+                viewMode === 'list' && [styles.activeSegmentTab, { backgroundColor: theme.surface || '#ffffff' }],
+              ]}
+              hitSlop={4}>
+              <MaterialCommunityIcons
+                name="view-agenda-outline"
+                size={18}
+                color={viewMode === 'list' ? theme.primary : theme.textSecondary}
+              />
+            </Pressable>
+          </View>
+        )}
       </View>
     );
-  }
 
-  if (!isLoading && !error && products.length === 0) {
+  // 4. Integrated Empty / Error state (Allows pull-to-refresh directly on the screen)
+  const renderEmptyComponent = () => {
+    if (isLoading) return null;
+
+    if (error) {
+      return (
+        <View style={styles.stateContainer}>
+          <View style={[styles.iconCircle, { backgroundColor: '#fee2e2' }]}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={32} color="#dc2626" />
+          </View>
+          <ThemedText type="headlineSm" style={styles.stateTitle}>
+            Something went wrong
+          </ThemedText>
+          <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.stateDescription}>
+            {error}
+          </ThemedText>
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: theme.primary }]}
+            onPress={onRefresh}>
+            <ThemedText type="labelMd" style={styles.actionButtonText}>
+              Try Again
+            </ThemedText>
+          </Pressable>
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.statusBlock}>
-        <ThemedText type="bodyLg" style={styles.centerText}>
+      <View style={styles.stateContainer}>
+        <View style={[styles.iconCircle, { backgroundColor: theme.surfaceContainer || '#f3f4f6' }]}>
+          <MaterialCommunityIcons name="package-variant-closed" size={32} color={theme.textSecondary} />
+        </View>
+        <ThemedText type="headlineSm" style={styles.stateTitle}>
           {emptyTitle}
         </ThemedText>
         {emptyDescription ? (
-          <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
+          <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.stateDescription}>
             {emptyDescription}
           </ThemedText>
         ) : null}
       </View>
     );
-  }
-
-  const viewOptions: Array<'list' | 'grid'> = ['list', 'grid'];
+  };
 
   return (
-    <>
-      {onViewModeChange ? (
-        <View style={styles.viewToggleRow}>
-          {viewOptions.map((mode) => {
-            const isActive = mode === viewMode;
-            return (
-              <Pressable
-                key={mode}
-                onPress={() => onViewModeChange(mode)}
-                style={[
-                  styles.viewToggle,
-                  {
-                    borderColor: isActive ? theme.primary : theme.border,
-                    backgroundColor: isActive ? theme.primaryContainer : 'transparent',
-                  },
-                ]}>
-                <MaterialCommunityIcons
-                  name={mode === 'list' ? 'format-list-bulleted' : 'view-grid'}
-                  size={20}
-                  color={isActive ? theme.onPrimaryContainer : theme.textSecondary}
-                />
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-
-      <FlatList
-        data={products}
-        key={viewMode}
-        numColumns={viewMode === 'grid' ? undefined : 1}
-        keyExtractor={(item, index) => `${item.item_id || 'catalog'}-${index}`}
-        renderItem={({ item }) => (
-          <CatalogProductRow product={item} variant={viewMode} onPress={() => navigateToCatalogProduct(item)} />
-        )}
-        contentContainerStyle={[
-          styles.listContent,
-          viewMode === 'grid' ? styles.gridContent : null,
-          contentContainerStyle,
-        ]}
-        ItemSeparatorComponent={viewMode === 'list' ? () => <View style={styles.separator} /> : undefined}
-        refreshControl={
-          <RefreshControl refreshing={isLoading && products.length > 0} onRefresh={onRefresh} tintColor={theme.primary} />
-        }
-        onEndReached={() => {
-          if (hasMore && !isLoadingMore && !isLoading) onLoadMore();
-        }}
-        onEndReachedThreshold={0.35}
-        ListHeaderComponent={
-          summaryLabel ? (
-            <ThemedText type="labelMd" themeColor="textSecondary" style={styles.summary}>
-              {summaryLabel}
-            </ThemedText>
-          ) : null
-        }
-        ListFooterComponent={
-          isLoadingMore ? (
-            <View style={styles.footer}>
-              <ActivityIndicator color={theme.primary} />
-            </View>
-          ) : null
-        }
-      />
-    </>
+    <FlatList
+      data={products}
+      key={viewMode} // Re-creates layout cleanly on layout mode change
+      numColumns={viewMode === 'grid' ? 2 : 1}
+      columnWrapperStyle={viewMode === 'grid' ? styles.gridRowGutter : undefined}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={renderEmptyComponent}
+      contentContainerStyle={[
+        styles.listContainer,
+        products.length === 0 && styles.emptyListContainer,
+        contentContainerStyle,
+      ]}
+      ItemSeparatorComponent={() => (
+        <View style={viewMode === 'grid' ? styles.gridRowSeparator : styles.rowSeparator} />
+      )}
+      refreshControl={
+        <RefreshControl
+          refreshing={isLoading && products.length > 0}
+          onRefresh={onRefresh}
+          tintColor={theme.primary}
+        />
+      }
+      onEndReached={() => {
+        if (hasMore && !isLoadingMore && !isLoading) onLoadMore();
+      }}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        isLoadingMore ? (
+          <View style={styles.footerLoader}>
+            <ActivityIndicator size="small" color={theme.primary} />
+          </View>
+        ) : null
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  viewToggleRow: {
-    flexDirection: 'row',
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
+  listContainer: {
+    // paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.six,
   },
-  viewToggle: {
-    width: 40,
-    height: 40,
+  emptyListContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  // Toolbar & Segmented Switch
+  toolbarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: Spacing.three,
+    marginBottom: Spacing.two,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  summaryText: {
+    fontWeight: '500',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    padding: 3,
+    borderRadius: Radius.full,
+  },
+  segmentTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.DEFAULT,
   },
-  listContent: {
-    paddingBottom: Spacing.five,
+  activeSegmentTab: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  // Grid / List Item Structure
+  gridRowGutter: {
     gap: Spacing.two,
   },
-  gridContent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 0,
-    paddingBottom: Spacing.five,
+  gridCardWrapper: {
+    flex: 1,
+    minWidth: 0,
   },
-  separator: {
+  listCardWrapper: {
+    width: '100%',
+  },
+  rowSeparator: {
+    height: Spacing.three,
+  },
+  gridRowSeparator: {
     height: Spacing.two,
   },
-  summary: {
-    marginBottom: Spacing.two,
-  },
-  statusBlock: {
+  // State Views (Empty & Error)
+  stateContainer: {
     alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: Spacing.five,
+    justifyContent: 'center',
+    paddingVertical: Spacing.six,
+    paddingHorizontal: Spacing.four,
   },
-  centerText: {
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.three,
+  },
+  stateTitle: {
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: Spacing.one,
   },
-  retryText: {
-    textDecorationLine: 'underline',
+  stateDescription: {
+    textAlign: 'center',
+    maxWidth: 280,
+    lineHeight: 20,
+    marginBottom: Spacing.four,
   },
-  footer: {
+  actionButton: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.five,
+    borderRadius: Radius.full,
+  },
+  actionButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  footerLoader: {
     paddingVertical: Spacing.four,
     alignItems: 'center',
   },
