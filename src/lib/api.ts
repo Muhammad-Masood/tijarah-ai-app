@@ -341,6 +341,37 @@ export function getMe(accessToken: string): Promise<CurrentUserResponse> {
   });
 }
 
+export type WhatsAppSupportConfig = {
+  auto_confirm_orders: boolean;
+  confirmation_timeout_hours: number;
+  custom_instructions: string;
+  greeting_message: string;
+  whatsapp_phone_number: string;
+  is_whatsapp_enabled: boolean;
+};
+
+export type WhatsAppSupportConfigUpdate = Partial<WhatsAppSupportConfig>;
+
+export function getWhatsAppSupportConfig(accessToken: string): Promise<WhatsAppSupportConfig> {
+  return request<WhatsAppSupportConfig>("/whatsapp/support/config", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function updateWhatsAppSupportConfig(
+  accessToken: string,
+  data: WhatsAppSupportConfigUpdate,
+): Promise<WhatsAppSupportConfig> {
+  return request<WhatsAppSupportConfig>("/whatsapp/support/config", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 export type Marketplace = {
   id: string;
   name: string;
@@ -1069,8 +1100,84 @@ export type ShopifyOrder = {
   totalAmount?: string | null;
   currencyCode?: string | null;
   customer?: { id?: string | null; displayName?: string | null; email?: string | null } | null;
-  lineItems: { id: string; title: string; quantity: number; price?: string | null; currency?: string | null }[];
+  lineItems: { id: string; title: string; quantity: number; price?: string | null; currency?: string | null; image?: string | { url?: string | null; src?: string | null } | null; image_url?: string | null }[];
 };
+
+export type OrderAddress = {
+  country?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  post_code?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+export type DarazOrderItem = {
+  order_item_id: number;
+  order_id: number;
+  sku?: string | null;
+  sku_id?: string | null;
+  shop_sku?: string | null;
+  name?: string | null;
+  name_en?: string | null;
+  status?: string | null;
+  item_price?: number | null;
+  paid_price?: number | null;
+  currency?: string | null;
+  product_main_image?: string | null;
+  tracking_code?: string | null;
+  variation?: string | null;
+  shipment_provider?: string | null;
+  shipping_type?: string | null;
+  voucher_amount?: number | null;
+  shipping_amount?: number | null;
+  tax_amount?: number | null;
+  package_id?: string | null;
+};
+
+export type DarazOrder = {
+  order_id: number;
+  order_number?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  price?: string | null;
+  payment_method?: string | null;
+  items_count?: number | null;
+  statuses: string[];
+  address_billing?: OrderAddress | null;
+  address_shipping?: OrderAddress | null;
+  items: DarazOrderItem[];
+  warehouse_code?: string | null;
+  voucher?: number | null;
+  cash_payment_fee?: number | null;
+  shipping_fee?: number | null;
+  shipping_fee_original?: number | null;
+  customer_first_name?: string | null;
+  customer_last_name?: string | null;
+  buyer_note?: string | null;
+  remarks?: string | null;
+};
+
+export type DarazOrdersResponse = {
+  orders: DarazOrder[];
+  count: number;
+};
+
+function normalizeDarazOrder(value: unknown): DarazOrder {
+  const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const rawItems = raw.items ?? raw.order_items;
+  return {
+    ...raw,
+    order_id: Number(raw.order_id ?? 0),
+    order_number: raw.order_number == null ? null : Number(raw.order_number),
+    statuses: Array.isArray(raw.statuses)
+      ? raw.statuses.filter((status): status is string => typeof status === "string")
+      : typeof raw.status === "string" ? [raw.status] : [],
+    items: Array.isArray(rawItems) ? rawItems as DarazOrderItem[] : [],
+  } as DarazOrder;
+}
 
 function shopifyHeaders(accessToken: string, shopifyAccessToken: string): Record<string, string> {
   return { Authorization: `Bearer ${accessToken}`, "x-shopify-access-token": shopifyAccessToken };
@@ -1093,6 +1200,29 @@ export function getShopifyCollections(accessToken: string, shopifyAccessToken: s
 }
 export function getShopifyOrders(accessToken: string, shopifyAccessToken: string): Promise<ShopifyOrder[]> {
   return request<{ orders: ShopifyOrder[] }>("/shopify/get_all_orders", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.orders ?? []);
+}
+export function getShopifyOrderById(accessToken: string, shopifyAccessToken: string, orderId: string): Promise<ShopifyOrder> {
+  return request<ShopifyOrder>(`/shopify/get_order_by_id?order_id=${encodeURIComponent(orderId)}`, { headers: shopifyHeaders(accessToken, shopifyAccessToken) });
+}
+export function getDarazOrders(accessToken: string, darazAccessToken: string, includeCanceled = false): Promise<DarazOrdersResponse> {
+  return request<unknown>(`/daraz/get_all_orders?include_canceled=${includeCanceled}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, "x-daraz-access-token": darazAccessToken },
+  }).then((body) => {
+    const raw = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    const orders = Array.isArray(raw.orders)
+      ? raw.orders.map(normalizeDarazOrder)
+      : Array.isArray(body) ? body.map(normalizeDarazOrder) : [];
+    return { orders, count: typeof raw.count === "number" ? raw.count : orders.length };
+  });
+}
+export function getDarazOrderById(accessToken: string, darazAccessToken: string, orderId: string): Promise<DarazOrder> {
+  return request<unknown>(`/daraz/get_order_by_id?order_id=${encodeURIComponent(orderId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, "x-daraz-access-token": darazAccessToken },
+  }).then((body) => {
+    const raw = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    const detail = Array.isArray(body) ? body[0] : raw.order ?? raw.data ?? body;
+    return normalizeDarazOrder(detail);
+  });
 }
 export function createShopifyProduct(accessToken: string, shopifyAccessToken: string, data: ShopifyProductCreate): Promise<unknown> {
   return request<unknown>("/shopify/create_new_product", {
