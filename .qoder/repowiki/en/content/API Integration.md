@@ -17,6 +17,9 @@
 - [use-finance-fees.ts](file://src/hooks/use-finance-fees.ts)
 - [use-finance-settlement.ts](file://src/hooks/use-finance-settlement.ts)
 - [use-expenses.ts](file://src/hooks/use-expenses.ts)
+- [use-keyword-analysis.ts](file://src/hooks/use-keyword-analysis.ts)
+- [keyword-analysis-kit.tsx](file://src/components/keyword-analysis-kit.tsx)
+- [keyword-analysis.tsx](file://src/app/(app)/keyword-analysis.tsx)
 - [expenses.tsx](file://src/app/(app)/expenses.tsx)
 - [expense-form.tsx](file://src/app/(app)/expense-form.tsx)
 </cite>
@@ -29,6 +32,7 @@
 - Implemented SSE streaming support for real-time financial updates
 - Created dedicated hooks for each finance module (dashboard, transactions, payouts, profit, cashflow, fees, settlement)
 - **Added expense management system with full CRUD operations for product expenses**
+- **Added comprehensive keyword analysis workflow with real-time SSE streaming and progress tracking**
 - Updated architecture to support both marketplace integrations and finance data access
 
 ## Table of Contents
@@ -39,17 +43,18 @@
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Finance Data Layer](#finance-data-layer)
 7. [Expense Management System](#expense-management-system)
-8. [Dependency Analysis](#dependency-analysis)
-9. [Performance Considerations](#performance-considerations)
-10. [Troubleshooting Guide](#troubleshooting-guide)
-11. [Conclusion](#conclusion)
-12. [Appendices](#appendices)
+8. [Keyword Analysis Workflow](#keyword-analysis-workflow)
+9. [Dependency Analysis](#dependency-analysis)
+10. [Performance Considerations](#performance-considerations)
+11. [Troubleshooting Guide](#troubleshooting-guide)
+12. [Conclusion](#conclusion)
+13. [Appendices](#appendices)
 
 ## Introduction
-This document explains the enhanced API integration patterns used in the application, focusing on the centralized API client with comprehensive finance data retrieval capabilities, authentication and headers, marketplace-specific hooks for Shopify and Daraz, real-time updates via Server-Sent Events (SSE), error handling strategies, and guidance for adding new endpoints and maintaining backward compatibility. The system now includes a complete expense management solution for tracking product costs across different marketplaces.
+This document explains the enhanced API integration patterns used in the application, focusing on the centralized API client with comprehensive finance data retrieval capabilities, authentication and headers, marketplace-specific hooks for Shopify and Daraz, real-time updates via Server-Sent Events (SSE), error handling strategies, and guidance for adding new endpoints and maintaining backward compatibility. The system now includes a complete expense management solution for tracking product costs across different marketplaces and a sophisticated keyword analysis workflow that provides real-time insights into competitive positioning.
 
 ## Project Structure
-The API layer is now a comprehensive module that provides typed functions for HTTP requests, SSE streaming, marketplace integrations, extensive finance data operations, and expense management. Hooks encapsulate platform-specific flows (Shopify, Daraz) and finance modules, composing them with authentication state to fetch products, manage connections, retrieve financial analytics, and handle expense operations.
+The API layer is now a comprehensive module that provides typed functions for HTTP requests, SSE streaming, marketplace integrations, extensive finance data operations, expense management, and keyword analysis workflows. Hooks encapsulate platform-specific flows (Shopify, Daraz) and finance modules, composing them with authentication state to fetch products, manage connections, retrieve financial analytics, handle expense operations, and perform keyword analysis with real-time progress updates.
 
 ```mermaid
 graph TB
@@ -74,9 +79,14 @@ M["src/hooks/use-finance-fees.ts"]
 N["src/hooks/use-finance-settlement.ts"]
 O["src/hooks/use-expenses.ts"]
 end
+subgraph "Keyword Analysis"
+P["src/hooks/use-keyword-analysis.ts"]
+Q["src/components/keyword-analysis-kit.tsx"]
+R["src/app/(app)/keyword-analysis.tsx"]
+end
 subgraph "UI Components"
-P["src/app/(app)/expenses.tsx"]
-Q["src/app/(app)/expense-form.tsx"]
+S["src/app/(app)/expenses.tsx"]
+T["src/app/(app)/expense-form.tsx"]
 end
 B --> A
 C --> A
@@ -92,13 +102,16 @@ L --> A
 M --> A
 N --> A
 O --> A
-P --> O
-Q --> O
+P --> A
+Q --> P
+R --> Q
+S --> O
+T --> O
 ```
 
 **Diagram sources**
 - [api.ts:1-800](file://src/lib/api.ts#L1-L800)
-- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2122-2231](file://src/lib/api.ts#L2122-L2231)
 - [use-auth.tsx:1-91](file://src/hooks/use-auth.tsx#L1-L91)
 - [use-shopify-access-token.ts:1-31](file://src/hooks/use-shopify-access-token.ts#L1-L31)
 - [use-daraz-access-token.ts:1-66](file://src/hooks/use-daraz-access-token.ts#L1-L66)
@@ -112,12 +125,15 @@ Q --> O
 - [use-finance-fees.ts:1-78](file://src/hooks/use-finance-fees.ts#L1-L78)
 - [use-finance-settlement.ts:1-74](file://src/hooks/use-finance-settlement.ts#L1-L74)
 - [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
+- [use-keyword-analysis.ts:1-183](file://src/hooks/use-keyword-analysis.ts#L1-L183)
+- [keyword-analysis-kit.tsx:1-512](file://src/components/keyword-analysis-kit.tsx#L1-L512)
+- [keyword-analysis.tsx:1-307](file://src/app/(app)/keyword-analysis.tsx#L1-L307)
 - [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
 - [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
 
 **Section sources**
 - [api.ts:1-800](file://src/lib/api.ts#L1-L800)
-- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2122-2231](file://src/lib/api.ts#L2122-L2231)
 - [use-auth.tsx:1-91](file://src/hooks/use-auth.tsx#L1-L91)
 - [use-shopify-access-token.ts:1-31](file://src/hooks/use-shopify-access-token.ts#L1-L31)
 - [use-daraz-access-token.ts:1-66](file://src/hooks/use-daraz-access-token.ts#L1-L66)
@@ -131,6 +147,9 @@ Q --> O
 - [use-finance-fees.ts:1-78](file://src/hooks/use-finance-fees.ts#L1-L78)
 - [use-finance-settlement.ts:1-74](file://src/hooks/use-finance-settlement.ts#L1-L74)
 - [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
+- [use-keyword-analysis.ts:1-183](file://src/hooks/use-keyword-analysis.ts#L1-L183)
+- [keyword-analysis-kit.tsx:1-512](file://src/components/keyword-analysis-kit.tsx#L1-L512)
+- [keyword-analysis.tsx:1-307](file://src/app/(app)/keyword-analysis.tsx#L1-L307)
 - [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
 - [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
 
@@ -140,6 +159,7 @@ Q --> O
 - Marketplace adapters for Shopify and Daraz with typed request/response models.
 - Finance data layer with comprehensive endpoints for dashboard, transactions, payouts, profit analysis, cash flow, fee breakdown, and settlement reconciliation.
 - **Expense management system with full CRUD operations for product expenses.**
+- **Keyword analysis workflow with real-time SSE streaming and comprehensive progress tracking.**
 - Authentication context providing bearer tokens for protected endpoints.
 - Constants for base URL configuration across platforms.
 
@@ -147,27 +167,28 @@ Key responsibilities:
 - Normalize and parse responses from different marketplaces into a consistent Product model.
 - Manage connection tokens for each marketplace.
 - Provide typed helpers for creating, updating, deleting, and publishing products.
-- Stream long-running operations (e.g., returns insights, review analysis) with progress events.
+- Stream long-running operations (e.g., returns insights, review analysis, keyword analysis) with progress events.
 - Retrieve comprehensive financial analytics and reconciliation data.
 - **Manage product expenses with filtering by platform and SKU, including optimistic UI updates.**
+- **Execute keyword analysis pipelines with real-time progress updates and detailed competitive insights.**
 
 **Section sources**
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 - [api.ts:79-286](file://src/lib/api.ts#L79-L286)
-- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2122-2231](file://src/lib/api.ts#L2122-L2231)
 - [use-auth.tsx:27-79](file://src/hooks/use-auth.tsx#L27-L79)
 - [api.ts:10-16](file://src/constants/api.ts#L10-L16)
 
 ## Architecture Overview
 The architecture separates concerns into three layers:
-- API client: low-level HTTP and SSE primitives with enhanced finance data support and expense management.
-- Hooks: stateful composition of auth, marketplace connections, finance modules, expense operations, and data fetching.
-- UI: consumes hooks to render product lists, financial dashboards, expense management screens, and actions.
+- API client: low-level HTTP and SSE primitives with enhanced finance data support, expense management, and keyword analysis capabilities.
+- Hooks: stateful composition of auth, marketplace connections, finance modules, expense operations, keyword analysis workflows, and data fetching.
+- UI: consumes hooks to render product lists, financial dashboards, expense management screens, keyword analysis results, and actions.
 
 ```mermaid
 sequenceDiagram
 participant UI as "UI Component"
-participant Hook as "use*Finance / use*Products / useExpenses"
+participant Hook as "use*Finance / use*Products / useExpenses / useKeywordAnalysis"
 participant Auth as "useAuth"
 participant Conn as "use*AccessToken"
 participant API as "src/lib/api.ts"
@@ -176,7 +197,7 @@ UI->>Hook : mount
 Hook->>Auth : read accessToken
 Hook->>Conn : resolve marketplace token
 alt connected
-Hook->>API : call finance/marketplace/expense endpoint(s)
+Hook->>API : call finance/marketplace/expense/keyword endpoint(s)
 API->>Backend : HTTP/SSE request
 Backend-->>API : response/stream
 API-->>Hook : typed result(s)
@@ -192,6 +213,7 @@ end
 - [use-finance-dashboard.ts:33-72](file://src/hooks/use-finance-dashboard.ts#L33-L72)
 - [use-finance-transactions.ts:42-82](file://src/hooks/use-finance-transactions.ts#L42-L82)
 - [use-expenses.ts:40-65](file://src/hooks/use-expenses.ts#L40-L65)
+- [use-keyword-analysis.ts:112-166](file://src/hooks/use-keyword-analysis.ts#L112-L166)
 - [use-auth.tsx:31-79](file://src/hooks/use-auth.tsx#L31-L79)
 - [use-shopify-access-token.ts:14-29](file://src/hooks/use-shopify-access-token.ts#L14-L29)
 - [use-daraz-access-token.ts:29-64](file://src/hooks/use-daraz-access-token.ts#L29-L64)
@@ -231,12 +253,14 @@ Enhanced endpoints covered include:
 - Analytics/insights: returns insights and review analysis via SSE.
 - **Finance data**: dashboard, transactions, payouts, profit analysis, cash flow, fee breakdown, settlement reconciliation.
 - **Expense management**: CRUD operations for product expenses with filtering capabilities.
+- **Keyword analysis**: comprehensive SEO analysis with real-time SSE streaming and progress tracking.
 
 Complexity notes:
 - Response normalization functions handle varying field names and nesting to ensure stable types for callers.
 - Deduplication utilities prevent duplicate products when sources return overlapping IDs.
 - **Finance data normalization** handles complex financial structures with proper type safety.
 - **Expense operations include query parameter building for platform and SKU filtering.**
+- **Keyword analysis streaming supports multiple pipeline stages with detailed progress events.**
 
 **Section sources**
 - [api.ts:5-13](file://src/lib/api.ts#L5-L13)
@@ -250,7 +274,7 @@ Complexity notes:
 - [api.ts:468-505](file://src/lib/api.ts#L468-L505)
 - [api.ts:629-638](file://src/lib/api.ts#L629-L638)
 - [api.ts:722-784](file://src/lib/api.ts#L722-L784)
-- [api.ts:821-908](file://src/lib/api.ts#L821-L908)
+- [api.ts:821-908](file://src/lib/api.ts#L821-908)
 - [api.ts:915-1006](file://src/lib/api.ts#L915-L1006)
 - [api.ts:1072-1107](file://src/lib/api.ts#L1072-L1107)
 - [api.ts:1109-1153](file://src/lib/api.ts#L1109-L1153)
@@ -259,6 +283,7 @@ Complexity notes:
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
 - [api.ts:1556-1582](file://src/lib/api.ts#L1556-L1582)
 - [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2122-2231](file://src/lib/api.ts#L2122-L2231)
 
 ### API Constants and Base URL (src/constants/api.ts)
 - Base URL selection:
@@ -333,6 +358,7 @@ Robustness:
 
 ### Real-Time Features Using SSE
 - Returns insights and review analysis endpoints stream progress events and a final result.
+- Keyword analysis endpoint streams comprehensive pipeline progress with detailed stage information.
 - The streaming helper normalizes events and resolves/rejects promises consistently.
 - Callers receive incremental updates (e.g., stages, counts, clusters) before completion.
 
@@ -350,6 +376,7 @@ Usage pattern:
 - [api.ts:215-286](file://src/lib/api.ts#L215-L286)
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
+- [api.ts:2197-2231](file://src/lib/api.ts#L2197-L2231)
 
 ### Adding New API Endpoints
 Steps to add a new endpoint:
@@ -362,7 +389,7 @@ Steps to add a new endpoint:
 
 Example patterns:
 - Simple GET/POST: see product CRUD and marketplace listing functions.
-- SSE streaming: see returns insights and review analysis functions.
+- SSE streaming: see returns insights, review analysis, and keyword analysis functions.
 - **Finance endpoints**: see dashboard, transactions, payouts, profit, cashflow, fees, and settlement functions.
 - **Expense endpoints**: see CRUD operations with query parameter filtering.
 
@@ -371,6 +398,7 @@ Example patterns:
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
 - [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2197-2231](file://src/lib/api.ts#L2197-L2231)
 
 ### Handling Different Response Formats
 - Many marketplace responses vary in structure; normalization functions extract arrays and fields robustly.
@@ -497,13 +525,68 @@ The expense management system provides comprehensive CRUD operations for trackin
 **Updated** Added comprehensive expense management system with full CRUD operations, filtering capabilities, and integrated UI components.
 
 **Section sources**
-- [api.ts:1820-1912](file://src/lib/api.ts#L1820-L1912)
+- [api.ts:2033-2120](file://src/lib/api.ts#L2033-L2120)
 - [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
 - [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
 - [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
 
+## Keyword Analysis Workflow
+The keyword analysis workflow provides comprehensive SEO analysis with real-time progress tracking and competitive insights.
+
+### Pipeline Stages
+The analysis pipeline consists of nine distinct stages:
+1. **Fetching Product**: Retrieves user's product information from Daraz
+2. **Extracting Seed Keywords**: Identifies initial keywords from product title and description
+3. **Building Catalog**: Scans competitor products in the same category
+4. **Filtering by Similarity**: Filters relevant products based on similarity scoring
+5. **Mining Keywords**: Discovers potential keywords from competitor analysis
+6. **Clustering Keywords**: Groups keywords by intent and semantic similarity
+7. **Building Keyword Graph**: Creates relationships between keywords and identifies communities
+8. **Scoring Clusters**: Ranks keyword clusters based on competition and relevance
+9. **Iterative Expansion**: Expands search through iterative refinement
+
+### Core Types and Interfaces
+- **SeedKeyword**: Represents initial keywords extracted from product data with source attribution
+- **WinningKeyword**: High-scoring keywords with detailed metrics including relevance scores, competition counts, and example products
+- **RepeatProduct**: Competitor products that appear frequently in keyword analysis with appearance counts and matching keywords
+- **UserProductInfo**: User's product information including item ID, title, description, price, and category
+- **KeywordAnalysisResult**: Complete analysis result containing user product, seed keywords, winning keywords, repeat products, and iteration metrics
+
+### Real-Time Progress Tracking
+The workflow provides comprehensive progress tracking through SSE events:
+- **Product Fetched**: Initial product data retrieved
+- **Seed Keywords**: List of extracted seed keywords
+- **Catalog Built**: Total number of competitor products scanned
+- **Similarity Filter Done**: Number of relevant products identified
+- **Keywords Mined**: Count of candidate keywords discovered
+- **Keywords Clustered**: Number of keyword clusters formed
+- **Graph Built**: Community count in keyword graph
+- **Clusters Scored**: Number of scored keyword clusters
+- **Expansion Done**: Final iteration count and catalog size
+
+### Hook Implementation (use-keyword-analysis.ts)
+- Automatic keyword analysis execution with authentication and marketplace token resolution
+- Real-time progress updates through SSE streaming
+- Comprehensive error handling with user-friendly messages
+- State management for loading, streaming, and result states
+- Refetch capabilities for re-running analysis
+
+### UI Components
+- **AnalysisProgressStepper**: Visual stepper showing pipeline progress with completion indicators
+- **AnalysisSummaryCard**: Summary statistics including catalog size, relevant products, iterations, and seed keywords
+- **WinningKeywordRow**: Detailed display of top-performing keywords with metrics and example products
+- **TopCompetitorCard**: Competitor product cards with ratings, reviews, and matched keywords
+
+**Updated** Added comprehensive keyword analysis workflow with real-time SSE streaming, detailed progress tracking, and sophisticated competitive analysis capabilities.
+
+**Section sources**
+- [api.ts:2122-2231](file://src/lib/api.ts#L2122-L2231)
+- [use-keyword-analysis.ts:1-183](file://src/hooks/use-keyword-analysis.ts#L1-L183)
+- [keyword-analysis-kit.tsx:1-512](file://src/components/keyword-analysis-kit.tsx#L1-L512)
+- [keyword-analysis.tsx:1-307](file://src/app/(app)/keyword-analysis.tsx#L1-L307)
+
 ## Dependency Analysis
-The following diagram shows how hooks depend on the API client and authentication context, including the new finance and expense modules.
+The following diagram shows how hooks depend on the API client and authentication context, including the new finance, expense, and keyword analysis modules.
 
 ```mermaid
 graph LR
@@ -520,6 +603,9 @@ FinanceCashFlow["useCashFlow"] --> API
 FinanceFees["useFeeBreakdown"] --> API
 FinanceSettlement["useSettlementReconciliation"] --> API
 Expenses["useExpenses"] --> API
+KeywordAnalysis["useKeywordAnalysis"] --> API
+KeywordKit["Keyword Analysis Kit"] --> API
+KeywordScreen["Keyword Analysis Screen"] --> KeywordAnalysis
 ExpensesScreen["Expenses Screen"] --> Expenses
 ExpenseForm["Expense Form"] --> Expenses
 ShopifyProducts --> ShopifyToken
@@ -531,6 +617,7 @@ FinanceProfit --> DarazToken
 FinanceCashFlow --> DarazToken
 FinanceFees --> DarazToken
 FinanceSettlement --> DarazToken
+KeywordAnalysis --> DarazToken
 ```
 
 **Diagram sources**
@@ -547,6 +634,9 @@ FinanceSettlement --> DarazToken
 - [use-finance-fees.ts:40-74](file://src/hooks/use-finance-fees.ts#L40-L74)
 - [use-finance-settlement.ts:35-70](file://src/hooks/use-finance-settlement.ts#L35-L70)
 - [use-expenses.ts:30-65](file://src/hooks/use-expenses.ts#L30-L65)
+- [use-keyword-analysis.ts:68-73](file://src/hooks/use-keyword-analysis.ts#L68-L73)
+- [keyword-analysis-kit.tsx:11-12](file://src/components/keyword-analysis-kit.tsx#L11-L12)
+- [keyword-analysis.tsx:17-18](file://src/app/(app)/keyword-analysis.tsx#L17-L18)
 - [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)
 - [expense-form.tsx:47-47](file://src/app/(app)/expense-form.tsx#L47-L47)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
@@ -565,6 +655,9 @@ FinanceSettlement --> DarazToken
 - [use-finance-fees.ts:40-74](file://src/hooks/use-finance-fees.ts#L40-L74)
 - [use-finance-settlement.ts:35-70](file://src/hooks/use-finance-settlement.ts#L35-L70)
 - [use-expenses.ts:30-65](file://src/hooks/use-expenses.ts#L30-L65)
+- [use-keyword-analysis.ts:68-73](file://src/hooks/use-keyword-analysis.ts#L68-L73)
+- [keyword-analysis-kit.tsx:11-12](file://src/components/keyword-analysis-kit.tsx#L11-L12)
+- [keyword-analysis.tsx:17-18](file://src/app/(app)/keyword-analysis.tsx#L17-L18)
 - [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)
 - [expense-form.tsx:47-47](file://src/app/(app)/expense-form.tsx#L47-L47)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
@@ -576,6 +669,7 @@ FinanceSettlement --> DarazToken
 - Use environment variables to configure base URLs per environment to reduce misconfiguration overhead.
 - **Finance data optimization**: Leverage pagination for large transaction datasets and implement efficient date range filtering.
 - **Expense management optimization**: Implement optimistic UI updates for better user experience and reduce unnecessary re-renders.
+- **Keyword analysis optimization**: Utilize SSE streaming for real-time progress updates and implement efficient state management for pipeline stages.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -599,6 +693,11 @@ Common issues and resolutions:
   - Verify product SKU IDs match between expense records and marketplace products.
   - Check platform filtering parameters when querying expenses.
   - Ensure proper validation of expense amounts and required fields.
+- **Keyword analysis issues**:
+  - Verify product has valid item_id and exists on Daraz platform.
+  - Check marketplace connection status and token validity.
+  - Monitor SSE event handlers for proper progress tracking.
+  - Ensure sufficient product data (title, description) for meaningful keyword extraction.
 
 **Section sources**
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
@@ -608,7 +707,7 @@ Common issues and resolutions:
 - [use-daraz-access-token.ts:29-64](file://src/hooks/use-daraz-access-token.ts#L29-L64)
 
 ## Conclusion
-The enhanced API integration layer provides a robust, typed, and extensible foundation for interacting with the backend and marketplace services. It standardizes error handling, supports real-time updates via SSE, abstracts marketplace differences through normalization and hooks, and now includes comprehensive finance data capabilities and a complete expense management system. By following the patterns outlined here, you can confidently add new endpoints, maintain backward compatibility, and deliver responsive user experiences across platforms with full financial analytics and expense tracking support.
+The enhanced API integration layer provides a robust, typed, and extensible foundation for interacting with the backend and marketplace services. It standardizes error handling, supports real-time updates via SSE, abstracts marketplace differences through normalization and hooks, and now includes comprehensive finance data capabilities, a complete expense management system, and sophisticated keyword analysis workflows. By following the patterns outlined here, you can confidently add new endpoints, maintain backward compatibility, and deliver responsive user experiences across platforms with full financial analytics, expense tracking, and competitive keyword analysis support.
 
 ## Appendices
 
@@ -620,33 +719,51 @@ The enhanced API integration layer provides a robust, typed, and extensible foun
 - Map responses to shared types to keep UI code simple.
 - **For finance endpoints**: Include both Bearer and Daraz access tokens in headers.
 - **For expense endpoints**: Support query parameter filtering for platform and SKU.
+- **For keyword analysis endpoints**: Implement comprehensive SSE streaming with detailed progress events.
 
 **Section sources**
 - [api.ts:1109-1153](file://src/lib/api.ts#L1109-L1153)
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
 - [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
+- [api.ts:2197-2231](file://src/lib/api.ts#L2197-L2231)
 
-### Example: SSE Sequence for Returns Insights
+### Example: SSE Sequence for Keyword Analysis
 ```mermaid
 sequenceDiagram
-participant UI as "UI"
-participant Hook as "Caller"
-participant API as "api.ts"
+participant UI as "Keyword Analysis Screen"
+participant Hook as "useKeywordAnalysis"
+participant API as "analyzeKeywords"
 participant Backend as "Backend"
-UI->>Hook : invoke getDarazReturnsInsights(...)
-Hook->>API : streamToResult(path, headers, onEvent, fallback)
-API->>Backend : SSE request with stream=true
-Backend-->>API : progress events
-API-->>Hook : onEvent("progress", data)
-Backend-->>API : complete event
-API-->>Hook : resolve with ReturnsInsights
-Hook-->>UI : display insights
+UI->>Hook : invoke with item_id
+Hook->>API : analyzeKeywords(accessToken, darazAccessToken, {item_id}, handlers)
+API->>Backend : POST /daraz/keyword-analysis with stream=true
+Backend-->>API : product_fetched event
+API-->>Hook : onProductFetched(data)
+Backend-->>API : seed_keywords event
+API-->>Hook : onSeedKeywords(data)
+Backend-->>API : catalog_built event
+API-->>Hook : onCatalogBuilt(data)
+Backend-->>API : similarity_filter_done event
+API-->>Hook : onSimilarityFilterDone(data)
+Backend-->>API : keywords_mined event
+API-->>Hook : onKeywordsMined(data)
+Backend-->>API : keywords_clustered event
+API-->>Hook : onKeywordsClustered(data)
+Backend-->>API : graph_built event
+API-->>Hook : onGraphBuilt(data)
+Backend-->>API : clusters_scored event
+API-->>Hook : onClustersScored(data)
+Backend-->>API : expansion_done event
+API-->>Hook : onExpansionDone(data)
+Backend-->>API : result event
+API-->>Hook : resolve with KeywordAnalysisResult
+Hook-->>UI : display results
 ```
 
 **Diagram sources**
-- [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
-- [api.ts:258-286](file://src/lib/api.ts#L258-L286)
+- [api.ts:2197-2231](file://src/lib/api.ts#L2197-L2231)
+- [use-keyword-analysis.ts:112-166](file://src/hooks/use-keyword-analysis.ts#L112-L166)
 
 ### Example: Finance Dashboard Implementation
 ```mermaid
@@ -698,5 +815,5 @@ end
 
 **Diagram sources**
 - [use-expenses.ts:40-65](file://src/hooks/use-expenses.ts#L40-L65)
-- [api.ts:1852-1863](file://src/lib/api.ts#L1852-L1863)
+- [api.ts:2061-2072](file://src/lib/api.ts#L2061-L2072)
 - [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)
