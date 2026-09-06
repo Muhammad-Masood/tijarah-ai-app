@@ -27,8 +27,13 @@ export default function MoreScreen() {
               <ListRow label="Products" onPress={() => router.push('/products')} />
               <ListRow label="Connected Stores" onPress={() => router.push('/connect-stores')} />
               <ListRow label="Product Hunting" onPress={() => router.push('/product-hunting-tool')} />
+              <ListRow label="Orders" onPress={() => router.push('/orders')} />
               <ListRow label="Settings" />
-              <ListRow label="Help & Support" isLast />
+              <ListRow
+                label="WhatsApp Order Confirmation"
+                isLast
+                onPress={() => router.push('/support-config')}
+              />
             </ListSection>
           </View>
         </ScrollView>

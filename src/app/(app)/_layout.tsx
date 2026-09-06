@@ -28,6 +28,8 @@ export default function AppLayout() {
       <Stack.Screen name="finance-settlement" />
       <Stack.Screen name="expenses" />
       <Stack.Screen name="expense-form" />
+      <Stack.Screen name="orders" />
+      <Stack.Screen name="order-detail" />
     </Stack>
   );
 }
