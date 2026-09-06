@@ -63,11 +63,42 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
   const model = attributes.model;
   const warrantyType = attributes.warranty_type;
 
+  const readNumericValue = (...values: unknown[]): number | null => {
+    for (const value of values) {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof value === "string") {
+        const parsed = Number.parseFloat(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+    }
+    return null;
+  };
+
+  const rating = readNumericValue(
+    attributes.rating_score,
+    attributes.ratingScore,
+    attributes.average_rating,
+    attributes.averageRating,
+    attributes.rating,
+    raw.rating_score,
+    raw.ratingScore,
+    raw.average_rating,
+    raw.averageRating,
+  );
+  const reviewCount = readNumericValue(
+    attributes.review_count,
+    attributes.reviewCount,
+    attributes.reviews,
+    raw.review_count,
+    raw.reviewCount,
+    raw.reviews,
+  );
+
   const stockQuantity = Array.isArray(skus)
     ? skus.reduce((total, sku) => {
-        const quantity = sku.quantity ?? sku.Available;
-        return total + (typeof quantity === "number" ? quantity : 0);
-      }, 0)
+      const quantity = sku.quantity ?? sku.Available;
+      return total + (typeof quantity === "number" ? quantity : 0);
+    }, 0)
     : undefined;
 
   const url = (firstSku?.Url as string) ?? null;
@@ -82,7 +113,9 @@ function mapDarazProduct(raw: DarazRawProduct): Product {
     price,
     image,
     images,
-    category: "Daraz",
+    category: raw.primary_category_name as string,
+    rating,
+    reviewCount: reviewCount != null ? Math.round(reviewCount) : undefined,
     brand: typeof brand === "string" && brand ? brand : undefined,
     model: typeof model === "string" && model ? model : undefined,
     warrantyType:

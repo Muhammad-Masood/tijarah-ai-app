@@ -125,7 +125,7 @@ async function consumeSSEFromFetch(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  for (;;) {
+  for (; ;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -260,13 +260,14 @@ function streamToResult<T>(
   init: RequestInit,
   onEvent: (event: string, data: unknown) => void,
   fallbackErrorMessage: string,
+  terminalEvent: string = "complete",
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;
 
     requestSSE(path, init, (event, data) => {
       if (settled) return;
-      if (event === "complete") {
+      if (event === terminalEvent) {
         settled = true;
         resolve(data as T);
       } else if (event === "error") {
@@ -338,6 +339,37 @@ export function loginMerchant(email: string, password: string): Promise<Token> {
 export function getMe(accessToken: string): Promise<CurrentUserResponse> {
   return request<CurrentUserResponse>("/auth/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export type WhatsAppSupportConfig = {
+  auto_confirm_orders: boolean;
+  confirmation_timeout_hours: number;
+  custom_instructions: string;
+  greeting_message: string;
+  whatsapp_phone_number: string;
+  is_whatsapp_enabled: boolean;
+};
+
+export type WhatsAppSupportConfigUpdate = Partial<WhatsAppSupportConfig>;
+
+export function getWhatsAppSupportConfig(accessToken: string): Promise<WhatsAppSupportConfig> {
+  return request<WhatsAppSupportConfig>("/whatsapp/support/config", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function updateWhatsAppSupportConfig(
+  accessToken: string,
+  data: WhatsAppSupportConfigUpdate,
+): Promise<WhatsAppSupportConfig> {
+  return request<WhatsAppSupportConfig>("/whatsapp/support/config", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
   });
 }
 
@@ -417,7 +449,6 @@ export async function getShopifyAuthorizeUrl(
       `${API_BASE_URL}/shopify/get_auth_code?shop=${encodeURIComponent(normalizedShop)}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-    console.log('response', response);
   } catch {
     throw new ApiError(
       0,
@@ -473,6 +504,10 @@ export type Product = {
   description: string;
   image: string;
   category: string;
+  /** Average marketplace rating, when the source exposes it (e.g. Daraz). */
+  rating?: number | null;
+  /** Number of marketplace reviews, when the source exposes it. */
+  reviewCount?: number | null;
   /**
    * Full image gallery, when the source has more than one photo (e.g. a
    * Daraz listing's `images`/SKU images). Falls back to `[image]` when
@@ -751,10 +786,10 @@ function normalizeDarazCategoryAttributes(response: unknown): DarazCategoryAttri
     if (!name) return [];
     const options = Array.isArray(item.options)
       ? item.options.flatMap((option) =>
-          option && typeof option === "object" && typeof (option as Record<string, unknown>).name === "string"
-            ? [{ name: String((option as Record<string, unknown>).name) }]
-            : [],
-        )
+        option && typeof option === "object" && typeof (option as Record<string, unknown>).name === "string"
+          ? [{ name: String((option as Record<string, unknown>).name) }]
+          : [],
+      )
       : [];
     return [{
       id: typeof item.id === "string" || typeof item.id === "number" ? item.id : null,
@@ -1066,8 +1101,84 @@ export type ShopifyOrder = {
   totalAmount?: string | null;
   currencyCode?: string | null;
   customer?: { id?: string | null; displayName?: string | null; email?: string | null } | null;
-  lineItems: { id: string; title: string; quantity: number; price?: string | null; currency?: string | null }[];
+  lineItems: { id: string; title: string; quantity: number; price?: string | null; currency?: string | null; image?: string | { url?: string | null; src?: string | null } | null; image_url?: string | null }[];
 };
+
+export type OrderAddress = {
+  country?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  post_code?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+export type DarazOrderItem = {
+  order_item_id: number;
+  order_id: number;
+  sku?: string | null;
+  sku_id?: string | null;
+  shop_sku?: string | null;
+  name?: string | null;
+  name_en?: string | null;
+  status?: string | null;
+  item_price?: number | null;
+  paid_price?: number | null;
+  currency?: string | null;
+  product_main_image?: string | null;
+  tracking_code?: string | null;
+  variation?: string | null;
+  shipment_provider?: string | null;
+  shipping_type?: string | null;
+  voucher_amount?: number | null;
+  shipping_amount?: number | null;
+  tax_amount?: number | null;
+  package_id?: string | null;
+};
+
+export type DarazOrder = {
+  order_id: number;
+  order_number?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  price?: string | null;
+  payment_method?: string | null;
+  items_count?: number | null;
+  statuses: string[];
+  address_billing?: OrderAddress | null;
+  address_shipping?: OrderAddress | null;
+  items: DarazOrderItem[];
+  warehouse_code?: string | null;
+  voucher?: number | null;
+  cash_payment_fee?: number | null;
+  shipping_fee?: number | null;
+  shipping_fee_original?: number | null;
+  customer_first_name?: string | null;
+  customer_last_name?: string | null;
+  buyer_note?: string | null;
+  remarks?: string | null;
+};
+
+export type DarazOrdersResponse = {
+  orders: DarazOrder[];
+  count: number;
+};
+
+function normalizeDarazOrder(value: unknown): DarazOrder {
+  const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const rawItems = raw.items ?? raw.order_items;
+  return {
+    ...raw,
+    order_id: Number(raw.order_id ?? 0),
+    order_number: raw.order_number == null ? null : Number(raw.order_number),
+    statuses: Array.isArray(raw.statuses)
+      ? raw.statuses.filter((status): status is string => typeof status === "string")
+      : typeof raw.status === "string" ? [raw.status] : [],
+    items: Array.isArray(rawItems) ? rawItems as DarazOrderItem[] : [],
+  } as DarazOrder;
+}
 
 function shopifyHeaders(accessToken: string, shopifyAccessToken: string): Record<string, string> {
   return { Authorization: `Bearer ${accessToken}`, "x-shopify-access-token": shopifyAccessToken };
@@ -1090,6 +1201,29 @@ export function getShopifyCollections(accessToken: string, shopifyAccessToken: s
 }
 export function getShopifyOrders(accessToken: string, shopifyAccessToken: string): Promise<ShopifyOrder[]> {
   return request<{ orders: ShopifyOrder[] }>("/shopify/get_all_orders", { headers: shopifyHeaders(accessToken, shopifyAccessToken) }).then((body) => body.orders ?? []);
+}
+export function getShopifyOrderById(accessToken: string, shopifyAccessToken: string, orderId: string): Promise<ShopifyOrder> {
+  return request<ShopifyOrder>(`/shopify/get_order_by_id?order_id=${encodeURIComponent(orderId)}`, { headers: shopifyHeaders(accessToken, shopifyAccessToken) });
+}
+export function getDarazOrders(accessToken: string, darazAccessToken: string, includeCanceled = false): Promise<DarazOrdersResponse> {
+  return request<unknown>(`/daraz/get_all_orders?include_canceled=${includeCanceled}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, "x-daraz-access-token": darazAccessToken },
+  }).then((body) => {
+    const raw = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    const orders = Array.isArray(raw.orders)
+      ? raw.orders.map(normalizeDarazOrder)
+      : Array.isArray(body) ? body.map(normalizeDarazOrder) : [];
+    return { orders, count: typeof raw.count === "number" ? raw.count : orders.length };
+  });
+}
+export function getDarazOrderById(accessToken: string, darazAccessToken: string, orderId: string): Promise<DarazOrder> {
+  return request<unknown>(`/daraz/get_order_by_id?order_id=${encodeURIComponent(orderId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, "x-daraz-access-token": darazAccessToken },
+  }).then((body) => {
+    const raw = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    const detail = Array.isArray(body) ? body[0] : raw.order ?? raw.data ?? body;
+    return normalizeDarazOrder(detail);
+  });
 }
 export function createShopifyProduct(accessToken: string, shopifyAccessToken: string, data: ShopifyProductCreate): Promise<unknown> {
   return request<unknown>("/shopify/create_new_product", {
@@ -1360,5 +1494,737 @@ export function analyzeProductReviews(
       else if (event === "cluster") handlers?.onCluster?.(payload as ReviewAnalysisClusterEvent);
     },
     "Could not analyze reviews for this product. Please try again.",
+  );
+}
+
+// --- Catalog search & product hunt ---
+
+export type CatalogProductItem = {
+  item_id: string;
+  name: string;
+  image: string;
+  price: string;
+  original_price?: string | null;
+  discount?: string | null;
+  rating_score?: string | null;
+  review_count?: string | null;
+  seller_name?: string | null;
+  seller_id?: string | null;
+  brand_name?: string | null;
+  brand_id?: string | null;
+  location?: string | null;
+  in_stock: boolean;
+  item_url?: string | null;
+  item_sold?: string | null;
+  categories: number[];
+};
+
+export type CatalogFilterOption = {
+  title: string;
+  value: string;
+  url?: string | null;
+};
+
+export type CatalogFilter = {
+  name: string;
+  title: string;
+  filter_type: string;
+  options: CatalogFilterOption[];
+};
+
+export type CatalogSearchRequest = {
+  query: string;
+  page?: number;
+  max_pages?: number;
+  sort_by?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+};
+
+export type CatalogSearchResponse = {
+  query: string;
+  page: number;
+  total_pages: number;
+  total_products: number;
+  products: CatalogProductItem[];
+  available_filters: CatalogFilter[];
+  subcategories: CatalogFilterOption[];
+};
+
+export type ProductHuntRequest = {
+  niche: string;
+  max_pages?: number;
+  min_rating?: number;
+  min_reviews?: number;
+  max_price?: number | null;
+};
+
+export type ProductHuntResponse = {
+  niche: string;
+  total_scraped: number;
+  total_recommended: number;
+  subcategories: CatalogFilterOption[];
+  recommended_products: CatalogProductItem[];
+};
+
+/** Ensures marketplace URLs are absolute so Android/iOS can open them. */
+export function normalizeExternalUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+/** Normalizes catalog product payloads that may use API aliases (`nid`, `ratingScore`, etc.). */
+export function normalizeCatalogProduct(raw: Record<string, unknown>): CatalogProductItem {
+  const itemId = raw.item_id ?? raw.nid;
+  return {
+    item_id: itemId != null ? String(itemId) : "",
+    name: typeof raw.name === "string" ? raw.name : "",
+    image: typeof raw.image === "string" ? raw.image : "",
+    price: typeof raw.price === "string" ? raw.price : String(raw.price ?? ""),
+    original_price:
+      typeof raw.original_price === "string"
+        ? raw.original_price
+        : raw.original_price != null
+          ? String(raw.original_price)
+          : null,
+    discount: typeof raw.discount === "string" ? raw.discount : raw.discount != null ? String(raw.discount) : null,
+    rating_score:
+      typeof raw.rating_score === "string"
+        ? raw.rating_score
+        : typeof raw.ratingScore === "string"
+          ? raw.ratingScore
+          : raw.rating_score != null
+            ? String(raw.rating_score)
+            : raw.ratingScore != null
+              ? String(raw.ratingScore)
+              : null,
+    review_count:
+      typeof raw.review_count === "string"
+        ? raw.review_count
+        : typeof raw.review === "string"
+          ? raw.review
+          : raw.review_count != null
+            ? String(raw.review_count)
+            : raw.review != null
+              ? String(raw.review)
+              : null,
+    seller_name:
+      typeof raw.seller_name === "string"
+        ? raw.seller_name
+        : typeof raw.sellerName === "string"
+          ? raw.sellerName
+          : null,
+    seller_id:
+      typeof raw.seller_id === "string"
+        ? raw.seller_id
+        : typeof raw.sellerId === "string"
+          ? raw.sellerId
+          : null,
+    brand_name:
+      typeof raw.brand_name === "string"
+        ? raw.brand_name
+        : typeof raw.brandName === "string"
+          ? raw.brandName
+          : null,
+    brand_id:
+      typeof raw.brand_id === "string"
+        ? raw.brand_id
+        : typeof raw.brandId === "string"
+          ? raw.brandId
+          : null,
+    location: typeof raw.location === "string" ? raw.location : null,
+    in_stock: raw.in_stock === false || raw.inStock === false ? false : true,
+    item_url: normalizeExternalUrl(
+      typeof raw.item_url === "string"
+        ? raw.item_url
+        : typeof raw.itemUrl === "string"
+          ? raw.itemUrl
+          : null,
+    ),
+    item_sold:
+      typeof raw.item_sold === "string"
+        ? raw.item_sold
+        : typeof raw.itemSoldCntShow === "string"
+          ? raw.itemSoldCntShow
+          : null,
+    categories: Array.isArray(raw.categories)
+      ? raw.categories.filter((value): value is number => typeof value === "number")
+      : [],
+  };
+}
+
+function normalizeCatalogSearchResponse(body: Record<string, unknown>): CatalogSearchResponse {
+  const products = Array.isArray(body.products)
+    ? body.products.map((item) => normalizeCatalogProduct(item as Record<string, unknown>))
+    : [];
+
+  return {
+    query: typeof body.query === "string" ? body.query : "",
+    page: typeof body.page === "number" ? body.page : 1,
+    total_pages: typeof body.total_pages === "number" ? body.total_pages : 1,
+    total_products: typeof body.total_products === "number" ? body.total_products : products.length,
+    products,
+    available_filters: Array.isArray(body.available_filters) ? (body.available_filters as CatalogFilter[]) : [],
+    subcategories: Array.isArray(body.subcategories) ? (body.subcategories as CatalogFilterOption[]) : [],
+  };
+}
+
+function normalizeProductHuntResponse(body: Record<string, unknown>): ProductHuntResponse {
+  const recommended = Array.isArray(body.recommended_products)
+    ? body.recommended_products.map((item) => normalizeCatalogProduct(item as Record<string, unknown>))
+    : [];
+
+  return {
+    niche: typeof body.niche === "string" ? body.niche : "",
+    total_scraped: typeof body.total_scraped === "number" ? body.total_scraped : 0,
+    total_recommended: typeof body.total_recommended === "number" ? body.total_recommended : recommended.length,
+    subcategories: Array.isArray(body.subcategories) ? (body.subcategories as CatalogFilterOption[]) : [],
+    recommended_products: recommended,
+  };
+}
+
+export function catalogSearch(
+  accessToken: string,
+  payload: CatalogSearchRequest,
+): Promise<CatalogSearchResponse> {
+  return request<Record<string, unknown>>("/daraz/catalog/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  }).then(normalizeCatalogSearchResponse);
+}
+
+export function productHunt(
+  accessToken: string,
+  payload: ProductHuntRequest,
+): Promise<ProductHuntResponse> {
+  return request<Record<string, unknown>>("/daraz/catalog/hunt", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  }).then(normalizeProductHuntResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Daraz Financial Module
+// ---------------------------------------------------------------------------
+
+export type PayoutInfo = {
+  payout_id: string;
+  statement_number: string;
+  status: string;
+  amount: number;
+  currency: string;
+  item_revenue: number;
+  fees_total: number;
+  refunds: number;
+  fees_on_refunds_total: number;
+  other_revenue_total: number;
+  shipment_fee_credit: number;
+  closing_balance: number;
+  opening_balance: number;
+  paid: boolean;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type CashFlowEntry = {
+  date: string;
+  inflow: number;
+  outflow: number;
+  net: number;
+};
+
+export type FeeBreakdownData = {
+  total_revenue: number;
+  total_commission: number;
+  total_payment_fees: number;
+  total_shipping_fees: number;
+  total_refunds: number;
+  total_penalties: number;
+  total_promotional_discounts: number;
+  net_payout: number;
+  effective_fee_rate: number;
+};
+
+export type FinancialDashboardResponse = {
+  total_revenue: number;
+  total_payouts: number;
+  pending_payouts: number;
+  upcoming_payouts: number;
+  total_fees: number;
+  total_refunds: number;
+  net_revenue: number;
+  net_profit: number;
+  profit_margin: number;
+  average_order_value: number;
+  total_product_expenses: number;
+  fee_breakdown: FeeBreakdownData;
+  recent_payouts: PayoutInfo[];
+  cash_flow_trend: CashFlowEntry[];
+};
+
+export type Transaction = {
+  order_no: string;
+  transaction_date: string;
+  amount: string;
+  paid_status: string;
+  fee_name: string;
+  fee_type: string;
+  transaction_type: string;
+  transaction_number: string;
+  reference: string;
+  statement: string;
+  details?: string;
+  seller_sku?: string;
+  lazada_sku?: string;
+  shipping_provider?: string;
+  shipment_type?: string;
+  orderItem_status?: string;
+  VAT_in_amount?: string;
+  WHT_amount?: string;
+  comment?: string;
+};
+
+export type TransactionDetailsResponse = {
+  code: string;
+  data: Transaction[];
+  message?: string;
+};
+
+export type PayoutAnalyticsResponse = {
+  total_payouts: number;
+  upcoming: PayoutInfo[];
+  pending: PayoutInfo[];
+  paid: PayoutInfo[];
+  failed: PayoutInfo[];
+  total_amount: number;
+  upcoming_amount: number;
+  pending_amount: number;
+  paid_amount: number;
+};
+
+export type FeeBreakdownResponse = FeeBreakdownData;
+
+export type ProfitAnalyticsResponse = {
+  period: string;
+  total_revenue: number;
+  total_costs: number;
+  net_revenue: number;
+  total_product_expenses: number;
+  net_profit: number;
+  profit_margin: number;
+  order_count: number;
+};
+
+export type ReconciledOrder = {
+  order_id: string;
+  gross_value: number;
+  deductions: number;
+  net_value: number;
+};
+
+export type ReconcileSettlementResponse = {
+  payout_id: string;
+  payout_amount: number;
+  payout_date?: string;
+  orders: ReconciledOrder[];
+  total_order_value: number;
+  total_deductions: number;
+  calculated_payout: number;
+  difference: number;
+  status: string;
+};
+
+function darazFinancialHeaders(accessToken: string, darazAccessToken: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "x-daraz-access-token": darazAccessToken,
+  };
+}
+
+export function getFinancialDashboard(
+  accessToken: string,
+  darazAccessToken: string,
+  days = 30,
+): Promise<FinancialDashboardResponse> {
+  return request<FinancialDashboardResponse>(
+    `/daraz/financial/dashboard?days=${days}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getFinancialTransactions(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string; page?: number; pageSize?: number },
+): Promise<TransactionDetailsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+    page: String(params.page ?? 1),
+    page_size: String(params.pageSize ?? 100),
+  });
+  return request<TransactionDetailsResponse>(
+    `/daraz/financial/transactions?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getPayoutAnalytics(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<PayoutAnalyticsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<PayoutAnalyticsResponse>(
+    `/daraz/financial/payouts/analytics?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getFeeBreakdown(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<FeeBreakdownResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<FeeBreakdownResponse>(
+    `/daraz/financial/fees/breakdown?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getProfitAnalytics(
+  accessToken: string,
+  darazAccessToken: string,
+  params: { startDate: string; endDate: string },
+): Promise<ProfitAnalyticsResponse> {
+  const query = new URLSearchParams({
+    start_date: params.startDate,
+    end_date: params.endDate,
+  });
+  return request<ProfitAnalyticsResponse>(
+    `/daraz/financial/profit?${query.toString()}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getCashFlow(
+  accessToken: string,
+  darazAccessToken: string,
+  days = 30,
+): Promise<CashFlowEntry[]> {
+  return request<CashFlowEntry[]>(
+    `/daraz/financial/cashflow?days=${days}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+export function getSettlementReconciliation(
+  accessToken: string,
+  darazAccessToken: string,
+  payoutId: string,
+): Promise<ReconcileSettlementResponse> {
+  return request<ReconcileSettlementResponse>(
+    `/daraz/financial/settlement/reconcile/${encodeURIComponent(payoutId)}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Product Financials Module
+// ---------------------------------------------------------------------------
+
+export type ProductOrderDetail = {
+  order_no: string;
+  date: string;
+  price: number;
+  orderItem_status: string;
+};
+
+export type ProductFinancials = {
+  sku: string;
+  product_name: string;
+  units_sold: number;
+  gross_revenue: number;
+  commission: number;
+  payment_fees: number;
+  shipping_fees: number;
+  penalties: number;
+  promotional_discounts: number;
+  total_fees: number;
+  refunds: number;
+  net_revenue: number;
+  product_expenses: number;
+  net_profit: number;
+  profit_margin: number;
+  order_numbers: string[];
+  orders: ProductOrderDetail[];
+};
+
+export type DailyProductTrend = {
+  date: string;
+  revenue: number;
+  fees: number;
+  refunds: number;
+  net_profit: number;
+};
+
+export type FeeSlice = {
+  category: string;
+  amount: number;
+};
+
+export type TopProductBar = {
+  sku: string;
+  product_name: string;
+  gross_revenue: number;
+  net_profit: number;
+  units_sold: number;
+};
+
+export type ProductFinancialsResponse = {
+  period: string;
+  total_products: number;
+  products: ProductFinancials[];
+  summary: Record<string, unknown>;
+  daily_trend: DailyProductTrend[];
+  fee_distribution: FeeSlice[];
+  top_products_chart: TopProductBar[];
+};
+
+export function getProductFinancials(
+  accessToken: string,
+  darazAccessToken: string,
+  params?: { startDate?: string; endDate?: string; sortBy?: string },
+): Promise<ProductFinancialsResponse> {
+  const query = new URLSearchParams();
+  if (params?.startDate) query.set('start_date', params.startDate);
+  if (params?.endDate) query.set('end_date', params.endDate);
+  if (params?.sortBy) query.set('sort_by', params.sortBy);
+  const qs = query.toString();
+  return request<ProductFinancialsResponse>(
+    `/daraz/financial/products${qs ? `?${qs}` : ''}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Product Expenses Module
+// ---------------------------------------------------------------------------
+
+export type ProductExpenseCreate = {
+  sku_id: string;
+  platform: string;
+  category: string;
+  amount: number;
+  description?: string | null;
+};
+
+export type ProductExpenseUpdate = {
+  sku_id?: string | null;
+  platform?: string | null;
+  category?: string | null;
+  amount?: number | null;
+  description?: string | null;
+};
+
+export type ProductExpenseRead = {
+  id: string;
+  merchant_id: string;
+  sku_id: string;
+  platform: string;
+  category: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export function getProductExpenses(
+  accessToken: string,
+  params?: { platform?: string; sku_id?: string },
+): Promise<ProductExpenseRead[]> {
+  const query = new URLSearchParams();
+  if (params?.platform) query.set('platform', params.platform);
+  if (params?.sku_id) query.set('sku_id', params.sku_id);
+  const qs = query.toString();
+  return request<ProductExpenseRead[]>(`/expenses/${qs ? `?${qs}` : ''}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function getProductExpense(
+  accessToken: string,
+  expenseId: string,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>(`/expenses/${expenseId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function createProductExpense(
+  accessToken: string,
+  data: ProductExpenseCreate,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>('/expenses/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateProductExpense(
+  accessToken: string,
+  expenseId: string,
+  data: ProductExpenseUpdate,
+): Promise<ProductExpenseRead> {
+  return request<ProductExpenseRead>(`/expenses/${expenseId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProductExpense(
+  accessToken: string,
+  expenseId: string,
+): Promise<void> {
+  return request<void>(`/expenses/${expenseId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Keyword Analysis (Comparative SEO)
+// ---------------------------------------------------------------------------
+
+export type KeywordAnalysisRequest = {
+  item_id: number;
+  stream?: boolean;
+};
+
+export type SeedKeyword = {
+  keyword: string;
+  source: string;
+};
+
+export type WinningKeyword = {
+  keyword: string;
+  keyword_variants: string[];
+  relevance_score: number;
+  competition_count: number;
+  winning_score: number;
+  matching_products: number;
+  cluster_size: number;
+  /** Backend returns an array of product name strings. */
+  example_products: string[];
+};
+
+export type RepeatProduct = {
+  item_id: string;
+  name: string;
+  image?: string;
+  url?: string;
+  review?: string;
+  ratingScore?: string;
+  unitSold?: string;
+  appearance_count: number;
+  keywords_matched?: string[];
+};
+
+export type UserProductInfo = {
+  item_id: number;
+  title: string;
+  description: string;
+  price: number | null;
+  /** Daraz primary category id (numeric). */
+  category: number | string | null;
+};
+
+export type KeywordAnalysisResult = {
+  user_product: UserProductInfo;
+  seed_keywords: SeedKeyword[];
+  total_catalog_size: number;
+  total_relevant_products: number;
+  winning_keywords: WinningKeyword[];
+  repeat_products: RepeatProduct[];
+  iterations_run: number;
+};
+
+export type KeywordAnalysisProgressEvent = {
+  stage: string;
+  [key: string]: unknown;
+};
+
+export type KeywordAnalysisStreamHandlers = {
+  onProgress?: (event: KeywordAnalysisProgressEvent) => void;
+  onProductFetched?: (data: { user_product: UserProductInfo }) => void;
+  onSeedKeywords?: (data: { seed_keywords: SeedKeyword[]; count: number }) => void;
+  onCatalogBuilt?: (data: { total_catalog_size: number }) => void;
+  onSimilarityFilterDone?: (data: { relevant_products: number }) => void;
+  onKeywordsMined?: (data: { candidate_keywords: number }) => void;
+  onKeywordsClustered?: (data: { cluster_count: number }) => void;
+  onGraphBuilt?: (data: { community_count: number }) => void;
+  onClustersScored?: (data: { scored_count: number }) => void;
+  onExpansionDone?: (data: { iterations_run: number; final_catalog_size: number }) => void;
+};
+
+export function analyzeKeywords(
+  accessToken: string,
+  darazAccessToken: string,
+  data: KeywordAnalysisRequest,
+  handlers?: KeywordAnalysisStreamHandlers,
+): Promise<KeywordAnalysisResult> {
+  console.log("item id: ", Math.trunc(data.item_id))
+  return streamToResult<KeywordAnalysisResult>(
+    "/daraz/keyword-analysis",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "x-daraz-access-token": darazAccessToken,
+      },
+      body: JSON.stringify({ item_id: Math.trunc(data.item_id), stream: true }),
+    },
+    (event, payload) => {
+      if (event === "progress") handlers?.onProgress?.(payload as KeywordAnalysisProgressEvent);
+      else if (event === "product_fetched") handlers?.onProductFetched?.(payload as { user_product: UserProductInfo });
+      else if (event === "seed_keywords") handlers?.onSeedKeywords?.(payload as { seed_keywords: SeedKeyword[]; count: number });
+      else if (event === "catalog_built") handlers?.onCatalogBuilt?.(payload as { total_catalog_size: number });
+      else if (event === "similarity_filter_done") handlers?.onSimilarityFilterDone?.(payload as { relevant_products: number });
+      else if (event === "keywords_mined") handlers?.onKeywordsMined?.(payload as { candidate_keywords: number });
+      else if (event === "keywords_clustered") handlers?.onKeywordsClustered?.(payload as { cluster_count: number });
+      else if (event === "graph_built") handlers?.onGraphBuilt?.(payload as { community_count: number });
+      else if (event === "clusters_scored") handlers?.onClustersScored?.(payload as { scored_count: number });
+      else if (event === "expansion_done") handlers?.onExpansionDone?.(payload as { iterations_run: number; final_catalog_size: number });
+    },
+    "Could not analyze keywords for this product. Please try again.",
+    "result",
   );
 }

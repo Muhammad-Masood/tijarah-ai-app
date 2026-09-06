@@ -12,6 +12,7 @@
     },
     "android": {
       "backgroundColor": "#f6f7f8",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#e1f2ee",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,7 +42,10 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

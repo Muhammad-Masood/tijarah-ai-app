@@ -50,7 +50,6 @@ export default function StoreConnectingScreen() {
         const authorizeUrl = await getShopifyAuthorizeUrl(accessToken, shop);
         if (cancelled) return;
         setStepIndex(STEPS.length);
-        console.log('authorizeUrl', authorizeUrl);
         await WebBrowser.openBrowserAsync(authorizeUrl);
         if (cancelled) return;
         router.replace({ pathname: '/store-connected', params: { platform: channelId } });

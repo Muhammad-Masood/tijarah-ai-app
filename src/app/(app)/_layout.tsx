@@ -13,7 +13,24 @@ export default function AppLayout() {
       <Stack.Screen name="profile" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="product-detail" />
+      <Stack.Screen name="product-financials" />
       <Stack.Screen name="product-form" />
+      <Stack.Screen name="product-hunting-tool" />
+      <Stack.Screen name="product-recommendations" />
+      <Stack.Screen name="catalog-product-detail" />
+      <Stack.Screen name="finance" />
+      <Stack.Screen name="finance-dashboard" />
+      <Stack.Screen name="finance-transactions" />
+      <Stack.Screen name="finance-payouts" />
+      <Stack.Screen name="finance-fees" />
+      <Stack.Screen name="finance-profit" />
+      <Stack.Screen name="finance-cashflow" />
+      <Stack.Screen name="finance-settlement" />
+      <Stack.Screen name="expenses" />
+      <Stack.Screen name="expense-form" />
+      <Stack.Screen name="orders" />
+      <Stack.Screen name="order-detail" />
+      <Stack.Screen name="keyword-analysis" />
     </Stack>
   );
 }

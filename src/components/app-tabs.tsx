@@ -1,15 +1,16 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Icon, Label, NativeTabs, VectorIcon } from 'expo-router/unstable-native-tabs';
-
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Icon, Label, VectorIcon } from 'expo-router';
 
 export default function AppTabs() {
-  const scheme = useColorScheme() ?? 'light';
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
 
   return (
     <NativeTabs
+      tabBarRespectsIMEInsets={true}
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
       labelStyle={{ selected: { color: colors.primary } }}>
@@ -22,7 +23,7 @@ export default function AppTabs() {
         <Label>Insights</Label>
         <Icon
           sf="chart.line.uptrend.xyaxis"
-          androidSrc={<VectorIcon family={MaterialCommunityIcons} name="chart-line" />}
+          src={<VectorIcon family={MaterialCommunityIcons} name="chart-line" />}
           selectedColor={colors.primary}
         />
       </NativeTabs.Trigger>
@@ -37,7 +38,7 @@ export default function AppTabs() {
         <Label>Ask Tijarah</Label>
         <Icon
           sf="sparkles"
-          androidSrc={<VectorIcon family={MaterialCommunityIcons} name="creation" />}
+          src={<VectorIcon family={MaterialCommunityIcons} name="creation" />}
           selectedColor={colors.primary}
         />
       </NativeTabs.Trigger>
@@ -46,7 +47,7 @@ export default function AppTabs() {
         <Label>Products</Label>
         <Icon
           sf="bag"
-          androidSrc={<VectorIcon family={MaterialCommunityIcons} name="package-variant-closed" />}
+          src={<VectorIcon family={MaterialCommunityIcons} name="package-variant-closed" />}
           selectedColor={colors.primary}
         />
       </NativeTabs.Trigger>
@@ -55,10 +56,10 @@ export default function AppTabs() {
         <Label>More</Label>
         <Icon
           sf="ellipsis"
-          androidSrc={<VectorIcon family={MaterialCommunityIcons} name="dots-horizontal" />}
+          src={<VectorIcon family={MaterialCommunityIcons} name="dots-horizontal" />}
           selectedColor={colors.primary}
         />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
-}
+}   
