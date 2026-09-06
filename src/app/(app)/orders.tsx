@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SegmentedTabs } from '@/components/segmented-tabs';
 import { StoreSelectorSheet, type StoreOption } from '@/components/store-selector-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -173,7 +172,8 @@ export default function OrdersScreen() {
 
   const visibleOrders = useMemo(() => {
     return orders.filter(({ order, channel }) => {
-      const matchesChannel = channel === orderTab;
+      // When "All Stores" is selected, show orders from every channel.
+      const matchesChannel = selectedStore === 'all' || channel === orderTab;
       const matchesMonth =
         selectedMonth === 'all' || monthKey(orderDate(order)) === selectedMonth;
 
@@ -198,19 +198,19 @@ export default function OrdersScreen() {
 
       return matchesChannel && matchesMonth && matchesDateRange;
     });
-  }, [orderTab, orders, selectedMonth, fromDate, toDate]);
+  }, [orderTab, orders, selectedMonth, fromDate, toDate, selectedStore]);
 
   const monthOptions = useMemo(
     () =>
       Array.from(
         new Set(
           orders
-            .filter(({ channel }) => channel === orderTab)
+            .filter(({ channel }) => selectedStore === 'all' || channel === orderTab)
             .map(({ order }) => monthKey(orderDate(order)))
             .filter(Boolean) as string[],
         ),
       ).sort().reverse(),
-    [orderTab, orders],
+    [orderTab, orders, selectedStore],
   );
 
   useEffect(() => {
@@ -231,7 +231,6 @@ export default function OrdersScreen() {
       requests.push(
         getDarazOrders(accessToken, daraz.darazAccessToken).then((response) => {
           ordersCache.set('daraz', response.orders);
-          console.log('🚀 ~ OrdersScreen ~ response:', response);
           return response.orders.map((order) => ({ order, channel: 'daraz' as const }));
         }),
       );
@@ -340,7 +339,7 @@ export default function OrdersScreen() {
                 </View>
               )}
               <ThemedText type="bodySm" themeColor="textSecondary" style={styles.storeSelectorLabel}>
-                {selectedMarketplace?.name ?? 'Select store'}
+                {selectedMarketplace?.name ?? 'All Stores'}
               </ThemedText>
               <MaterialCommunityIcons name="chevron-down" size={18} color={theme.textSecondary} />
             </Pressable>
@@ -353,23 +352,6 @@ export default function OrdersScreen() {
               Review orders from each connected sales channel.
             </ThemedText>
           </View>
-
-          {/* Channel tabs (only when "all" is selected) */}
-          {selectedStore === 'all' && (
-            <SegmentedTabs
-              options={[
-                { label: 'Shopify', value: 'shopify' },
-                { label: 'Daraz', value: 'daraz' },
-              ]}
-              value={orderTab}
-              onChange={(value) => {
-                setOrderTab(value);
-                setSelectedMonth('all');
-                setFromDate(null);
-                setToDate(null);
-              }}
-            />
-          )}
 
           {/* Month filter */}
           {orders.length > 0 && monthOptions.length > 0 && (
@@ -629,9 +611,6 @@ export default function OrdersScreen() {
                       <View style={styles.dateCopy}>
                         <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>
                           Placed {formatDate(isDarazOrder(order) ? order.created_at : order.createdAt)}
-                        </ThemedText>
-                        <ThemedText type="bodySm" themeColor="textSecondary" numberOfLines={1}>
-                          Updated {formatDate(orderUpdatedDate(order))}
                         </ThemedText>
                       </View>
 

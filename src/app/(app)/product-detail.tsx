@@ -9,6 +9,7 @@ import {
   FinanceChartSkeleton,
   FinanceEmptyState,
   FinanceKPICard,
+  FinanceStatusBadge,
   ProfitMarginRing,
   formatPKR,
   formatCompact,
@@ -283,6 +284,48 @@ export default function ProductDetailScreen() {
                         isLast
                       />
                     </ListSection>
+
+                    {/* Orders for this product */}
+                    {productFinData.orders && productFinData.orders.length > 0 && (
+                      <View style={styles.ordersSection}>
+                        <View style={styles.ordersHeader}>
+                          <ThemedText type="headlineSm">Orders</ThemedText>
+                          <ThemedText type="bodySm" themeColor="textSecondary">
+                            {productFinData.orders.length} order{productFinData.orders.length !== 1 ? 's' : ''}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.ordersList}>
+                          {productFinData.orders.map((order) => (
+                            <Pressable
+                              key={order.order_no}
+                              onPress={() =>
+                                router.push({
+                                  pathname: '/order-detail',
+                                  params: { id: order.order_no, channel: 'daraz' },
+                                })
+                              }
+                              style={({ pressed }) => [
+                                styles.orderCard,
+                                { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest },
+                                pressed && { opacity: 0.85 },
+                              ]}>
+                              <View style={styles.orderCardTopRow}>
+                                <ThemedText type="labelMd">#{order.order_no}</ThemedText>
+                                <FinanceStatusBadge status={order.orderItem_status} />
+                              </View>
+                              <View style={styles.orderCardBottomRow}>
+                                <ThemedText type="bodySm" themeColor="textSecondary">
+                                  {new Date(order.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </ThemedText>
+                                <ThemedText type="bodyLg" style={{ color: FinanceColors.revenue }}>
+                                  {formatPKR(order.price)}
+                                </ThemedText>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                   </>
                 ) : (
                   <FinanceEmptyState message="No financial data found for this product. Make sure it has sales in the selected period." />
@@ -334,11 +377,23 @@ export default function ProductDetailScreen() {
                           }
                         />
                       ) : null}
+                      {isDaraz && product.id ? (
+                        <ListRow
+                          label="SEO Lab"
+                          value="Keyword Analysis"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/keyword-analysis',
+                              params: { item_id: String(product.id) },
+                            })
+                          }
+                        />
+                      ) : null}
                       <ListRow
                         label="Price"
                         value={formatPrice(product.price)}
                         showChevron={false}
-                        isLast={!product.stockQuantity && !product.warrantyType && !product.url && !recommendationNiche}
+                        isLast={!product.stockQuantity && !product.warrantyType && !product.url && !recommendationNiche && !isDaraz}
                       />
                       {typeof product.stockQuantity === 'number' && (
                         <ListRow
@@ -552,5 +607,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  ordersSection: {
+    gap: Spacing.three,
+  },
+  ordersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ordersList: {
+    gap: Spacing.two,
+  },
+  orderCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  orderCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  orderCardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

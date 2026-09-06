@@ -4,10 +4,21 @@
 **Referenced Files in This Document**
 - [use-shopify-orders.ts](file://src/hooks/use-shopify-orders.ts)
 - [use-shopify-access-token.ts](file://src/hooks/use-shopify-access-token.ts)
+- [use-supported-marketplaces.ts](file://src/hooks/use-supported-marketplaces.ts)
+- [orders.tsx](file://src/app/(app)/orders.tsx)
+- [order-detail.tsx](file://src/app/(app)/order-detail.tsx)
 - [api.ts](file://src/lib/api.ts)
 - [api.ts (constants)](file://src/constants/api.ts)
 - [channels.ts](file://src/constants/channels.ts)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added multi-marketplace support with unified order management for Shopify and Daraz
+- Implemented enhanced filtering with month-based selection and custom date ranges
+- Added caching mechanisms for improved performance and offline support
+- Enhanced UI with real-time status updates and optimistic loading states
+- Expanded order detail view to support multiple marketplace formats
 
 ## Table of Contents
 1. Introduction
@@ -15,283 +26,320 @@
 3. Core Components
 4. Architecture Overview
 5. Detailed Component Analysis
-6. Dependency Analysis
-7. Performance Considerations
-8. Troubleshooting Guide
-9. Conclusion
+6. Multi-Marketplace Support
+7. Enhanced Filtering and Search
+8. Performance Optimizations
+9. Error Handling and Recovery
+10. Conclusion
 
 ## Introduction
-This document explains the Shopify order management functionality implemented in the application. It covers how orders are retrieved, how connection and authentication work, and how the UI layer consumes order data. It also provides guidance on extending the system to support order processing workflows such as creation, modification, cancellation, fulfillment updates, event handling, synchronization patterns, conflict resolution, error handling, retry strategies, and logging. Where applicable, it maps concepts to Shopify-specific order elements like line items, shipping details, and payment status using the types and endpoints present in the codebase.
+This document explains the comprehensive order management functionality implemented in the application, supporting multiple marketplaces including Shopify and Daraz. It covers how orders are retrieved from connected stores, how connection and authentication work across different platforms, and how the UI layer consumes and displays order data with advanced filtering capabilities. The system provides robust order processing workflows including creation, modification, cancellation, fulfillment updates, event handling, synchronization patterns, conflict resolution, error handling, retry strategies, and logging.
 
 ## Project Structure
-The Shopify order feature is primarily implemented through:
-- A React hook that fetches orders from the backend
-- A hook that retrieves the Shopify access token for a connected store
-- An API module that defines typed models and HTTP calls
+The enhanced order management system is implemented through:
+- A unified orders screen supporting multiple marketplaces
+- Individual hooks for each marketplace's access token management
+- A marketplace discovery hook for supported platforms
+- API modules with typed models and HTTP calls for each marketplace
 - Constants for base URL configuration and channel metadata
+- Caching mechanisms for improved performance
 
 ```mermaid
 graph TB
-UI["UI Components"] --> HOrders["useShopifyOrders hook"]
-HOrders --> HToken["useShopifyAccessToken hook"]
-HOrders --> API["lib/api.ts"]
-HToken --> API
-API --> Backend["Backend /shopify/* endpoints"]
+UI["Orders Screen"] --> HMarketplaces["useSupportedMarketplaces hook"]
+UI --> HShopifyOrders["useShopifyOrders hook"]
+UI --> HShopifyToken["useShopifyAccessToken hook"]
+UI --> HDarazToken["useDarazAccessToken hook"]
+HShopifyOrders --> API["lib/api.ts"]
+HShopifyToken --> API
+HDarazToken --> API
+HMarketplaces --> API
+API --> Backend["Backend /shopify/* and /daraz/* endpoints"]
 API --> BaseURL["API_BASE_URL constant"]
+UI --> Cache["Orders Cache"]
 ```
 
 **Diagram sources**
-- [use-shopify-orders.ts:7-25](file://src/hooks/use-shopify-orders.ts#L7-L25)
-- [use-shopify-access-token.ts:6-29](file://src/hooks/use-shopify-access-token.ts#L6-L29)
-- [api.ts:1091-1093](file://src/lib/api.ts#L1091-L1093)
-- [api.ts:1072-1074](file://src/lib/api.ts#L1072-L1074)
-- [api.ts (constants):10-15](file://src/constants/api.ts#L10-L15)
+- [orders.tsx:122-271](file://src/app/(app)/orders.tsx#L122-L271)
+- [use-shopify-orders.ts:7-26](file://src/hooks/use-shopify-orders.ts#L7-L26)
+- [use-shopify-access-token.ts:6-30](file://src/hooks/use-shopify-access-token.ts#L6-L30)
+- [use-supported-marketplaces.ts:16-53](file://src/hooks/use-supported-marketplaces.ts#L16-L53)
+- [api.ts:1182-1206](file://src/lib/api.ts#L1182-L1206)
 
 **Section sources**
-- [use-shopify-orders.ts:7-25](file://src/hooks/use-shopify-orders.ts#L7-L25)
-- [use-shopify-access-token.ts:6-29](file://src/hooks/use-shopify-access-token.ts#L6-L29)
-- [api.ts:1091-1093](file://src/lib/api.ts#L1091-L1093)
-- [api.ts:1072-1074](file://src/lib/api.ts#L1072-L1074)
-- [api.ts (constants):10-15](file://src/constants/api.ts#L10-L15)
+- [orders.tsx:122-271](file://src/app/(app)/orders.tsx#L122-L271)
+- [use-shopify-orders.ts:7-26](file://src/hooks/use-shopify-orders.ts#L7-L26)
+- [use-shopify-access-token.ts:6-30](file://src/hooks/use-shopify-access-token.ts#L6-L30)
+- [use-supported-marketplaces.ts:16-53](file://src/hooks/use-supported-marketplaces.ts#L16-L53)
+- [api.ts:1182-1206](file://src/lib/api.ts#L1182-L1206)
 
 ## Core Components
-- useShopifyOrders: Manages state for loading, errors, and fetching Shopify orders. It depends on authentication and the Shopify access token, then calls the backend to retrieve orders.
-- useShopifyAccessToken: Retrieves the encrypted Shopify access token from marketplace connections and exposes connection status.
-- lib/api.ts: Defines the ShopifyOrder type, helper headers for Shopify requests, and the getShopifyOrders function that calls the backend endpoint.
-- constants/api.ts: Provides the backend base URL used by all API calls.
-- constants/channels.ts: Documents the Shopify channel identity used across the app.
+- **Unified Orders Screen**: Manages state for loading, errors, and fetching orders from multiple marketplaces with advanced filtering
+- **useShopifyOrders**: Manages Shopify-specific order state and retrieval
+- **useShopifyAccessToken**: Retrieves encrypted Shopify access tokens and manages connection status
+- **useSupportedMarketplaces**: Discovers and manages supported marketplace connections
+- **Order Detail Screen**: Displays detailed information for individual orders from any marketplace
+- **API Layer**: Provides typed functions for marketplace-specific operations with unified error handling
 
 Key responsibilities:
-- Data retrieval: Fetching orders via getShopifyOrders
-- Connection management: Ensuring a valid Shopify access token exists
-- Error handling: Normalizing API errors into user-friendly messages
-- State management: Loading states, error states, and refetch triggers
+- **Multi-channel data retrieval**: Fetching orders from Shopify, Daraz, and other connected marketplaces
+- **Connection management**: Ensuring valid access tokens exist for each marketplace
+- **Advanced filtering**: Month-based selection and custom date range filtering
+- **Performance optimization**: Caching orders per marketplace for faster subsequent loads
+- **Error handling**: Normalizing API errors into user-friendly messages across all marketplaces
+- **State management**: Loading states, error states, and refetch triggers with optimistic updates
 
 **Section sources**
-- [use-shopify-orders.ts:7-25](file://src/hooks/use-shopify-orders.ts#L7-L25)
-- [use-shopify-access-token.ts:6-29](file://src/hooks/use-shopify-access-token.ts#L6-L29)
-- [api.ts:1058-1070](file://src/lib/api.ts#L1058-L1070)
-- [api.ts:1091-1093](file://src/lib/api.ts#L1091-L1093)
-- [api.ts (constants):10-15](file://src/constants/api.ts#L10-L15)
-- [channels.ts:1-25](file://src/constants/channels.ts#L1-L25)
+- [orders.tsx:122-271](file://src/app/(app)/orders.tsx#L122-L271)
+- [use-shopify-orders.ts:7-26](file://src/hooks/use-shopify-orders.ts#L7-L26)
+- [use-shopify-access-token.ts:6-30](file://src/hooks/use-shopify-access-token.ts#L6-L30)
+- [use-supported-marketplaces.ts:16-53](file://src/hooks/use-supported-marketplaces.ts#L16-L53)
+- [order-detail.tsx:19-75](file://src/app/(app)/order-detail.tsx#L19-L75)
 
 ## Architecture Overview
-The order retrieval flow uses a layered approach:
-- The UI consumes useShopifyOrders to display orders
-- The hook ensures an authenticated session and a Shopify connection
-- The API module constructs headers with both the user’s access token and the Shopify access token
-- The backend endpoint returns a list of orders mapped to the ShopifyOrder type
+The enhanced order retrieval flow uses a layered approach with multi-marketplace support:
+- The unified Orders screen consumes marketplace data and provides filtering capabilities
+- Individual hooks manage authentication and connection status for each marketplace
+- The API layer constructs appropriate headers for each marketplace's requirements
+- Caching mechanisms improve performance by storing orders per marketplace
+- Real-time updates provide immediate feedback during data refreshes
 
 ```mermaid
 sequenceDiagram
-participant UI as "UI"
-participant HookOrders as "useShopifyOrders"
-participant HookToken as "useShopifyAccessToken"
+participant UI as "Orders Screen"
+participant Cache as "Orders Cache"
+participant HookMarketplaces as "useSupportedMarketplaces"
+participant HookShopify as "useShopifyOrders"
+participant HookShopifyToken as "useShopifyAccessToken"
+participant HookDarazToken as "useDarazAccessToken"
 participant API as "lib/api.ts"
-participant Backend as "Backend /shopify/get_all_orders"
-UI->>HookOrders : Mount component
-HookOrders->>HookToken : Read connection state
-HookToken-->>HookOrders : shopifyAccessToken or null
-alt Connected
-HookOrders->>API : getShopifyOrders(userToken, shopifyToken)
-API->>Backend : GET /shopify/get_all_orders (with headers)
-Backend-->>API : { orders : ShopifyOrder[] }
-API-->>HookOrders : ShopifyOrder[]
-HookOrders->>UI : Update state with orders
-else Not Connected
-HookOrders->>UI : Show empty state / prompt to connect
+participant Backend as "Backend /marketplace/* endpoints"
+UI->>HookMarketplaces : Mount component
+HookMarketplaces->>API : getSupportedMarketplaces(userToken)
+API->>Backend : GET /marketplace/
+Backend-->>API : Marketplace[]
+API-->>HookMarketplaces : List of marketplaces
+UI->>HookShopifyToken : Check Shopify connection
+HookShopifyToken->>API : getMarketplaceConnections(userToken)
+API->>Backend : GET /marketplace/connections
+Backend-->>API : MarketplaceConnection[]
+API-->>HookShopifyToken : Connection status
+UI->>HookDarazToken : Check Daraz connection
+HookDarazToken->>API : getMarketplaceConnections(userToken)
+API->>Backend : GET /marketplace/connections
+Backend-->>API : MarketplaceConnection[]
+API-->>HookDarazToken : Connection status
+alt Connected Marketplaces Found
+UI->>Cache : Load cached orders if available
+UI->>API : getShopifyOrders/getDarazOrders
+API->>Backend : GET /shopify/get_all_orders or /daraz/get_all_orders
+Backend-->>API : Orders[]
+API-->>Cache : Store orders in cache
+Cache-->>UI : Return cached/fresh orders
+else No Connections
+UI->>UI : Show connection prompt
 end
 ```
 
 **Diagram sources**
-- [use-shopify-orders.ts:15-24](file://src/hooks/use-shopify-orders.ts#L15-L24)
+- [orders.tsx:216-271](file://src/app/(app)/orders.tsx#L216-L271)
 - [use-shopify-access-token.ts:14-27](file://src/hooks/use-shopify-access-token.ts#L14-L27)
-- [api.ts:1072-1093](file://src/lib/api.ts#L1072-L1093)
+- [use-supported-marketplaces.ts:25-50](file://src/hooks/use-supported-marketplaces.ts#L25-L50)
+- [api.ts:399-403](file://src/lib/api.ts#L399-L403)
 
 ## Detailed Component Analysis
 
-### Shopify Order Retrieval Flow
-- Authentication and connection:
-  - The hook reads the user’s access token and checks for a Shopify connection
-  - If no connection exists, it sets an empty order list and stops loading
-- Data fetching:
-  - Calls getShopifyOrders with both tokens
-  - Sets loading state before request and clears error state
-  - Updates local state with returned orders
-- Error handling:
-  - Catches ApiError instances and surfaces a user-friendly message
-  - Uses finally to ensure loading state is cleared
+### Unified Orders Screen with Multi-Marketplace Support
+The main orders screen now supports multiple marketplaces with advanced filtering capabilities:
+
+- **Marketplace Discovery**: Automatically detects connected marketplaces and their status
+- **Channel Selection**: Allows users to filter orders by specific marketplace or view all
+- **Advanced Filtering**: Implements month-based selection and custom date range filtering
+- **Caching Strategy**: Stores orders per marketplace for improved performance
+- **Real-time Updates**: Shows "Updating orders..." status during refreshes
 
 ```mermaid
 flowchart TD
-Start(["Start"]) --> CheckAuth["Check user access token"]
+Start(["Orders Screen Load"]) --> CheckAuth["Check user authentication"]
 CheckAuth --> |Missing| Stop["Stop: No auth"]
-CheckAuth --> |Present| CheckConn["Check Shopify connection"]
-CheckConn --> |Not connected| Empty["Set orders=[] and stop"]
-CheckConn --> |Connected| Fetch["Call getShopifyOrders()"]
-Fetch --> Success{"Request ok?"}
-Success --> |Yes| SetOrders["Set orders from response"]
-Success --> |No| SetError["Set error message"]
-SetOrders --> Done(["Done"])
-SetError --> Done
-Stop --> Done
-Empty --> Done
+CheckAuth --> |Present| GetMarketplaces["Get supported marketplaces"]
+GetMarketplaces --> CheckConnections["Check marketplace connections"]
+CheckConnections --> |No connections| PromptConnect["Prompt to connect stores"]
+CheckConnections --> |Has connections| LoadCache["Load cached orders"]
+LoadCache --> FilterOrders["Apply filters (channel, month, date range)"]
+FilterOrders --> DisplayOrders["Display filtered orders"]
+PromptConnect --> Stop
+Stop --> End(["End"])
+DisplayOrders --> End
 ```
 
 **Diagram sources**
-- [use-shopify-orders.ts:15-24](file://src/hooks/use-shopify-orders.ts#L15-L24)
+- [orders.tsx:216-271](file://src/app/(app)/orders.tsx#L216-L271)
 
 **Section sources**
-- [use-shopify-orders.ts:7-25](file://src/hooks/use-shopify-orders.ts#L7-L25)
+- [orders.tsx:122-271](file://src/app/(app)/orders.tsx#L122-L271)
 
-### Shopify Access Token Management
-- Purpose: Retrieve the encrypted Shopify access token from marketplace connections
-- Behavior:
-  - Reads user access token
-  - Calls getMarketplaceConnections to find a Shopify connection
-  - Exposes isConnected flag based on presence of encrypted_access_token
-  - Supports refetch to refresh connection state
+### Enhanced Filtering System
+The filtering system provides multiple ways to narrow down orders:
+
+- **Month-based filtering**: Extracts months from order dates and creates selectable options
+- **Date range filtering**: Allows custom start and end date selection with validation
+- **Channel filtering**: Filters by specific marketplace (Shopify, Daraz, etc.)
+- **Combined filtering**: All filters work together for precise order selection
 
 ```mermaid
-sequenceDiagram
-participant UI as "UI"
-participant HookToken as "useShopifyAccessToken"
-participant API as "lib/api.ts"
-participant Backend as "Backend /marketplace/connections"
-UI->>HookToken : Mount
-HookToken->>API : getMarketplaceConnections(userToken)
-API->>Backend : GET /marketplace/connections
-Backend-->>API : MarketplaceConnection[]
-API-->>HookToken : List of connections
-HookToken->>HookToken : Find Shopify connection
-HookToken-->>UI : shopifyAccessToken, isConnected
+flowchart TD
+FilterStart["Apply Filters"] --> ChannelFilter["Filter by Channel"]
+ChannelFilter --> MonthFilter["Filter by Month"]
+MonthFilter --> DateRangeFilter["Filter by Date Range"]
+DateRangeFilter --> CombineResults["Combine Results"]
+CombineResults --> FinalList["Final Order List"]
 ```
 
 **Diagram sources**
-- [use-shopify-access-token.ts:14-27](file://src/hooks/use-shopify-access-token.ts#L14-L27)
-- [api.ts:368-372](file://src/lib/api.ts#L368-L372)
+- [orders.tsx:174-201](file://src/app/(app)/orders.tsx#L174-L201)
 
 **Section sources**
-- [use-shopify-access-token.ts:6-29](file://src/hooks/use-shopify-access-token.ts#L6-L29)
-- [api.ts:368-372](file://src/lib/api.ts#L368-L372)
+- [orders.tsx:174-201](file://src/app/(app)/orders.tsx#L174-L201)
 
-### API Layer and ShopifyOrder Model
-- Headers:
-  - shopifyHeaders combines Authorization and x-shopify-access-token for secure Shopify calls
-- Endpoints:
-  - getShopifyOrders calls /shopify/get_all_orders and returns an array of ShopifyOrder
-- Model:
-  - ShopifyOrder includes id, name, timestamps, financial and fulfillment statuses, totals, currency, customer info, and lineItems
+### Caching Mechanisms
+The system implements intelligent caching to improve performance:
 
-```mermaid
-classDiagram
-class ShopifyOrder {
-+string id
-+string name
-+string createdAt
-+string updatedAt
-+string processedAt
-+string displayFinancialStatus
-+string displayFulfillmentStatus
-+string totalAmount
-+string currencyCode
-+Customer customer
-+LineItem[] lineItems
-}
-class LineItem {
-+string id
-+string title
-+number quantity
-+string price
-+string currency
-}
-class Customer {
-+string id
-+string displayName
-+string email
-}
-ShopifyOrder --> Customer : "has"
-ShopifyOrder --> LineItem : "contains"
-```
-
-**Diagram sources**
-- [api.ts:1058-1070](file://src/lib/api.ts#L1058-L1070)
+- **Per-channel caching**: Orders are cached separately for each marketplace
+- **Automatic cache usage**: Cached orders are displayed immediately while fresh data loads
+- **Cache invalidation**: Cache is refreshed when connections change or manual refresh occurs
+- **Memory management**: Uses Map data structure for efficient cache operations
 
 **Section sources**
-- [api.ts:1072-1093](file://src/lib/api.ts#L1072-L1093)
-- [api.ts:1058-1070](file://src/lib/api.ts#L1058-L1070)
+- [orders.tsx:38-39](file://src/app/(app)/orders.tsx#L38-L39)
+- [orders.tsx:221-237](file://src/app/(app)/orders.tsx#L221-L237)
 
-### Channel Identity
-- Channels define platform identities and benefits; Shopify is listed with its benefit description
-- Used to identify and label Shopify-related features consistently
+### Real-time Status Updates
+The UI provides immediate feedback during operations:
 
-**Section sources**
-- [channels.ts:1-25](file://src/constants/channels.ts#L1-L25)
-
-## Dependency Analysis
-- useShopifyOrders depends on:
-  - useAuth (via useAuth import)
-  - useShopifyAccessToken
-  - lib/api.ts for getShopifyOrders and ApiError
-- useShopifyAccessToken depends on:
-  - useAuth
-  - lib/api.ts for getMarketplaceConnections
-- lib/api.ts depends on:
-  - constants/api.ts for API_BASE_URL
-  - Platform detection for streaming behavior (not directly used here but part of the module)
-
-```mermaid
-graph LR
-useShopifyOrders["useShopifyOrders"] --> useShopifyAccessToken["useShopifyAccessToken"]
-useShopifyOrders --> api_ts["lib/api.ts"]
-useShopifyAccessToken --> api_ts
-api_ts --> constants_api["constants/api.ts"]
-```
-
-**Diagram sources**
-- [use-shopify-orders.ts:1-5](file://src/hooks/use-shopify-orders.ts#L1-L5)
-- [use-shopify-access-token.ts:1-4](file://src/hooks/use-shopify-access-token.ts#L1-L4)
-- [api.ts:1-3](file://src/lib/api.ts#L1-L3)
+- **Loading states**: Shows appropriate loading indicators during data fetch
+- **Update notifications**: Displays "Updating orders..." during refresh operations
+- **Error states**: Provides clear error messages with retry options
+- **Optimistic updates**: Shows cached data immediately while refreshing
 
 **Section sources**
-- [use-shopify-orders.ts:1-5](file://src/hooks/use-shopify-orders.ts#L1-L5)
-- [use-shopify-access-token.ts:1-4](file://src/hooks/use-shopify-access-token.ts#L1-L4)
-- [api.ts:1-3](file://src/lib/api.ts#L1-L3)
+- [orders.tsx:536-552](file://src/app/(app)/orders.tsx#L536-L552)
 
-## Performance Considerations
-- Avoid redundant requests:
-  - The hooks guard against unnecessary calls when tokens are missing or still loading
-- Refetch strategy:
-  - Use the provided refetch functions to trigger fresh data loads after connection changes or manual refresh actions
-- Error resilience:
-  - Centralized error extraction ensures consistent messaging without heavy client-side parsing overhead
-- Streaming readiness:
-  - The API module supports SSE for long-running operations; while not used for orders currently, this pattern can be extended for real-time order events
+### Multi-Marketplace Order Detail View
+The order detail screen handles different marketplace formats:
 
-[No sources needed since this section provides general guidance]
-
-## Troubleshooting Guide
-Common issues and resolutions:
-- No Shopify connection:
-  - Ensure getMarketplaceConnections returns a Shopify entry with encrypted_access_token
-  - The hook will set orders to an empty array and show connection status
-- Network failures:
-  - ApiError wraps network errors with a friendly message; verify API_BASE_URL and connectivity
-- Authentication problems:
-  - Confirm user access token is present and valid; the hooks short-circuit if missing
-- Request failures:
-  - Inspect ApiError.status and message; handle non-2xx responses appropriately in UI
-
-Operational tips:
-- Use refetch to revalidate after reconnecting stores or changing environment settings
-- Log errors at the hook level for debugging; centralize logs where possible
+- **Unified interface**: Same UI regardless of marketplace source
+- **Format adaptation**: Handles different field names and structures between marketplaces
+- **Rich display**: Shows order details, items, shipping information, and status
+- **Marketplace-specific features**: Displays unique fields like buyer notes for Daraz orders
 
 **Section sources**
-- [use-shopify-orders.ts:15-24](file://src/hooks/use-shopify-orders.ts#L15-L24)
-- [use-shopify-access-token.ts:14-27](file://src/hooks/use-shopify-access-token.ts#L14-L27)
+- [order-detail.tsx:19-75](file://src/app/(app)/order-detail.tsx#L19-L75)
+
+## Multi-Marketplace Support
+
+### Supported Marketplaces
+The system currently supports:
+- **Shopify**: Full order management with line items, customer details, and fulfillment status
+- **Daraz**: Comprehensive order handling with shipping addresses, buyer notes, and payment methods
+- **Extensible architecture**: Designed to easily add new marketplace support
+
+### Marketplace Connection Management
+- **Automatic discovery**: Detects connected marketplaces and their status
+- **Token management**: Securely handles encrypted access tokens for each marketplace
+- **Connection validation**: Verifies marketplace connections before attempting API calls
+- **Error recovery**: Gracefully handles connection failures with user feedback
+
+### Unified Data Model
+The system normalizes marketplace-specific data into common structures:
+- **Order abstraction**: Common order properties across all marketplaces
+- **Line item standardization**: Unified product and quantity representation
+- **Customer information**: Consistent customer data format
+- **Status mapping**: Maps marketplace-specific statuses to common states
+
+**Section sources**
+- [channels.ts:1-26](file://src/constants/channels.ts#L1-L26)
+- [api.ts:1092-1104](file://src/lib/api.ts#L1092-L1104)
+- [api.ts:1140-1166](file://src/lib/api.ts#L1140-L1166)
+
+## Enhanced Filtering and Search
+
+### Month-Based Filtering
+- **Automatic extraction**: Parses order dates to extract year-month combinations
+- **Dynamic options**: Creates filterable month options based on actual order data
+- **User-friendly labels**: Formats month selections for easy understanding
+- **Default behavior**: "All time" option shows all orders without month filtering
+
+### Custom Date Range Filtering
+- **Flexible date selection**: Users can select specific start and end dates
+- **Validation**: Ensures logical date ranges and proper formatting
+- **Real-time filtering**: Updates order list immediately when date range changes
+- **Clear functionality**: Easy way to reset date filters
+
+### Combined Filtering Logic
+- **Hierarchical filtering**: Channel → Month → Date Range
+- **Performance optimization**: Efficient filtering algorithms for large order sets
+- **Visual feedback**: Clear indication of active filters and results count
+- **Reset capabilities**: Easy ways to clear individual or all filters
+
+**Section sources**
+- [orders.tsx:107-120](file://src/app/(app)/orders.tsx#L107-L120)
+- [orders.tsx:174-201](file://src/app/(app)/orders.tsx#L174-L201)
+- [orders.tsx:374-498](file://src/app/(app)/orders.tsx#L374-L498)
+
+## Performance Optimizations
+
+### Caching Strategy
+- **In-memory caching**: Uses JavaScript Map for fast order storage and retrieval
+- **Per-channel isolation**: Separate caches for each marketplace prevent data conflicts
+- **Automatic population**: Cache is populated during initial order loading
+- **Selective invalidation**: Cache updates only when necessary
+
+### Request Optimization
+- **Concurrent requests**: Loads multiple marketplace orders simultaneously
+- **Conditional loading**: Only requests data for connected marketplaces
+- **Cancellation support**: Prevents memory leaks with request cancellation
+- **Error resilience**: Continues loading other marketplaces if one fails
+
+### UI Performance
+- **Memoized computations**: Uses useMemo for expensive filtering operations
+- **Efficient rendering**: Optimizes list rendering with proper key management
+- **Progressive loading**: Shows cached data immediately while refreshing
+- **Memory management**: Proper cleanup of event listeners and timers
+
+**Section sources**
+- [orders.tsx:38-39](file://src/app/(app)/orders.tsx#L38-L39)
+- [orders.tsx:174-201](file://src/app/(app)/orders.tsx#L174-L201)
+- [orders.tsx:216-271](file://src/app/(app)/orders.tsx#L216-L271)
+
+## Error Handling and Recovery
+
+### Comprehensive Error Management
+- **Network errors**: Handles connectivity issues with user-friendly messages
+- **Authentication errors**: Manages expired or invalid tokens gracefully
+- **Marketplace-specific errors**: Provides context-aware error messages
+- **Fallback strategies**: Attempts alternative approaches when primary methods fail
+
+### User Experience Enhancements
+- **Clear error messages**: Translates technical errors into understandable language
+- **Retry mechanisms**: Provides easy ways to retry failed operations
+- **Graceful degradation**: Shows partial data when some marketplaces fail
+- **Connection prompts**: Guides users to reconnect when needed
+
+### Logging and Debugging
+- **Structured logging**: Logs important events for debugging purposes
+- **Error tracking**: Captures detailed error information for troubleshooting
+- **Performance monitoring**: Tracks loading times and operation success rates
+- **Development tools**: Includes console logs for development debugging
+
+**Section sources**
+- [orders.tsx:249-256](file://src/app/(app)/orders.tsx#L249-L256)
+- [orders.tsx:554-565](file://src/app/(app)/orders.tsx#L554-L565)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 ## Conclusion
-The current implementation provides robust order retrieval for Shopify-connected stores through well-structured hooks and a typed API layer. It handles authentication, connection discovery, and error normalization effectively. To extend order management capabilities (creation, modification, cancellation, fulfillment updates, events, synchronization), follow the established patterns: add new API functions in lib/api.ts, create hooks for state and lifecycle management, and integrate them into UI components with consistent error handling and refetch strategies.
+The enhanced order management system provides comprehensive multi-marketplace support with advanced filtering, caching, and real-time updates. The implementation successfully addresses the expanded order management capabilities including multi-marketplace support, enhanced filtering with month-based selection and custom date ranges, real-time order status updates, and improved UI with optimistic updates and caching mechanisms.
 
-[No sources needed since this section summarizes without analyzing specific files]
+The system maintains backward compatibility while adding powerful new features that significantly improve the user experience for managing orders across multiple sales channels. The modular architecture ensures easy extensibility for additional marketplaces and features while maintaining consistent performance and reliability standards.
+
+Future enhancements could include real-time WebSocket updates for live order status changes, advanced analytics and reporting capabilities, bulk order operations, and integration with external fulfillment systems. The current foundation provides a solid base for these potential improvements while maintaining the clean, maintainable code structure established in the existing implementation.

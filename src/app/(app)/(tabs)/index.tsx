@@ -255,7 +255,7 @@ export default function DashboardScreen() {
                     onPress={() =>
                       router.push({
                         pathname: '/product-detail',
-                        params: { id: product.sku, source: 'daraz', tab: 'finance' },
+                        params: { id: product.sku, source: 'daraz', tab: 'details' },
                       })
                     }
                   />

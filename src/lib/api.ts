@@ -125,7 +125,7 @@ async function consumeSSEFromFetch(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  for (;;) {
+  for (; ;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -260,13 +260,14 @@ function streamToResult<T>(
   init: RequestInit,
   onEvent: (event: string, data: unknown) => void,
   fallbackErrorMessage: string,
+  terminalEvent: string = "complete",
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;
 
     requestSSE(path, init, (event, data) => {
       if (settled) return;
-      if (event === "complete") {
+      if (event === terminalEvent) {
         settled = true;
         resolve(data as T);
       } else if (event === "error") {
@@ -785,10 +786,10 @@ function normalizeDarazCategoryAttributes(response: unknown): DarazCategoryAttri
     if (!name) return [];
     const options = Array.isArray(item.options)
       ? item.options.flatMap((option) =>
-          option && typeof option === "object" && typeof (option as Record<string, unknown>).name === "string"
-            ? [{ name: String((option as Record<string, unknown>).name) }]
-            : [],
-        )
+        option && typeof option === "object" && typeof (option as Record<string, unknown>).name === "string"
+          ? [{ name: String((option as Record<string, unknown>).name) }]
+          : [],
+      )
       : [];
     return [{
       id: typeof item.id === "string" || typeof item.id === "number" ? item.id : null,
@@ -1951,6 +1952,13 @@ export function getSettlementReconciliation(
 // Product Financials Module
 // ---------------------------------------------------------------------------
 
+export type ProductOrderDetail = {
+  order_no: string;
+  date: string;
+  price: number;
+  orderItem_status: string;
+};
+
 export type ProductFinancials = {
   sku: string;
   product_name: string;
@@ -1968,6 +1976,7 @@ export type ProductFinancials = {
   net_profit: number;
   profit_margin: number;
   order_numbers: string[];
+  orders: ProductOrderDetail[];
 };
 
 export type DailyProductTrend = {
@@ -2108,4 +2117,114 @@ export function deleteProductExpense(
     method: 'DELETE',
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Keyword Analysis (Comparative SEO)
+// ---------------------------------------------------------------------------
+
+export type KeywordAnalysisRequest = {
+  item_id: number;
+  stream?: boolean;
+};
+
+export type SeedKeyword = {
+  keyword: string;
+  source: string;
+};
+
+export type WinningKeyword = {
+  keyword: string;
+  keyword_variants: string[];
+  relevance_score: number;
+  competition_count: number;
+  winning_score: number;
+  matching_products: number;
+  cluster_size: number;
+  /** Backend returns an array of product name strings. */
+  example_products: string[];
+};
+
+export type RepeatProduct = {
+  item_id: string;
+  name: string;
+  image?: string;
+  url?: string;
+  review?: string;
+  ratingScore?: string;
+  unitSold?: string;
+  appearance_count: number;
+  keywords_matched?: string[];
+};
+
+export type UserProductInfo = {
+  item_id: number;
+  title: string;
+  description: string;
+  price: number | null;
+  /** Daraz primary category id (numeric). */
+  category: number | string | null;
+};
+
+export type KeywordAnalysisResult = {
+  user_product: UserProductInfo;
+  seed_keywords: SeedKeyword[];
+  total_catalog_size: number;
+  total_relevant_products: number;
+  winning_keywords: WinningKeyword[];
+  repeat_products: RepeatProduct[];
+  iterations_run: number;
+};
+
+export type KeywordAnalysisProgressEvent = {
+  stage: string;
+  [key: string]: unknown;
+};
+
+export type KeywordAnalysisStreamHandlers = {
+  onProgress?: (event: KeywordAnalysisProgressEvent) => void;
+  onProductFetched?: (data: { user_product: UserProductInfo }) => void;
+  onSeedKeywords?: (data: { seed_keywords: SeedKeyword[]; count: number }) => void;
+  onCatalogBuilt?: (data: { total_catalog_size: number }) => void;
+  onSimilarityFilterDone?: (data: { relevant_products: number }) => void;
+  onKeywordsMined?: (data: { candidate_keywords: number }) => void;
+  onKeywordsClustered?: (data: { cluster_count: number }) => void;
+  onGraphBuilt?: (data: { community_count: number }) => void;
+  onClustersScored?: (data: { scored_count: number }) => void;
+  onExpansionDone?: (data: { iterations_run: number; final_catalog_size: number }) => void;
+};
+
+export function analyzeKeywords(
+  accessToken: string,
+  darazAccessToken: string,
+  data: KeywordAnalysisRequest,
+  handlers?: KeywordAnalysisStreamHandlers,
+): Promise<KeywordAnalysisResult> {
+  console.log("item id: ", Math.trunc(data.item_id))
+  return streamToResult<KeywordAnalysisResult>(
+    "/daraz/keyword-analysis",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "x-daraz-access-token": darazAccessToken,
+      },
+      body: JSON.stringify({ item_id: Math.trunc(data.item_id), stream: true }),
+    },
+    (event, payload) => {
+      if (event === "progress") handlers?.onProgress?.(payload as KeywordAnalysisProgressEvent);
+      else if (event === "product_fetched") handlers?.onProductFetched?.(payload as { user_product: UserProductInfo });
+      else if (event === "seed_keywords") handlers?.onSeedKeywords?.(payload as { seed_keywords: SeedKeyword[]; count: number });
+      else if (event === "catalog_built") handlers?.onCatalogBuilt?.(payload as { total_catalog_size: number });
+      else if (event === "similarity_filter_done") handlers?.onSimilarityFilterDone?.(payload as { relevant_products: number });
+      else if (event === "keywords_mined") handlers?.onKeywordsMined?.(payload as { candidate_keywords: number });
+      else if (event === "keywords_clustered") handlers?.onKeywordsClustered?.(payload as { cluster_count: number });
+      else if (event === "graph_built") handlers?.onGraphBuilt?.(payload as { community_count: number });
+      else if (event === "clusters_scored") handlers?.onClustersScored?.(payload as { scored_count: number });
+      else if (event === "expansion_done") handlers?.onExpansionDone?.(payload as { iterations_run: number; final_catalog_size: number });
+    },
+    "Could not analyze keywords for this product. Please try again.",
+    "result",
+  );
 }
