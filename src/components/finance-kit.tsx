@@ -608,6 +608,108 @@ const comparisonStyles = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
+// Top Product Card (compact financial summary for dashboard preview)
+// ---------------------------------------------------------------------------
+
+export function TopProductCard({
+  rank,
+  product,
+  onPress,
+}: {
+  rank: number;
+  product: {
+    sku: string;
+    product_name: string;
+    units_sold: number;
+    gross_revenue: number;
+    net_profit: number;
+    profit_margin: number;
+  };
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const profitColor = product.net_profit >= 0 ? FinanceColors.profit : FinanceColors.fees;
+  const marginColor = product.profit_margin > 20 ? FinanceColors.revenue : product.profit_margin > 10 ? FinanceColors.warning : FinanceColors.fees;
+
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [topProductStyles.card, { borderColor: theme.border, backgroundColor: theme.surfaceContainerLowest }, pressed && topProductStyles.pressed]}>
+      <View style={topProductStyles.header}>
+        <View style={[topProductStyles.rankBadge, { backgroundColor: theme.primary }]}>
+          <ThemedText type="labelMd" style={{ color: theme.onPrimary }}>#{rank}</ThemedText>
+        </View>
+        <View style={topProductStyles.nameWrap}>
+          <ThemedText type="bodyLg" numberOfLines={1} style={topProductStyles.name}>{product.product_name || product.sku}</ThemedText>
+          <ThemedText type="bodySm" themeColor="textSecondary">{product.units_sold} units sold</ThemedText>
+        </View>
+      </View>
+      <View style={topProductStyles.metricsRow}>
+        <View style={topProductStyles.metric}>
+          <ThemedText type="bodySm" themeColor="textSecondary">Revenue</ThemedText>
+          <ThemedText type="bodyLg" style={{ color: FinanceColors.primary }}>{formatPKR(product.gross_revenue)}</ThemedText>
+        </View>
+        <View style={[topProductStyles.divider, { backgroundColor: theme.border }]} />
+        <View style={topProductStyles.metric}>
+          <ThemedText type="bodySm" themeColor="textSecondary">Profit</ThemedText>
+          <ThemedText type="bodyLg" style={{ color: profitColor }}>{formatPKR(product.net_profit)}</ThemedText>
+        </View>
+        <View style={[topProductStyles.divider, { backgroundColor: theme.border }]} />
+        <View style={[topProductStyles.metric, topProductStyles.metricLast]}>
+          <ThemedText type="bodySm" themeColor="textSecondary">Margin</ThemedText>
+          <ThemedText type="bodyLg" style={{ color: marginColor }}>{formatPercent(product.profit_margin)}</ThemedText>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const topProductStyles = StyleSheet.create({
+  card: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameWrap: {
+    flex: 1,
+    gap: 1,
+  },
+  name: {
+    fontWeight: '600',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metric: {
+    flex: 1,
+    gap: 2,
+  },
+  metricLast: {
+    alignItems: 'flex-end',
+  },
+  divider: {
+    width: 1,
+    height: 28,
+    marginHorizontal: Spacing.two,
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Date Range Picker (custom start/end date selection)
 // ---------------------------------------------------------------------------
 

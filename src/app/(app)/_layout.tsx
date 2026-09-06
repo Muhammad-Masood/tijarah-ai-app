@@ -13,6 +13,7 @@ export default function AppLayout() {
       <Stack.Screen name="profile" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="product-detail" />
+      <Stack.Screen name="product-financials" />
       <Stack.Screen name="product-form" />
       <Stack.Screen name="product-hunting-tool" />
       <Stack.Screen name="product-recommendations" />

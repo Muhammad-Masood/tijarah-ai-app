@@ -17,6 +17,7 @@ export function CatalogProductRow({
   onPress: () => void;
   variant?: 'list' | 'grid';
 }) {
+  console.log(product)
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const press = useSharedValue(0);
@@ -25,8 +26,8 @@ export function CatalogProductRow({
     transform: [{ scale: 1 - press.value * 0.02 }],
   }));
 
-  const eyebrow = (product.brand_name?.trim() || product.seller_name?.trim())?.toUpperCase();
-  const parsedRating = product.rating_score ? Number.parseFloat(product.rating_score) : null;
+  const eyebrow = (product.seller_name?.trim() || product.brand_name?.trim())?.toUpperCase();
+  const parsedRating = product.rating_score ? Number(Number.parseFloat(product.rating_score).toFixed(2)) : null;
   const hasValidRating = Number.isFinite(parsedRating) && parsedRating !== null;
   const filledStars = hasValidRating ? Math.min(5, Math.max(0, Math.round(parsedRating))) : 0;
 
@@ -72,7 +73,7 @@ export function CatalogProductRow({
           </ThemedText>
         ) : null}
 
-        <ThemedText type="bodyMd" numberOfLines={2} style={styles.gridTitle}>
+        <ThemedText type="bodyMd" numberOfLines={2} style={[styles.gridTitle, { color: theme.text }]}>
           {product.name}
         </ThemedText>
 
@@ -263,7 +264,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 13,
     lineHeight: 17,
-    color: '#212121',
   },
   reviewRow: {
     flexDirection: 'row',
@@ -281,12 +281,10 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 11,
-    color: '#757575',
     flexShrink: 1,
   },
   soldText: {
     fontSize: 11,
-    color: '#757575',
     marginLeft: 6,
     flexShrink: 0,
   },

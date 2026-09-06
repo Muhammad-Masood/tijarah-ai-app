@@ -22,6 +22,9 @@
 - [use-finance-profit.ts](file://src/hooks/use-finance-profit.ts)
 - [use-finance-cashflow.ts](file://src/hooks/use-finance-cashflow.ts)
 - [use-finance-settlement.ts](file://src/hooks/use-finance-settlement.ts)
+- [use-expenses.ts](file://src/hooks/use-expenses.ts)
+- [expenses.tsx](file://src/app/(app)/expenses.tsx)
+- [expense-form.tsx](file://src/app/(app)/expense-form.tsx)
 - [finance-kit.tsx](file://src/components/finance-kit.tsx)
 - [finance-charts.tsx](file://src/components/finance-charts.tsx)
 - [api.ts](file://src/lib/api.ts)
@@ -29,11 +32,11 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive documentation for seven new finance-specific hooks
-- Updated architecture overview to include finance module integration
-- Enhanced data fetching patterns section with finance examples
-- Added finance-specific state management patterns and error handling
-- Included finance component integration examples
+- Added comprehensive documentation for the new use-expenses custom hook providing CRUD operations for expense data management
+- Updated architecture overview to include expense management integration
+- Enhanced data fetching patterns section with expense management examples
+- Added expense-specific state management patterns and optimistic UI updates
+- Included expense component integration examples with product selection and platform filtering
 
 ## Table of Contents
 1. Introduction
@@ -42,18 +45,20 @@
 4. Architecture Overview
 5. Detailed Component Analysis
 6. Finance Module Hooks
-7. Dependency Analysis
-8. Performance Considerations
-9. Troubleshooting Guide
-10. Conclusion
-11. Appendices
+7. Expense Management Hook
+8. Dependency Analysis
+9. Performance Considerations
+10. Troubleshooting Guide
+11. Conclusion
+12. Appendices
 
 ## Introduction
 This document explains the custom hooks and state management patterns used across the application, with a focus on:
 - Theme management (light/dark mode) via use-theme and use-color-scheme
 - Utility hooks for animations (use-stagger) and search (use-catalog-search)
 - A consistent data fetching pattern for API interactions
-- **New**: Comprehensive finance module hooks for Daraz marketplace financial data
+- Comprehensive finance module hooks for Daraz marketplace financial data
+- **New**: Expense management hook (use-expenses) providing full CRUD operations with optimistic UI updates
 - State synchronization strategies and performance optimizations
 - Error handling and loading states
 - Guidance for creating new custom hooks, testing them, and debugging state issues
@@ -63,7 +68,8 @@ The hooks live under src/hooks and are organized by feature or concern:
 - Theming: use-theme, use-color-scheme (platform-specific), theme constants
 - Utilities: use-stagger for animation timing
 - Data fetching: use-auth, use-products, use-product, marketplace token resolvers, platform product fetchers, catalog search
-- **Finance Module**: Seven specialized hooks for financial dashboard, transactions, payouts, fees, profit analytics, cash flow, and settlement reconciliation
+- Finance Module: Seven specialized hooks for financial dashboard, transactions, payouts, fees, profit analytics, cash flow, and settlement reconciliation
+- **Expense Management**: Dedicated hook for product expense tracking with CRUD operations and optimistic UI updates
 - API layer: centralized request helpers, error types, streaming support
 
 ```mermaid
@@ -95,6 +101,11 @@ F5["use-finance-profit.ts"]
 F6["use-finance-cashflow.ts"]
 F7["use-finance-settlement.ts"]
 end
+subgraph "Expense Management"
+E1["use-expenses.ts"]
+E2["expenses.tsx"]
+E3["expense-form.tsx"]
+end
 L1["lib/api.ts"]
 T1 --> T2
 T1 --> T3
@@ -115,6 +126,10 @@ F4 --> M1
 F5 --> M1
 F6 --> M1
 F7 --> M1
+E1 --> A1
+E1 --> L1
+E2 --> E1
+E3 --> E1
 F1 --> L1
 F2 --> L1
 F3 --> L1
@@ -142,9 +157,12 @@ F7 --> L1
 - [use-finance-transactions.ts:25-85](file://src/hooks/use-finance-transactions.ts#L25-L85)
 - [use-finance-payouts.ts:23-77](file://src/hooks/use-finance-payouts.ts#L23-L77)
 - [use-finance-fees.ts:23-77](file://src/hooks/use-finance-fees.ts#L23-L77)
-- [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-L77)
+- [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-77)
 - [use-finance-cashflow.ts:18-69](file://src/hooks/use-finance-cashflow.ts#L18-L69)
 - [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 **Section sources**
@@ -168,6 +186,9 @@ F7 --> L1
 - [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-L77)
 - [use-finance-cashflow.ts:18-69](file://src/hooks/use-finance-cashflow.ts#L18-L69)
 - [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 ## Core Components
@@ -184,7 +205,8 @@ F7 --> L1
   - use-products and use-product follow a consistent pattern: guard on accessToken, manage isLoading/error, expose refetch.
   - Marketplace token resolvers (Daraz/Shopify) centralize connection checks and expose isConnected/loading/error.
   - Platform product hooks map raw responses into a unified Product shape and de-duplicate items.
-- **Finance Module**: Seven specialized hooks providing comprehensive financial data management for Daraz marketplace integration.
+- Finance Module: Seven specialized hooks providing comprehensive financial data management for Daraz marketplace integration.
+- **Expense Management**: Dedicated hook providing full CRUD operations for product expenses with optimistic UI updates and platform filtering.
 
 **Section sources**
 - [use-theme.ts:9-14](file://src/hooks/use-theme.ts#L9-L14)
@@ -198,6 +220,7 @@ F7 --> L1
 - [use-shopify-access-token.ts:6-30](file://src/hooks/use-shopify-access-token.ts#L6-L30)
 - [use-daraz-products.ts:120-183](file://src/hooks/use-daraz-products.ts#L120-L183)
 - [use-shopify-products.ts:27-49](file://src/hooks/use-shopify-products.ts#L27-L49)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
 
 ## Architecture Overview
 The application uses a layered approach:
@@ -205,34 +228,31 @@ The application uses a layered approach:
 - Hooks depend on a shared authentication context for tokens.
 - Data fetching hooks call a centralized API module that handles errors, headers, and streaming where needed.
 - Marketplace integrations resolve per-platform tokens before fetching products.
-- **Finance Module**: Specialized hooks integrate with Daraz financial APIs using dual authentication (user access token + Daraz access token).
+- Finance Module: Specialized hooks integrate with Daraz financial APIs using dual authentication (user access token + Daraz access token).
+- **Expense Management**: Dedicated hook integrates with expense APIs using user authentication token and provides optimistic UI updates for better user experience.
 
 ```mermaid
 sequenceDiagram
 participant C as "Component"
-participant H as "Finance Hook"
+participant H as "useExpenses Hook"
 participant A as "use-auth"
-participant T as "use-daraz-access-token"
 participant API as "lib/api.ts"
 C->>H : render()
 H->>A : read accessToken
-H->>T : get darazAccessToken
-alt both tokens available
-H->>API : GET /daraz/financial/*
-API-->>H : financial data | ApiError
-H->>H : set state (data, isLoading, error)
-H-->>C : {data, isLoading, error, refetch}
-else missing tokens
+alt authenticated
+H->>API : GET /expenses (with params)
+API-->>H : expense list | ApiError
+H->>H : set state (expenses, isLoading, error)
+H-->>C : {expenses, isLoading, error, refetch, addExpense, editExpense, removeExpense}
+else not authenticated
 H-->>C : {isLoading : true, error : null}
 end
 ```
 
 **Diagram sources**
-- [use-finance-dashboard.ts:18-75](file://src/hooks/use-finance-dashboard.ts#L18-L75)
-- [use-finance-transactions.ts:25-85](file://src/hooks/use-finance-transactions.ts#L25-L85)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
 - [use-auth.tsx:31-88](file://src/hooks/use-auth.tsx#L31-L88)
-- [use-daraz-access-token.ts:19-65](file://src/hooks/use-daraz-access-token.ts#L19-L65)
-- [api.ts:1723-1816](file://src/lib/api.ts#L1723-L1816)
+- [api.ts:1852-1912](file://src/lib/api.ts#L1852-L1912)
 
 ## Detailed Component Analysis
 
@@ -614,12 +634,104 @@ Analyze --> Result["Return {data, isLoading, error, refetch}"]
 - [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
 - [api.ts:1807-1816](file://src/lib/api.ts#L1807-L1816)
 
+## Expense Management Hook
+
+### Expense CRUD Hook: useExpenses
+- Provides complete CRUD operations for product expense management
+- Implements optimistic UI updates for immediate feedback without waiting for server response
+- Supports platform-specific filtering (Daraz, Shopify, All) and SKU-based filtering
+- Integrates with authentication system for secure expense operations
+- Returns structured expense data with loading states and error handling
+
+```mermaid
+flowchart TD
+Start(["Mount with params"]) --> Auth["Get user access token"]
+Auth --> Ready{"Token available?"}
+Ready -- No --> Loading["Set loading state"]
+Ready -- Yes --> Fetch["Call getProductExpenses"]
+Fetch --> Success{"Request successful?"}
+Success -- Yes --> SetData["Set expenses data"]
+Success -- No --> SetError["Set error state"]
+SetData --> Operations["Expose CRUD operations"]
+SetError --> Operations
+Operations --> Complete["Return {expenses, isLoading, error, refetch, addExpense, editExpense, removeExpense}"]
+Loading --> Complete
+```
+
+**Diagram sources**
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [api.ts:1852-1912](file://src/lib/api.ts#L1852-L1912)
+
+**Section sources**
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [api.ts:1852-1912](file://src/lib/api.ts#L1852-L1912)
+
+### Expense List Component: ExpensesScreen
+- Displays filtered expense list with platform-specific views
+- Shows total expense calculations and platform filtering options
+- Integrates with product catalogs for image display and SKU lookup
+- Provides delete functionality with confirmation dialogs
+- Uses finance kit components for consistent styling and empty states
+
+```mermaid
+flowchart TD
+Start(["Render ExpensesScreen"]) --> Filter["Apply platform filter"]
+Filter --> Fetch["Load expenses with useExpenses"]
+Fetch --> Display{"Has expenses?"}
+Display -- No --> Empty["Show empty state"]
+Display -- Yes --> List["Render expense list"]
+List --> Actions["Handle delete/edit actions"]
+Actions --> Update["Optimistic UI updates"]
+Empty --> End(["Complete"])
+Update --> End
+```
+
+**Diagram sources**
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+
+**Section sources**
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+
+### Expense Form Component: ExpenseFormScreen
+- Provides comprehensive form for creating and editing expenses
+- Includes product picker modal with search functionality
+- Supports platform-specific product selection (Daraz/Shopify)
+- Implements form validation with field-level error handling
+- Integrates with product catalogs for real-time product availability
+
+```mermaid
+flowchart TD
+Start(["Render ExpenseForm"]) --> Init["Initialize form state"]
+Init --> Platform["Select platform"]
+Platform --> Product["Choose product from catalog"]
+Product --> Details["Enter expense details"]
+Details --> Validate["Validate form fields"]
+Validate --> Save{"Valid?"}
+Save -- No --> ShowErrors["Display field errors"]
+Save -- Yes --> Submit["Submit expense"]
+Submit --> Optimistic["Optimistic UI update"]
+Optimistic --> Navigate["Navigate back"]
+ShowErrors --> End(["Complete"])
+Navigate --> End
+```
+
+**Diagram sources**
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+
+**Section sources**
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+
 ## Dependency Analysis
 - Theming depends on use-color-scheme and theme constants.
 - Data hooks depend on use-auth for tokens and lib/api for network calls.
 - Marketplace product hooks depend on their respective token resolvers and the API layer.
 - Catalog search depends on auth and API, with local deduplication and pagination logic.
-- **Finance Module**: All finance hooks depend on both user authentication and Daraz marketplace tokens, with specialized API endpoints for financial data.
+- Finance Module: All finance hooks depend on both user authentication and Daraz marketplace tokens, with specialized API endpoints for financial data.
+- **Expense Management**: The use-expenses hook depends on user authentication and provides direct API integration for expense operations with optimistic UI updates.
 
 ```mermaid
 graph LR
@@ -658,6 +770,10 @@ useFinanceCashflow --> api
 useFinanceSettlement["use-finance-settlement.ts"] --> useAuth
 useFinanceSettlement --> darazTok
 useFinanceSettlement --> api
+useExpenses["use-expenses.ts"] --> useAuth
+useExpenses --> api
+expensesScreen["expenses.tsx"] --> useExpenses
+expenseForm["expense-form.tsx"] --> useExpenses
 ```
 
 **Diagram sources**
@@ -680,6 +796,9 @@ useFinanceSettlement --> api
 - [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-L77)
 - [use-finance-cashflow.ts:18-69](file://src/hooks/use-finance-cashflow.ts#L18-L69)
 - [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 **Section sources**
@@ -699,29 +818,37 @@ useFinanceSettlement --> api
 - [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-L77)
 - [use-finance-cashflow.ts:18-69](file://src/hooks/use-finance-cashflow.ts#L18-L69)
 - [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 ## Performance Considerations
 - Avoid redundant requests:
   - Data hooks wait for accessToken before firing requests.
   - Marketplace product hooks gate on token resolution completion.
-  - **Finance hooks** implement dual token validation before making financial API calls.
+  - Finance hooks implement dual token validation before making financial API calls.
+  - **Expense hook** implements efficient filtering and caching for expense lists.
 - Prevent race conditions:
   - use-catalog-search uses requestId refs to ignore stale responses.
   - Data hooks use cancellation flags to avoid state updates after unmount.
-  - **Finance hooks** use cancellation patterns specific to financial data consistency.
+  - Finance hooks use cancellation patterns specific to financial data consistency.
+  - **Expense hook** uses optimistic updates to prevent UI flickering during mutations.
 - Minimize re-renders:
   - Memoize derived values (e.g., suggested prompts) where applicable.
   - Keep stable callbacks for refetch to avoid unnecessary effect triggers.
-  - **Finance components** provide optimized chart rendering with memoization.
+  - Finance components provide optimized chart rendering with memoization.
+  - **Expense components** use useMemo for expensive calculations like total amounts and product image lookups.
 - Respect accessibility:
   - use-stagger skips animations when reduced motion is enabled.
 - **Finance-specific optimizations**:
   - Efficient date range calculations for financial periods
   - Optimized data transformation for large financial datasets
   - Memory-efficient chart data processing
-
-[No sources needed since this section provides general guidance]
+- **Expense-specific optimizations**:
+  - Optimistic UI updates for immediate user feedback
+  - Efficient product image mapping from multiple marketplaces
+  - Platform-specific filtering without full re-fetching
 
 ## Troubleshooting Guide
 Common issues and how they are handled:
@@ -729,12 +856,13 @@ Common issues and how they are handled:
   - The API layer throws ApiError with human-readable messages extracted from backend error bodies.
 - Unauthenticated requests:
   - Data hooks check for accessToken before calling APIs; if missing, they remain in loading state without firing requests.
-  - **Finance hooks** validate both user and marketplace tokens before financial API calls.
+  - Finance hooks validate both user and marketplace tokens before financial API calls.
+  - **Expense hook** validates authentication before any expense operations.
 - Stale updates:
   - Request IDs and cancellation flags ensure old responses do not overwrite newer state.
 - Missing marketplace connection:
   - Token resolver hooks set isConnected to false and clear products when no connection is found.
-  - **Finance hooks** handle missing Daraz connections gracefully with appropriate error states.
+  - Finance hooks handle missing Daraz connections gracefully with appropriate error states.
 - Web hydration mismatch:
   - use-color-scheme.web delays returning the scheme until after hydration to avoid flash of wrong theme.
 - **Finance-specific issues**:
@@ -742,6 +870,11 @@ Common issues and how they are handled:
   - Currency conversion and formatting issues
   - Large dataset handling for financial reports
   - Settlement discrepancy detection and reporting
+- **Expense-specific issues**:
+  - Product selection validation and platform compatibility
+  - Form validation for expense amounts and categories
+  - Image loading and fallback handling for products
+  - Optimistic update rollback on API failures
 
 **Section sources**
 - [api.ts:5-13](file://src/lib/api.ts#L5-L13)
@@ -759,6 +892,8 @@ Common issues and how they are handled:
 - [use-finance-profit.ts:61-70](file://src/hooks/use-finance-profit.ts#L61-L70)
 - [use-finance-cashflow.ts:54-63](file://src/hooks/use-finance-cashflow.ts#L54-L63)
 - [use-finance-settlement.ts:56-67](file://src/hooks/use-finance-settlement.ts#L56-L67)
+- [use-expenses.ts:68-97](file://src/hooks/use-expenses.ts#L68-L97)
+- [expense-form.tsx:135-172](file://src/app/(app)/expense-form.tsx#L135-L172)
 
 ## Conclusion
 The application employs a consistent, testable pattern for custom hooks:
@@ -766,10 +901,9 @@ The application employs a consistent, testable pattern for custom hooks:
 - Centralize networking and error handling in lib/api.
 - Gate requests on authentication and connection readiness.
 - Provide predictable state shapes with isLoading, error, and refetch for all data hooks.
-- **Enhanced with comprehensive finance module**: Seven specialized hooks providing complete financial data management for Daraz marketplace integration, including dashboard analytics, transaction tracking, payout management, fee analysis, profit monitoring, cash flow tracking, and settlement reconciliation.
+- Enhanced with comprehensive finance module: Seven specialized hooks providing complete financial data management for Daraz marketplace integration, including dashboard analytics, transaction tracking, payout management, fee analysis, profit monitoring, cash flow tracking, and settlement reconciliation.
+- **Added expense management**: Dedicated hook providing full CRUD operations for product expenses with optimistic UI updates, platform filtering, and seamless integration with product catalogs.
 This structure makes it straightforward to add new features, test hooks in isolation, and maintain reliable UX across platforms.
-
-[No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
@@ -777,30 +911,34 @@ This structure makes it straightforward to add new features, test hooks in isola
 Follow these steps to create a new hook aligned with existing patterns:
 - Inputs and options:
   - Accept parameters that affect behavior (e.g., ids, filters, enabled flag).
-  - **For finance hooks**: Include date ranges, pagination parameters, and financial period specifications.
+  - For finance hooks: Include date ranges, pagination parameters, and financial period specifications.
+  - **For expense-like hooks**: Include filtering parameters and optimistic update options.
 - Dependencies:
   - Use use-auth for tokens when calling protected endpoints.
   - Use marketplace token resolvers if integrating with Daraz/Shopify.
-  - **For finance hooks**: Combine user authentication with marketplace-specific tokens.
+  - For finance hooks: Combine user authentication with marketplace-specific tokens.
+  - **For expense-like hooks**: Use direct authentication without marketplace tokens.
 - State shape:
   - Include data, isLoading, error, and refetch. For lists, include pagination fields as needed.
-  - **For finance hooks**: Include financial metrics, date ranges, and currency formatting.
+  - For finance hooks: Include financial metrics, date ranges, and currency formatting.
+  - **For expense-like hooks**: Include optimistic update state and mutation functions.
 - Effects:
   - Guard effects on required inputs (e.g., accessToken).
   - Use cancellation flags to avoid state updates after unmount.
-  - **For finance hooks**: Implement financial data validation and currency conversion.
+  - For finance hooks: Implement financial data validation and currency conversion.
+  - **For expense-like hooks**: Implement optimistic UI updates with rollback on failure.
 - API calls:
   - Call functions from lib/api and handle ApiError consistently.
-  - **For finance hooks**: Use specialized financial API endpoints with proper authentication headers.
+  - For finance hooks: Use specialized financial API endpoints with proper authentication headers.
+  - **For expense-like hooks**: Use standard REST endpoints with optimistic updates.
 - Cleanup:
   - Close resources (e.g., sockets) in effect cleanup.
 - Testing:
   - Mock use-auth and lib/api functions.
   - Assert state transitions for loading, success, and error paths.
   - For async flows, advance timers or await promises in tests.
-  - **For finance hooks**: Test financial calculations, date range handling, and currency formatting.
-
-[No sources needed since this section provides general guidance]
+  - For finance hooks: Test financial calculations, date range handling, and currency formatting.
+  - **For expense-like hooks**: Test optimistic updates, form validation, and error handling.
 
 ### Example: Building a Paginated List Hook
 Conceptual flow for a new list hook:
@@ -818,43 +956,36 @@ Update --> Return
 Idle --> Return
 ```
 
-[No sources needed since this diagram shows conceptual workflow, not actual code structure]
-
-### Finance Hook Implementation Pattern
-All finance hooks follow a consistent pattern for managing financial data:
+### Expense Hook Implementation Pattern
+All expense-related hooks follow a consistent pattern for managing product expenses:
 
 ```mermaid
 flowchart TD
-Start(["Finance Hook Mount"]) --> GetAuth["Get user access token"]
-GetAuth --> GetMarketplace["Get marketplace access token"]
-GetMarketplace --> Validate{"Both tokens valid?"}
-Validate -- No --> HandleMissing["Handle missing tokens"]
-Validate -- Yes --> FetchData["Call financial API"]
-FetchData --> ProcessData["Process financial data"]
+Start(["Expense Hook Mount"]) --> GetAuth["Get user access token"]
+GetAuth --> Validate{"Token valid?"}
+Validate -- No --> HandleMissing["Handle missing authentication"]
+Validate -- Yes --> FetchData["Call expense API"]
+FetchData --> ProcessData["Process expense data"]
 ProcessData --> SetState["Set state with data"]
-SetState --> Return["Return hook interface"]
+SetState --> Mutations["Expose CRUD operations"]
+Mutations --> Return["Return hook interface"]
 HandleMissing --> Return
 ```
 
 **Diagram sources**
-- [use-finance-dashboard.ts:18-75](file://src/hooks/use-finance-dashboard.ts#L18-L75)
-- [use-finance-transactions.ts:25-85](file://src/hooks/use-finance-transactions.ts#L25-L85)
-- [use-finance-payouts.ts:23-77](file://src/hooks/use-finance-payouts.ts#L23-L77)
-- [use-finance-fees.ts:23-77](file://src/hooks/use-finance-fees.ts#L23-L77)
-- [use-finance-profit.ts:23-77](file://src/hooks/use-finance-profit.ts#L23-L77)
-- [use-finance-cashflow.ts:18-69](file://src/hooks/use-finance-cashflow.ts#L18-L69)
-- [use-finance-settlement.ts:18-73](file://src/hooks/use-finance-settlement.ts#L18-L73)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)
+- [api.ts:1852-1912](file://src/lib/api.ts#L1852-L1912)
 
-[No sources needed since this diagram shows conceptual workflow, not actual code structure]
+### Expense Component Integration
+The expense hooks integrate with specialized components for displaying and managing product expenses:
 
-### Finance Component Integration
-The finance hooks integrate with specialized components for displaying financial data:
-
-- **Finance Kit Components**: KPI cards, status badges, date range selectors, and financial gauges
-- **Chart Components**: Area charts, donut charts, bar charts, and stacked visualizations
-- **Error States**: Consistent error handling with retry functionality
-- **Skeleton Loading**: Optimized loading states for financial data
+- **Expense List Components**: FlatList with platform filtering, total calculations, and delete confirmations
+- **Expense Form Components**: Comprehensive forms with product picker, validation, and optimistic updates
+- **Product Integration**: Seamless integration with marketplace product catalogs for image display and SKU lookup
+- **Error States**: Consistent error handling with retry functionality and field-level validation
+- **Loading States**: Optimized loading indicators for both list and form operations
 
 **Section sources**
-- [finance-kit.tsx:27-608](file://src/components/finance-kit.tsx#L27-L608)
-- [finance-charts.tsx:22-396](file://src/components/finance-charts.tsx#L22-L396)
+- [expenses.tsx:26-194](file://src/app/(app)/expenses.tsx#L26-L194)
+- [expense-form.tsx:34-435](file://src/app/(app)/expense-form.tsx#L34-L435)
+- [use-expenses.ts:30-100](file://src/hooks/use-expenses.ts#L30-L100)

@@ -3,6 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AreaChart, DonutChart, ChartLegend } from '@/components/finance-charts';
+import {
+  FinanceColors,
+  FinanceChartSkeleton,
+  FinanceEmptyState,
+  FinanceKPICard,
+  ProfitMarginRing,
+  formatPKR,
+  formatCompact,
+  DateRange,
+} from '@/components/finance-kit';
 import { ListRow, ListSection } from '@/components/list-kit';
 import { ProductChatPanel } from '@/components/product-chat';
 import { formatPrice } from '@/components/product-kit';
@@ -17,15 +28,17 @@ import { useAuth } from '@/hooks/use-auth';
 import { useDarazProducts } from '@/hooks/use-daraz-products';
 import { useShopifyProducts } from '@/hooks/use-shopify-products';
 import { useProductInsights } from '@/hooks/use-product-insights';
+import { useProductFinancials } from '@/hooks/use-product-financials';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, deleteProduct, type Product } from '@/lib/api';
+import { getDefaultDates } from './product-financials';
 
-type DetailTab = 'details' | 'insights' | 'chat';
+type DetailTab = 'details' | 'finance' | 'insights' | 'chat';
 
 export default function ProductDetailScreen() {
   const theme = useTheme();
   const { accessToken } = useAuth();
-  const { id, source } = useLocalSearchParams<{ id?: string; source?: string }>();
+  const { id, source, tab: initialTab } = useLocalSearchParams<{ id?: string; source?: string; tab?: string }>();
   const isDaraz = source === 'daraz';
   const isShopify = source === 'shopify';
   const daraz = useDarazProducts();
@@ -44,9 +57,12 @@ export default function ProductDetailScreen() {
   }, [product]);
   const recommendationNiche = product?.category?.trim() ?? '';
 
-  const [tab, setTab] = useState<DetailTab>('details');
+  const [tab, setTab] = useState<DetailTab>(
+    (initialTab === 'finance' && isDaraz) ? 'finance' : 'details',
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [dates, setDates] = useState<DateRange>(getDefaultDates);
 
   // Insights/returns data is needed by both the Insights and Chat tabs. Owning the fetch here
   // (rather than in each tab's own component) means switching tabs doesn't unmount/remount the
@@ -59,6 +75,38 @@ export default function ProductDetailScreen() {
     if (needsInsightsNow) setNeedsInsights(true);
   }, [needsInsightsNow]);
   const insights = useProductInsights(product, { enabled: needsInsights && isDaraz });
+
+  // Product financials — fetched lazily when the Finance tab is opened.
+  const [financeRequested, setFinanceRequested] = useState(initialTab === 'finance');
+  useEffect(() => {
+    if (tab === 'finance') setFinanceRequested(true);
+  }, [tab]);
+  const productFinancials = useProductFinancials(
+    financeRequested && isDaraz ? {
+      sortBy: 'gross_revenue', startDate: dates.startDate, endDate: dates.endDate
+    } : undefined,
+  );
+  const productFinData = useMemo(() => {
+    if (!productFinancials.data || !id) return null;
+    return productFinancials.data.products.find((p) => p.sku === id) ?? null;
+  }, [productFinancials.data, id]);
+  const finTrendData = useMemo(() => {
+    if (!productFinancials.data?.daily_trend?.length) return [];
+    return productFinancials.data.daily_trend.map((point) => ({
+      x: new Date(point.date).getDate(),
+      inflow: point.revenue,
+      outflow: point.fees + point.refunds,
+    }));
+  }, [productFinancials.data]);
+  const finFeeDonut = useMemo(() => {
+    if (!productFinancials.data?.fee_distribution?.length) return [];
+    const colors = [FinanceColors.fees, FinanceColors.warning, FinanceColors.primary, FinanceColors.neutral, FinanceColors.revenue, '#8B5CF6'];
+    return productFinancials.data.fee_distribution.map((slice, i) => ({
+      label: slice.category,
+      value: slice.amount,
+      color: colors[i % colors.length],
+    }));
+  }, [productFinancials.data]);
 
   function handleDelete() {
     if (!product?.id || !accessToken) return;
@@ -127,6 +175,7 @@ export default function ProductDetailScreen() {
               <SegmentedTabs
                 options={[
                   { value: 'details', label: 'Details' },
+                  ...(isDaraz ? [{ value: 'finance' as const, label: 'Finance' }] : []),
                   { value: 'insights', label: 'Insights' },
                   { value: 'chat', label: 'Chat' },
                 ]}
@@ -137,6 +186,108 @@ export default function ProductDetailScreen() {
 
             {tab === 'chat' ? (
               <ProductChatPanel product={product} insights={insights} style={styles.chatArea} />
+            ) : tab === 'finance' && isDaraz ? (
+              <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
+                {productFinancials.isLoading ? (
+                  <>
+                    <View style={styles.kpiRow}>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <FinanceChartSkeleton key={i} height={80} />
+                      ))}
+                    </View>
+                    <FinanceChartSkeleton height={200} />
+                  </>
+                ) : productFinData ? (
+                  <>
+                    {/* Product financial hero */}
+                    <ThemedView
+                      type="surfaceContainerLowest"
+                      style={[styles.finHeroCard, { borderLeftColor: productFinData.net_profit >= 0 ? FinanceColors.profit : FinanceColors.fees }]}>
+                      <View style={styles.finHeroRow}>
+                        <ThemedText type="labelMd" themeColor="textSecondary">NET PROFIT</ThemedText>
+                        <ThemedText type="labelMd" style={{ color: productFinData.net_profit >= 0 ? FinanceColors.profit : FinanceColors.fees }}>
+                          {productFinData.net_profit >= 0 ? 'PROFITABLE' : 'LOSS-MAKING'}
+                        </ThemedText>
+                      </View>
+                      <ThemedText
+                        type="displayLgMobile"
+                        style={{ color: productFinData.net_profit >= 0 ? FinanceColors.profit : FinanceColors.fees }}>
+                        {formatPKR(productFinData.net_profit)}
+                      </ThemedText>
+                      <ThemedText type="bodySm" themeColor="textSecondary">{productFinancials.data?.period}</ThemedText>
+                    </ThemedView>
+
+                    {/* KPI cards */}
+                    <View style={styles.kpiRow}>
+                      <FinanceKPICard title="Revenue" value={formatCompact(productFinData.gross_revenue)} icon="cash-multiple" tone="revenue" />
+                      <FinanceKPICard title="Units Sold" value={String(productFinData.units_sold)} icon="package-variant-closed" tone="primary" />
+                      <FinanceKPICard title="Total Fees" value={formatCompact(productFinData.total_fees)} icon="receipt" tone="fees" />
+                      <FinanceKPICard title="Expenses" value={formatCompact(productFinData.product_expenses)} icon="cart-outline" tone="fees" />
+                    </View>
+
+                    {/* Profit margin ring + fee breakdown */}
+                    <View style={styles.finGrid}>
+                      <ThemedView type="surfaceContainerLowest" style={styles.finRingCard}>
+                        <ThemedText type="bodyLg">Profit margin</ThemedText>
+                        <ProfitMarginRing margin={productFinData.profit_margin} />
+                      </ThemedView>
+
+                      {finFeeDonut.length > 0 && (
+                        <ThemedView type="surfaceContainerLowest" style={styles.finChartCard}>
+                          <ThemedText type="bodyLg">Fee breakdown</ThemedText>
+                          <DonutChart
+                            data={finFeeDonut}
+                            size={160}
+                            centerLabel="Fees"
+                            centerValue={formatCompact(productFinData.total_fees)}
+                          />
+                          <ChartLegend items={finFeeDonut.map((s) => ({ label: s.label, color: s.color }))} />
+                        </ThemedView>
+                      )}
+                    </View>
+
+                    {/* Daily trend */}
+                    {finTrendData.length > 0 && (
+                      <ThemedView type="surfaceContainerLowest" style={styles.finChartCard}>
+                        <ThemedText type="bodyLg">Revenue & fees over time</ThemedText>
+                        <AreaChart
+                          data={finTrendData}
+                          height={180}
+                          inflowColor={FinanceColors.revenue}
+                          outflowColor={FinanceColors.fees}
+                        />
+                        <ChartLegend
+                          items={[
+                            { label: 'Revenue', color: FinanceColors.revenue },
+                            { label: 'Fees + Refunds', color: FinanceColors.fees },
+                          ]}
+                        />
+                      </ThemedView>
+                    )}
+
+                    {/* Fee detail list */}
+                    <ListSection>
+                      <ListRow label="Gross Revenue" value={formatPKR(productFinData.gross_revenue)} showChevron={false} />
+                      <ListRow label="Commission" value={formatPKR(productFinData.commission)} showChevron={false} />
+                      <ListRow label="Payment Fees" value={formatPKR(productFinData.payment_fees)} showChevron={false} />
+                      <ListRow label="Shipping Fees" value={formatPKR(productFinData.shipping_fees)} showChevron={false} />
+                      <ListRow label="Penalties" value={formatPKR(productFinData.penalties)} showChevron={false} />
+                      <ListRow label="Promo Discounts" value={formatPKR(productFinData.promotional_discounts)} showChevron={false} />
+                      <ListRow label="Refunds" value={formatPKR(productFinData.refunds)} showChevron={false} />
+                      <ListRow label="Net Revenue" value={formatPKR(productFinData.net_revenue)} showChevron={false} />
+                      <ListRow label="Product Expenses" value={formatPKR(productFinData.product_expenses)} showChevron={false} />
+                      <ListRow
+                        label="Net Profit"
+                        value={formatPKR(productFinData.net_profit)}
+                        showChevron={false}
+                        isLast
+                      />
+                    </ListSection>
+                  </>
+                ) : (
+                  <FinanceEmptyState message="No financial data found for this product. Make sure it has sales in the selected period." />
+                )}
+              </ScrollView>
             ) : (
               <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
                 {tab === 'details' ? (
@@ -255,20 +406,8 @@ export default function ProductDetailScreen() {
                       </>
                     )}
                   </>
-                ) : isDaraz ? (
-                  <ProductInsightsPanel insights={insights} />
                 ) : (
-                  <View style={[styles.insightsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                    <ThemedText type="headlineSm" style={styles.centerText}>
-                      ✨
-                    </ThemedText>
-                    <ThemedText type="bodyLg" style={styles.centerText}>
-                      AI insights are coming soon
-                    </ThemedText>
-                    <ThemedText type="bodyMd" themeColor="textSecondary" style={styles.centerText}>
-                      Review sentiment and return analytics are available for products synced from Daraz.
-                    </ThemedText>
-                  </View>
+                  <ProductInsightsPanel insights={insights} />
                 )}
               </ScrollView>
             )}
@@ -378,5 +517,40 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingVertical: Spacing.six,
     paddingHorizontal: Spacing.four,
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  finHeroCard: {
+    padding: Spacing.four,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    gap: Spacing.one,
+  },
+  finHeroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  finGrid: {
+    gap: Spacing.four,
+  },
+  finRingCard: {
+    padding: Spacing.four,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  finChartCard: {
+    padding: Spacing.three,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });

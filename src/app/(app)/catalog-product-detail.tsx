@@ -39,7 +39,7 @@ export default function CatalogProductDetailScreen() {
   const images = product.image ? [product.image] : [];
   const ratingLabel =
     product.rating_score && product.review_count
-      ? `${product.rating_score} · ${product.review_count} reviews`
+      ? `${Number(Number.parseFloat(product.rating_score).toFixed(2))} · ${product.review_count} reviews`
       : product.rating_score ?? product.review_count ?? null;
 
   return (

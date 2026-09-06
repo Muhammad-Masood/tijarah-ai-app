@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError, catalogSearch, type CatalogProductItem } from '@/lib/api';
 
-const MAX_PAGES_PER_REQUEST = 1;
+const MAX_PAGES_PER_REQUEST = 3;
 
 type UseCatalogSearchOptions = {
   query: string;

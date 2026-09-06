@@ -1818,6 +1818,76 @@ export function getSettlementReconciliation(
 }
 
 // ---------------------------------------------------------------------------
+// Product Financials Module
+// ---------------------------------------------------------------------------
+
+export type ProductFinancials = {
+  sku: string;
+  product_name: string;
+  units_sold: number;
+  gross_revenue: number;
+  commission: number;
+  payment_fees: number;
+  shipping_fees: number;
+  penalties: number;
+  promotional_discounts: number;
+  total_fees: number;
+  refunds: number;
+  net_revenue: number;
+  product_expenses: number;
+  net_profit: number;
+  profit_margin: number;
+  order_numbers: string[];
+};
+
+export type DailyProductTrend = {
+  date: string;
+  revenue: number;
+  fees: number;
+  refunds: number;
+  net_profit: number;
+};
+
+export type FeeSlice = {
+  category: string;
+  amount: number;
+};
+
+export type TopProductBar = {
+  sku: string;
+  product_name: string;
+  gross_revenue: number;
+  net_profit: number;
+  units_sold: number;
+};
+
+export type ProductFinancialsResponse = {
+  period: string;
+  total_products: number;
+  products: ProductFinancials[];
+  summary: Record<string, unknown>;
+  daily_trend: DailyProductTrend[];
+  fee_distribution: FeeSlice[];
+  top_products_chart: TopProductBar[];
+};
+
+export function getProductFinancials(
+  accessToken: string,
+  darazAccessToken: string,
+  params?: { startDate?: string; endDate?: string; sortBy?: string },
+): Promise<ProductFinancialsResponse> {
+  const query = new URLSearchParams();
+  if (params?.startDate) query.set('start_date', params.startDate);
+  if (params?.endDate) query.set('end_date', params.endDate);
+  if (params?.sortBy) query.set('sort_by', params.sortBy);
+  const qs = query.toString();
+  return request<ProductFinancialsResponse>(
+    `/daraz/financial/products${qs ? `?${qs}` : ''}`,
+    { headers: darazFinancialHeaders(accessToken, darazAccessToken) },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Product Expenses Module
 // ---------------------------------------------------------------------------
 

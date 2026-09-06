@@ -16,6 +16,9 @@
 - [use-finance-cashflow.ts](file://src/hooks/use-finance-cashflow.ts)
 - [use-finance-fees.ts](file://src/hooks/use-finance-fees.ts)
 - [use-finance-settlement.ts](file://src/hooks/use-finance-settlement.ts)
+- [use-expenses.ts](file://src/hooks/use-expenses.ts)
+- [expenses.tsx](file://src/app/(app)/expenses.tsx)
+- [expense-form.tsx](file://src/app/(app)/expense-form.tsx)
 </cite>
 
 ## Update Summary
@@ -25,6 +28,7 @@
 - Added specialized endpoints for dashboard, transactions, payouts, and settlement data
 - Implemented SSE streaming support for real-time financial updates
 - Created dedicated hooks for each finance module (dashboard, transactions, payouts, profit, cashflow, fees, settlement)
+- **Added expense management system with full CRUD operations for product expenses**
 - Updated architecture to support both marketplace integrations and finance data access
 
 ## Table of Contents
@@ -34,17 +38,18 @@
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Finance Data Layer](#finance-data-layer)
-7. [Dependency Analysis](#dependency-analysis)
-8. [Performance Considerations](#performance-considerations)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Conclusion](#conclusion)
-11. [Appendices](#appendices)
+7. [Expense Management System](#expense-management-system)
+8. [Dependency Analysis](#dependency-analysis)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
+12. [Appendices](#appendices)
 
 ## Introduction
-This document explains the enhanced API integration patterns used in the application, focusing on the centralized API client with comprehensive finance data retrieval capabilities, authentication and headers, marketplace-specific hooks for Shopify and Daraz, real-time updates via Server-Sent Events (SSE), error handling strategies, and guidance for adding new endpoints and maintaining backward compatibility.
+This document explains the enhanced API integration patterns used in the application, focusing on the centralized API client with comprehensive finance data retrieval capabilities, authentication and headers, marketplace-specific hooks for Shopify and Daraz, real-time updates via Server-Sent Events (SSE), error handling strategies, and guidance for adding new endpoints and maintaining backward compatibility. The system now includes a complete expense management solution for tracking product costs across different marketplaces.
 
 ## Project Structure
-The API layer is now a comprehensive module that provides typed functions for HTTP requests, SSE streaming, marketplace integrations, and extensive finance data operations. Hooks encapsulate platform-specific flows (Shopify, Daraz) and finance modules, composing them with authentication state to fetch products, manage connections, and retrieve financial analytics.
+The API layer is now a comprehensive module that provides typed functions for HTTP requests, SSE streaming, marketplace integrations, extensive finance data operations, and expense management. Hooks encapsulate platform-specific flows (Shopify, Daraz) and finance modules, composing them with authentication state to fetch products, manage connections, retrieve financial analytics, and handle expense operations.
 
 ```mermaid
 graph TB
@@ -67,6 +72,11 @@ K["src/hooks/use-finance-profit.ts"]
 L["src/hooks/use-finance-cashflow.ts"]
 M["src/hooks/use-finance-fees.ts"]
 N["src/hooks/use-finance-settlement.ts"]
+O["src/hooks/use-expenses.ts"]
+end
+subgraph "UI Components"
+P["src/app/(app)/expenses.tsx"]
+Q["src/app/(app)/expense-form.tsx"]
 end
 B --> A
 C --> A
@@ -81,11 +91,14 @@ K --> A
 L --> A
 M --> A
 N --> A
+O --> A
+P --> O
+Q --> O
 ```
 
 **Diagram sources**
 - [api.ts:1-800](file://src/lib/api.ts#L1-L800)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 - [use-auth.tsx:1-91](file://src/hooks/use-auth.tsx#L1-L91)
 - [use-shopify-access-token.ts:1-31](file://src/hooks/use-shopify-access-token.ts#L1-L31)
 - [use-daraz-access-token.ts:1-66](file://src/hooks/use-daraz-access-token.ts#L1-L66)
@@ -98,10 +111,13 @@ N --> A
 - [use-finance-cashflow.ts:1-70](file://src/hooks/use-finance-cashflow.ts#L1-L70)
 - [use-finance-fees.ts:1-78](file://src/hooks/use-finance-fees.ts#L1-L78)
 - [use-finance-settlement.ts:1-74](file://src/hooks/use-finance-settlement.ts#L1-L74)
+- [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
+- [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
+- [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
 
 **Section sources**
 - [api.ts:1-800](file://src/lib/api.ts#L1-L800)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 - [use-auth.tsx:1-91](file://src/hooks/use-auth.tsx#L1-L91)
 - [use-shopify-access-token.ts:1-31](file://src/hooks/use-shopify-access-token.ts#L1-L31)
 - [use-daraz-access-token.ts:1-66](file://src/hooks/use-daraz-access-token.ts#L1-L66)
@@ -114,12 +130,16 @@ N --> A
 - [use-finance-cashflow.ts:1-70](file://src/hooks/use-finance-cashflow.ts#L1-L70)
 - [use-finance-fees.ts:1-78](file://src/hooks/use-finance-fees.ts#L1-L78)
 - [use-finance-settlement.ts:1-74](file://src/hooks/use-finance-settlement.ts#L1-L74)
+- [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
+- [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
+- [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
 
 ## Core Components
 - Centralized HTTP client with unified error handling and JSON parsing.
 - SSE streaming support for both web and React Native environments.
 - Marketplace adapters for Shopify and Daraz with typed request/response models.
 - Finance data layer with comprehensive endpoints for dashboard, transactions, payouts, profit analysis, cash flow, fee breakdown, and settlement reconciliation.
+- **Expense management system with full CRUD operations for product expenses.**
 - Authentication context providing bearer tokens for protected endpoints.
 - Constants for base URL configuration across platforms.
 
@@ -129,24 +149,25 @@ Key responsibilities:
 - Provide typed helpers for creating, updating, deleting, and publishing products.
 - Stream long-running operations (e.g., returns insights, review analysis) with progress events.
 - Retrieve comprehensive financial analytics and reconciliation data.
+- **Manage product expenses with filtering by platform and SKU, including optimistic UI updates.**
 
 **Section sources**
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 - [api.ts:79-286](file://src/lib/api.ts#L79-L286)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 - [use-auth.tsx:27-79](file://src/hooks/use-auth.tsx#L27-L79)
 - [api.ts:10-16](file://src/constants/api.ts#L10-L16)
 
 ## Architecture Overview
 The architecture separates concerns into three layers:
-- API client: low-level HTTP and SSE primitives with enhanced finance data support.
-- Hooks: stateful composition of auth, marketplace connections, finance modules, and data fetching.
-- UI: consumes hooks to render product lists, financial dashboards, and actions.
+- API client: low-level HTTP and SSE primitives with enhanced finance data support and expense management.
+- Hooks: stateful composition of auth, marketplace connections, finance modules, expense operations, and data fetching.
+- UI: consumes hooks to render product lists, financial dashboards, expense management screens, and actions.
 
 ```mermaid
 sequenceDiagram
 participant UI as "UI Component"
-participant Hook as "use*Finance / use*Products"
+participant Hook as "use*Finance / use*Products / useExpenses"
 participant Auth as "useAuth"
 participant Conn as "use*AccessToken"
 participant API as "src/lib/api.ts"
@@ -155,7 +176,7 @@ UI->>Hook : mount
 Hook->>Auth : read accessToken
 Hook->>Conn : resolve marketplace token
 alt connected
-Hook->>API : call finance/marketplace endpoint(s)
+Hook->>API : call finance/marketplace/expense endpoint(s)
 API->>Backend : HTTP/SSE request
 Backend-->>API : response/stream
 API-->>Hook : typed result(s)
@@ -170,6 +191,7 @@ end
 - [use-daraz-products.ts:120-183](file://src/hooks/use-daraz-products.ts#L120-L183)
 - [use-finance-dashboard.ts:33-72](file://src/hooks/use-finance-dashboard.ts#L33-L72)
 - [use-finance-transactions.ts:42-82](file://src/hooks/use-finance-transactions.ts#L42-L82)
+- [use-expenses.ts:40-65](file://src/hooks/use-expenses.ts#L40-L65)
 - [use-auth.tsx:31-79](file://src/hooks/use-auth.tsx#L31-L79)
 - [use-shopify-access-token.ts:14-29](file://src/hooks/use-shopify-access-token.ts#L14-L29)
 - [use-daraz-access-token.ts:29-64](file://src/hooks/use-daraz-access-token.ts#L29-L64)
@@ -208,11 +230,13 @@ Enhanced endpoints covered include:
 - Storage: upload/cleanup images, migrate image sources.
 - Analytics/insights: returns insights and review analysis via SSE.
 - **Finance data**: dashboard, transactions, payouts, profit analysis, cash flow, fee breakdown, settlement reconciliation.
+- **Expense management**: CRUD operations for product expenses with filtering capabilities.
 
 Complexity notes:
 - Response normalization functions handle varying field names and nesting to ensure stable types for callers.
 - Deduplication utilities prevent duplicate products when sources return overlapping IDs.
 - **Finance data normalization** handles complex financial structures with proper type safety.
+- **Expense operations include query parameter building for platform and SKU filtering.**
 
 **Section sources**
 - [api.ts:5-13](file://src/lib/api.ts#L5-L13)
@@ -234,7 +258,7 @@ Complexity notes:
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
 - [api.ts:1556-1582](file://src/lib/api.ts#L1556-L1582)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 
 ### API Constants and Base URL (src/constants/api.ts)
 - Base URL selection:
@@ -340,12 +364,13 @@ Example patterns:
 - Simple GET/POST: see product CRUD and marketplace listing functions.
 - SSE streaming: see returns insights and review analysis functions.
 - **Finance endpoints**: see dashboard, transactions, payouts, profit, cashflow, fees, and settlement functions.
+- **Expense endpoints**: see CRUD operations with query parameter filtering.
 
 **Section sources**
 - [api.ts:1109-1153](file://src/lib/api.ts#L1109-L1153)
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 
 ### Handling Different Response Formats
 - Many marketplace responses vary in structure; normalization functions extract arrays and fields robustly.
@@ -442,8 +467,43 @@ All finance endpoints use a consistent header pattern with both Bearer authentic
 - [use-finance-fees.ts:1-78](file://src/hooks/use-finance-fees.ts#L1-L78)
 - [use-finance-settlement.ts:1-74](file://src/hooks/use-finance-settlement.ts#L1-L74)
 
+## Expense Management System
+The expense management system provides comprehensive CRUD operations for tracking product expenses across different marketplaces.
+
+### Expense Types and Structure
+- **ProductExpenseCreate**: Required fields include sku_id, platform, category, and amount, with optional description.
+- **ProductExpenseUpdate**: Optional fields for partial updates to existing expenses.
+- **ProductExpenseRead**: Complete expense record with metadata including timestamps and merchant association.
+
+### API Endpoints
+- **GET /expenses**: Retrieve expenses with optional filtering by platform and SKU.
+- **GET /expenses/{id}**: Get specific expense by ID.
+- **POST /expenses/**: Create new expense record.
+- **PUT /expenses/{id}**: Update existing expense.
+- **DELETE /expenses/{id}**: Remove expense record.
+
+### Hook Implementation (use-expenses.ts)
+- Automatic expense fetching on component mount with authentication check.
+- Optimistic UI updates for create, edit, and delete operations.
+- Platform and SKU filtering support through query parameters.
+- Comprehensive error handling with user-friendly messages.
+- Loading state management and refetch capabilities.
+
+### UI Components
+- **Expenses Screen**: Displays expense list with platform filtering, total calculations, and deletion functionality.
+- **Expense Form**: Full-featured form for creating and editing expenses with product picker integration.
+- **Product Integration**: Seamless integration with marketplace product catalogs for expense attribution.
+
+**Updated** Added comprehensive expense management system with full CRUD operations, filtering capabilities, and integrated UI components.
+
+**Section sources**
+- [api.ts:1820-1912](file://src/lib/api.ts#L1820-L1912)
+- [use-expenses.ts:1-100](file://src/hooks/use-expenses.ts#L1-L100)
+- [expenses.tsx:1-293](file://src/app/(app)/expenses.tsx#L1-L293)
+- [expense-form.tsx:1-574](file://src/app/(app)/expense-form.tsx#L1-L574)
+
 ## Dependency Analysis
-The following diagram shows how hooks depend on the API client and authentication context, including the new finance modules.
+The following diagram shows how hooks depend on the API client and authentication context, including the new finance and expense modules.
 
 ```mermaid
 graph LR
@@ -459,6 +519,9 @@ FinanceProfit["useProfitAnalytics"] --> API
 FinanceCashFlow["useCashFlow"] --> API
 FinanceFees["useFeeBreakdown"] --> API
 FinanceSettlement["useSettlementReconciliation"] --> API
+Expenses["useExpenses"] --> API
+ExpensesScreen["Expenses Screen"] --> Expenses
+ExpenseForm["Expense Form"] --> Expenses
 ShopifyProducts --> ShopifyToken
 DarazProducts --> DarazToken
 FinanceDashboard --> DarazToken
@@ -483,6 +546,9 @@ FinanceSettlement --> DarazToken
 - [use-finance-cashflow.ts:33-66](file://src/hooks/use-finance-cashflow.ts#L33-L66)
 - [use-finance-fees.ts:40-74](file://src/hooks/use-finance-fees.ts#L40-L74)
 - [use-finance-settlement.ts:35-70](file://src/hooks/use-finance-settlement.ts#L35-L70)
+- [use-expenses.ts:30-65](file://src/hooks/use-expenses.ts#L30-L65)
+- [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)
+- [expense-form.tsx:47-47](file://src/app/(app)/expense-form.tsx#L47-L47)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 **Section sources**
@@ -498,6 +564,9 @@ FinanceSettlement --> DarazToken
 - [use-finance-cashflow.ts:33-66](file://src/hooks/use-finance-cashflow.ts#L33-L66)
 - [use-finance-fees.ts:40-74](file://src/hooks/use-finance-fees.ts#L40-L74)
 - [use-finance-settlement.ts:35-70](file://src/hooks/use-finance-settlement.ts#L35-L70)
+- [use-expenses.ts:30-65](file://src/hooks/use-expenses.ts#L30-L65)
+- [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)
+- [expense-form.tsx:47-47](file://src/app/(app)/expense-form.tsx#L47-L47)
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
 
 ## Performance Considerations
@@ -506,6 +575,7 @@ FinanceSettlement --> DarazToken
 - Minimize network calls by caching connection tokens and reusing them until refetch is triggered.
 - Use environment variables to configure base URLs per environment to reduce misconfiguration overhead.
 - **Finance data optimization**: Leverage pagination for large transaction datasets and implement efficient date range filtering.
+- **Expense management optimization**: Implement optimistic UI updates for better user experience and reduce unnecessary re-renders.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -525,6 +595,10 @@ Common issues and resolutions:
   - Verify Daraz connection token is properly configured for finance endpoints.
   - Check date range parameters for transaction and analytics queries.
   - Ensure proper error handling for financial data transformations.
+- **Expense management issues**:
+  - Verify product SKU IDs match between expense records and marketplace products.
+  - Check platform filtering parameters when querying expenses.
+  - Ensure proper validation of expense amounts and required fields.
 
 **Section sources**
 - [api.ts:53-77](file://src/lib/api.ts#L53-L77)
@@ -534,7 +608,7 @@ Common issues and resolutions:
 - [use-daraz-access-token.ts:29-64](file://src/hooks/use-daraz-access-token.ts#L29-L64)
 
 ## Conclusion
-The enhanced API integration layer provides a robust, typed, and extensible foundation for interacting with the backend and marketplace services. It standardizes error handling, supports real-time updates via SSE, abstracts marketplace differences through normalization and hooks, and now includes comprehensive finance data capabilities. By following the patterns outlined here, you can confidently add new endpoints, maintain backward compatibility, and deliver responsive user experiences across platforms with full financial analytics support.
+The enhanced API integration layer provides a robust, typed, and extensible foundation for interacting with the backend and marketplace services. It standardizes error handling, supports real-time updates via SSE, abstracts marketplace differences through normalization and hooks, and now includes comprehensive finance data capabilities and a complete expense management system. By following the patterns outlined here, you can confidently add new endpoints, maintain backward compatibility, and deliver responsive user experiences across platforms with full financial analytics and expense tracking support.
 
 ## Appendices
 
@@ -545,12 +619,13 @@ The enhanced API integration layer provides a robust, typed, and extensible foun
 - Wrap in a hook to manage loading, error, and refetch states.
 - Map responses to shared types to keep UI code simple.
 - **For finance endpoints**: Include both Bearer and Daraz access tokens in headers.
+- **For expense endpoints**: Support query parameter filtering for platform and SKU.
 
 **Section sources**
 - [api.ts:1109-1153](file://src/lib/api.ts#L1109-L1153)
 - [api.ts:1257-1281](file://src/lib/api.ts#L1257-L1281)
 - [api.ts:1342-1364](file://src/lib/api.ts#L1342-L1364)
-- [api.ts:1700-1817](file://src/lib/api.ts#L1700-L1817)
+- [api.ts:1700-1912](file://src/lib/api.ts#L1700-L1912)
 
 ### Example: SSE Sequence for Returns Insights
 ```mermaid
@@ -599,3 +674,29 @@ end
 **Diagram sources**
 - [use-finance-dashboard.ts:33-72](file://src/hooks/use-finance-dashboard.ts#L33-L72)
 - [api.ts:1723-1732](file://src/lib/api.ts#L1723-L1732)
+
+### Example: Expense Management Implementation
+```mermaid
+sequenceDiagram
+participant UI as "Expenses Screen"
+participant Hook as "useExpenses"
+participant Auth as "useAuth"
+participant API as "getProductExpenses"
+participant Backend as "Backend"
+UI->>Hook : mount with platform filter
+Hook->>Auth : read accessToken
+alt authenticated
+Hook->>API : getProductExpenses(accessToken, params)
+API->>Backend : GET /expenses?platform=X&sku_id=Y
+Backend-->>API : ProductExpenseRead[]
+API-->>Hook : typed expense list
+Hook-->>UI : expenses, loading, error
+else not authenticated
+Hook-->>UI : empty state, no error
+end
+```
+
+**Diagram sources**
+- [use-expenses.ts:40-65](file://src/hooks/use-expenses.ts#L40-L65)
+- [api.ts:1852-1863](file://src/lib/api.ts#L1852-L1863)
+- [expenses.tsx:30-34](file://src/app/(app)/expenses.tsx#L30-L34)

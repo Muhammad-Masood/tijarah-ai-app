@@ -18,7 +18,10 @@ import {
   SectionHeading,
   SentimentCard,
 } from '@/components/dashboard-kit';
-import { ProductRow } from '@/components/product-kit';
+import {
+  FinanceChartSkeleton,
+  TopProductCard,
+} from '@/components/finance-kit';
 import { StoreSelectorSheet, type StoreOption } from '@/components/store-selector-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -26,7 +29,6 @@ import {
   agentActivity,
   allInsights,
   businessHealth,
-  dummyProducts,
   featureGraphs,
   impactStrip,
   inventoryRisks,
@@ -39,44 +41,52 @@ import {
 } from '@/constants/dashboard-mock';
 import { unreadNotificationCount } from '@/constants/notifications-mock';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { useDarazProducts } from '@/hooks/use-daraz-products';
-import { useProducts } from '@/hooks/use-products';
+import { useProductFinancials } from '@/hooks/use-product-financials';
 import { useSupportedMarketplaces } from '@/hooks/use-supported-marketplaces';
 import { useTheme } from '@/hooks/use-theme';
 
-const RECENT_PRODUCTS_PREVIEW_COUNT = 3;
+const TOP_PRODUCTS_PREVIEW_COUNT = 3;
 
 const DATE_RANGE_OPTIONS = ['Last 7 days', 'Last 30 days', 'Last 90 days'];
+
+function dateRangeToParams(index: number): { startDate: string; endDate: string } {
+  const end = new Date();
+  const start = new Date();
+  const daysMap = [7, 30, 90] as const;
+  start.setDate(start.getDate() - daysMap[index]);
+  return {
+    startDate: start.toISOString().split('T')[0],
+    endDate: end.toISOString().split('T')[0],
+  };
+}
 
 export default function DashboardScreen() {
   const theme = useTheme();
   const { marketplaces, isLoading: isLoadingMarketplaces, error: marketplacesError, refetch } =
     useSupportedMarketplaces();
-  const { products, isLoading: isLoadingProducts, refetch: refetchProducts } = useProducts();
-  const {
-    products: darazProducts,
-    isConnected: isDarazConnected,
-    isLoading: isDarazLoading,
-    refetch: refetchDaraz,
-  } = useDarazProducts();
-  const isRefreshing = isLoadingMarketplaces || isLoadingProducts || isDarazLoading;
+  const isRefreshing = isLoadingMarketplaces;
 
   function handleRefresh() {
     refetch();
-    refetchProducts();
-    refetchDaraz();
+    refetchProductFinancials();
   }
-
-  // Daraz is the only marketplace with a real product feed today — prefer
-  // it over the local product list so the Home preview matches what the
-  // Products tab shows for a connected store.
-  const displayProducts = isDarazConnected ? darazProducts : products;
-  const isLoadingDisplayProducts = isDarazConnected ? isDarazLoading : isLoadingProducts;
 
   const [selectedStore, setSelectedStore] = useState<StoreOption>('all');
   const [isStorePickerVisible, setIsStorePickerVisible] = useState(false);
   const [dateRangeIndex, setDateRangeIndex] = useState(0);
   const [primaryDismissed, setPrimaryDismissed] = useState(false);
+
+  const dateParams = useMemo(() => dateRangeToParams(dateRangeIndex), [dateRangeIndex]);
+  const {
+    data: productFinancials,
+    isLoading: isLoadingProductFinancials,
+    refetch: refetchProductFinancials,
+  } = useProductFinancials({ ...dateParams, sortBy: 'gross_revenue' });
+  const topProducts = useMemo(
+    () => (productFinancials?.products ?? []).slice(0, TOP_PRODUCTS_PREVIEW_COUNT),
+    [productFinancials],
+  );
+  console.log("top products: ", topProducts)
 
   const connectedMarketplaces = useMemo(
     () => marketplaces.filter((marketplace) => marketplace.is_connected),
@@ -86,10 +96,6 @@ export default function DashboardScreen() {
     selectedStore === 'all'
       ? null
       : (connectedMarketplaces.find((marketplace) => marketplace.id === selectedStore) ?? null);
-  const darazMarketplace = useMemo(
-    () => connectedMarketplaces.find((marketplace) => marketplace.slug === 'daraz'),
-    [connectedMarketplaces],
-  );
 
   function handleInsightAction(label: string) {
     // "Review products" / "Apply suggested prices" have no detail screen yet
@@ -223,61 +229,44 @@ export default function DashboardScreen() {
 
           <View style={styles.subsection}>
             <SectionHeading
-              title="Products"
+              title="Top Selling Products"
               action={
-                <Pressable onPress={() => router.push('/product-form')} hitSlop={8}>
+                <Pressable onPress={() => router.push('/product-financials')} hitSlop={8}>
                   <ThemedText type="bodySm" themeColor="primary" style={styles.addProductLabel}>
-                    + Add product
+                    View all
                   </ThemedText>
                 </Pressable>
               }
             />
-            {isLoadingDisplayProducts && (
-              <ThemedText type="bodySm" themeColor="textSecondary">
-                Loading products…
-              </ThemedText>
-            )}
-            {!isLoadingDisplayProducts && !isDarazConnected && products.length === 0 && (
-              <>
-                <ThemedText type="bodySm" themeColor="textSecondary">
-                  No products yet — here&apos;s a preview of how they&apos;ll look. Add your first to replace these.
-                </ThemedText>
-                <View style={styles.productList}>
-                  {dummyProducts.map((product) => (
-                    <ProductRow key={product.id} product={product} onPress={() => router.push('/products')} />
-                  ))}
-                </View>
-              </>
-            )}
-            {!isLoadingDisplayProducts && isDarazConnected && darazProducts.length === 0 && (
-              <ThemedText type="bodySm" themeColor="textSecondary">
-                No products found on Daraz yet.
-              </ThemedText>
-            )}
-            {!isLoadingDisplayProducts && displayProducts.length > 0 && (
+            {isLoadingProductFinancials && (
               <View style={styles.productList}>
-                {displayProducts.slice(0, RECENT_PRODUCTS_PREVIEW_COUNT).map((product, index) => (
-                  <ProductRow
-                    key={product.id ?? index}
+                {Array.from({ length: TOP_PRODUCTS_PREVIEW_COUNT }).map((_, i) => (
+                  <FinanceChartSkeleton key={i} height={96} />
+                ))}
+              </View>
+            )}
+            {!isLoadingProductFinancials && topProducts.length > 0 && (
+              <View style={styles.productList}>
+                {topProducts.map((product, index) => (
+                  <TopProductCard
+                    key={product.sku ?? index}
+                    rank={index + 1}
                     product={product}
-                    marketplaceLogo={isDarazConnected ? darazMarketplace?.logo_url : undefined}
                     onPress={() =>
                       router.push({
                         pathname: '/product-detail',
-                        params: isDarazConnected
-                          ? { id: product.id ?? String(index), source: 'daraz' }
-                          : { id: product.id ?? '' },
+                        params: { id: product.sku, source: 'daraz', tab: 'finance' },
                       })
                     }
                   />
                 ))}
               </View>
             )}
-            <Pressable onPress={() => router.push('/products')} hitSlop={8} style={styles.viewAllInsightsRow}>
-              <ThemedText type="bodySm" themeColor="primary">
-                View all products
+            {!isLoadingProductFinancials && topProducts.length === 0 && (
+              <ThemedText type="bodySm" themeColor="textSecondary">
+                No product sales data yet. Connect your store and start selling to see rankings here.
               </ThemedText>
-            </Pressable>
+            )}
           </View>
 
           <View style={styles.subsection}>
